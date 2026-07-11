@@ -1,0 +1,16 @@
+{
+  "data_version": "v031-r0001",
+  "source_workbook": "../source-workbooks/山海经原典地图_都广之野核心区_v031.xlsx",
+  "runtime_data": "../app/data.js",
+  "object_count": 188,
+  "original_text_rows": 1922,
+  "coordinate_unit": "里",
+  "main_grid_size_li": 100,
+  "inner_grid_size_li": 10,
+  "origin": {
+    "name": "都广之野",
+    "x_li": 0,
+    "y_li": 0
+  },
+  "notes": "当前 Demo 为纯本地前端，运行数据暂嵌入 app/data.js。后续接入正式发布包时再将运行数据从程序代码中拆分。"
+}

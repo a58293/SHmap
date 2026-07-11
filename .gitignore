@@ -1,0 +1,23 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local working files and backups
+*.tmp
+*.temp
+*.bak
+*.autosave
+~$*.xlsx
+
+# Local exported packages (upload to Releases when needed)
+*.shjpatch
+*.shjdata
+
+# Secrets: never commit
+.env
+.env.*
+*.key
+*.pem

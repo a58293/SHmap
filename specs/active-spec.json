@@ -1,0 +1,20 @@
+{
+  "research_method": "v002",
+  "production_rule": "v004",
+  "precedence": ["production_rule", "research_method"],
+  "effective_data_version": "v031-r0001",
+  "coordinate": {
+    "unit": "里",
+    "main_grid_size": 100,
+    "inner_grid_size": 10,
+    "origin_name": "都广之野",
+    "origin_x": 0,
+    "origin_y": 0
+  },
+  "rules": {
+    "allow_shared_coordinate": true,
+    "direction_without_distance_default": null,
+    "river_default_geometry": "LINESTRING",
+    "area_before_point": true
+  }
+}
