@@ -1,8 +1,17 @@
 (() => {
   "use strict";
   const INITIAL = window.SHJ_INITIAL_DATA || {metadata:{}, objects:[]};
-  const STORAGE_KEY = "shj_infinite_tile_demo_v012_v031";
-  const LEGACY_STORAGE_KEYS = ["shj_infinite_tile_demo_v011_v031","shj_infinite_tile_demo_v010_v031","shj_infinite_tile_demo_v009_v031","shj_infinite_tile_demo_v008_v031","shj_infinite_tile_demo_v007_v031","shj_infinite_tile_demo_v006_v031","shj_infinite_tile_demo_v005_v031"];
+  const STORAGE_KEY = "shj_infinite_tile_demo_v013_v031";
+  const LEGACY_STORAGE_KEYS = ["shj_infinite_tile_demo_v012_v031","shj_infinite_tile_demo_v011_v031","shj_infinite_tile_demo_v010_v031","shj_infinite_tile_demo_v009_v031","shj_infinite_tile_demo_v008_v031","shj_infinite_tile_demo_v007_v031","shj_infinite_tile_demo_v006_v031","shj_infinite_tile_demo_v005_v031"];
+
+  const GITHUB_CONFIG = {
+    owner: "a58293",
+    repo: "SHmap",
+    branch: "main",
+    currentPath: "data/current.json",
+    repoUrl: "https://github.com/a58293/SHmap",
+    apiBase: "https://api.github.com"
+  };
   const CELL_LI = 100;
   const BASE_CELL_PX = 190;
   const MIN_ZOOM = 0.18;
@@ -560,7 +569,44 @@
   function buildChangeSummary(){const tile=state.changes.filter(c=>c.entityType==="tile_profile").length,objectChanges=state.changes.filter(c=>c.entityType!=="tile_profile"),add=objectChanges.filter(c=>c.operation==="create").length,upd=objectChanges.filter(c=>c.operation==="update").length;return `新增对象${add}项，修改对象${upd}项，地块档案${tile}项。`}
   function showChanges(){const rows=state.changes.length?state.changes.slice().reverse().map(c=>`<tr><td>${esc(c.operationLabel)}</td><td>${esc(c.after?.name||c.before?.name||c.entityId)}</td><td>${esc(c.summary)}</td><td>${esc(c.time)}</td></tr>`).join(""):`<tr><td colspan="4">本轮尚无更改。</td></tr>`;els.infoEyebrow.textContent="LOCAL CHANGE LOG";els.infoTitle.textContent=`本地更改记录（${state.changes.length}）`;els.infoBody.innerHTML=`<div class="info-section"><h3>自动更新简述</h3><p>${esc(buildChangeSummary())}</p></div><table class="change-table"><thead><tr><th>操作</th><th>对象</th><th>内容</th><th>时间</th></tr></thead><tbody>${rows}</tbody></table>`;openModal("infoModal")}
   function showSpecs(){els.infoEyebrow.textContent="ACTIVE SPECIFICATION";els.infoTitle.textContent="当前地图规格";els.infoBody.innerHTML=`<div class="info-section"><h3>当前执行优先级</h3><p>研究方法 v002作为基础研究规范；制图执行规则 v004具有更高优先级。冲突条款以v004为准。</p></div><div class="info-section"><h3>本Demo已落实</h3><ul><li>都广之野（0，0）固定为全局原点。</li><li>底层坐标单位为里；100里主格用于无限索引。</li><li>每个主格可下钻为10×10格内视图，每小格10里。</li><li>同一地块允许多个对象，不因重叠自动合并。</li><li>普通河流使用线型叠加；面积与作用域在底层连续显示。</li><li>空白地块不写入数据库，只有新增对象后才形成记录。</li></ul></div><div class="info-section"><h3>交互结构</h3><p>无限拖动棋盘 → 单击翻转100里地块 → 右侧查看地块简述／文明部落／剧情 → 双击或按钮进入10里格内视图。</p></div>`;openModal("infoModal")}
-  function checkUpdate(){els.infoEyebrow.textContent="GITHUB DATA UPDATE";els.infoTitle.textContent="程序数据更新流程（Demo）";els.infoBody.innerHTML=`<div class="info-section"><h3>当前本地版本</h3><p>${esc(state.dataVersion)}</p></div><div class="info-section"><h3>正式程序将自动完成</h3><ol><li>启动时读取GitHub最新Release版本。</li><li>发现新版后下载完整.shjdata数据包。</li><li>先备份本地未提交修改，再更新正式地图。</li><li>重新应用本地修改；冲突项交由当前编辑者处理。</li></ol></div><div class="info-section"><h3>本Demo状态</h3><p>GitHub网络授权尚未接入，但地图数据、地块编辑和.shjpatch导出流程已可本地验证。</p></div>`;openModal("infoModal")}
+  function versionParts(value){const m=String(value||"").match(/v?(\d+)(?:\D+r?(\d+))?/i);return m?[Number(m[1]||0),Number(m[2]||0)]:[0,0]}
+  function compareDataVersion(a,b){const av=versionParts(a),bv=versionParts(b);return av[0]===bv[0]?Math.sign(av[1]-bv[1]):Math.sign(av[0]-bv[0])}
+  async function fetchGithubCurrent(){
+    const api=`${GITHUB_CONFIG.apiBase}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.currentPath}?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}&t=${Date.now()}`;
+    const res=await fetch(api,{headers:{Accept:"application/vnd.github+json"},cache:"no-store"});
+    if(res.status===404)throw new Error("仓库已连接，但尚未找到 data/current.json");
+    if(!res.ok)throw new Error(`GitHub返回 ${res.status}`);
+    const payload=await res.json();
+    const raw=atob(String(payload.content||"").replace(/\s/g,""));
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+  }
+  function githubStatusHtml(current){
+    const remote=current?.data_version||current?.dataVersion||"未标注";
+    const cmp=compareDataVersion(remote,state.dataVersion);
+    const update=cmp>0;
+    const changes=Array.isArray(current?.highlights)?current.highlights:[];
+    const releaseUrl=current?.release_url||current?.releaseUrl||GITHUB_CONFIG.repoUrl;
+    const downloadUrl=current?.download_url||current?.downloadUrl||"";
+    return `<div class="info-section"><h3>GitHub仓库</h3><p><strong style="color:#19715f">● 公开读取已接入</strong><br>${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} · ${esc(GITHUB_CONFIG.branch)}</p></div><div class="info-section"><h3>版本对比</h3><p>本地：<strong>${esc(state.dataVersion)}</strong><br>仓库：<strong>${esc(remote)}</strong></p><p>${update?'发现新的地图数据版本。':cmp===0?'当前已经是最新数据版本。':'本地版本高于仓库标记，请检查 current.json。'}</p>${changes.length?`<ul>${changes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div><div class="info-section"><h3>更新方式</h3><p>下载检查不需要GitHub登录；更改包上传仍通过GitHub Desktop完成，程序不会保存你的密码或访问令牌。</p><p><a class="btn secondary" href="${esc(releaseUrl)}" target="_blank" rel="noopener">打开仓库发布页</a>${downloadUrl?` <a class="btn primary" href="${esc(downloadUrl)}" target="_blank" rel="noopener">下载更新包</a>`:''}</p></div>`
+  }
+  async function checkUpdate(silent=false){
+    if(!silent){els.infoEyebrow.textContent="GITHUB DATA UPDATE";els.infoTitle.textContent="正在连接GitHub";els.infoBody.innerHTML=`<div class="info-section"><h3>连接中</h3><p>正在读取 ${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} 的 data/current.json……</p></div>`;openModal("infoModal")}
+    try{
+      const current=await fetchGithubCurrent();
+      if(!silent){els.infoTitle.textContent="GitHub数据更新";els.infoBody.innerHTML=githubStatusHtml(current)}
+      const remote=current?.data_version||current?.dataVersion||"";
+      const cmp=compareDataVersion(remote,state.dataVersion);
+      if(silent&&cmp>0)toast("发现地图数据更新",`${state.dataVersion} → ${remote}`);
+      else if(silent&&cmp===0)toast("GitHub已连接",`当前数据 ${state.dataVersion} 已是最新版本`);
+      return current;
+    }catch(error){
+      const msg=error?.message||"无法连接GitHub";
+      if(!silent){els.infoTitle.textContent="GitHub连接状态";els.infoBody.innerHTML=`<div class="info-section"><h3>尚未完成数据索引配置</h3><p>${esc(msg)}</p><p>仓库本身可以访问；上传本更新包后，程序会从 <code>data/current.json</code> 读取版本。</p><p><a class="btn secondary" href="${esc(GITHUB_CONFIG.repoUrl)}" target="_blank" rel="noopener">打开SHmap仓库</a></p></div>`}
+      else console.warn("GitHub update check failed:",error);
+      return null;
+    }
+  }
 
   function openImportWorkspace(){els.importWorkspace.classList.remove("hidden");renderExamplePanel();if(!els.importText.value.trim()){els.importText.value="";updateImportCharCount();renderImportAnalysis(null)}}
   function closeImportWorkspace(){els.importWorkspace.classList.add("hidden")}
@@ -644,4 +690,5 @@
   }
 
   init();
+  setTimeout(()=>checkUpdate(true),1400);
 })();

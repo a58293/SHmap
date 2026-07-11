@@ -6,7 +6,7 @@
 4. 回到 GitHub Desktop，左侧会显示新增和修改的文件。
 5. 左下角 `Summary` 填写：
 
-   `建立山海经地图研究台仓库首包 v012`
+   `接入GitHub版本检查 v013`
 
 6. 点击 `Commit to main`。
 7. 点击顶部 `Push origin`。
