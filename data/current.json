@@ -1,14 +1,15 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v013",
+  "app_version": "demo-v014",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.1",
   "updated_at": "2026-07-11T13:00:00+09:00",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "首次接入GitHub公开仓库版本检查",
-    "地图数据仍为v031-r0001",
-    "更改包上传通过GitHub Desktop完成"
+    "更改记录支持归档与开始新一轮",
+    "历史提交可标记已上传 GitHub",
+    "回收站支持永久删除、清空与保留期限",
+    "新增对象永久 ID 不再因删除而重复使用"
   ]
 }

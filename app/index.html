@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v013</title>
+  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v014</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具</span><i></i><span id="saveState">本地工作区</span></div>
-          <h1>山海经原典地图研究台 <small>DEMO v013</small></h1>
+          <h1>山海经原典地图研究台 <small>DEMO v014</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -27,7 +27,8 @@
       <div class="top-actions">
         <button class="btn secondary" id="openImportBtn">导入 Markdown</button>
         <button class="btn secondary" id="checkUpdateBtn">检查数据更新</button>
-        <button class="btn primary" id="exportPatchBtn">导出更改包</button>
+        <button class="btn secondary" id="exportPatchBtn">仅导出更改包</button>
+        <button class="btn primary" id="finishRoundBtn">完成本轮编辑</button>
       </div>
     </header>
 
@@ -254,6 +255,20 @@
   </div>
 
 
+  <div class="modal hidden" id="roundModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close-modal="roundModal"></div>
+    <section class="modal-card round-card">
+      <div class="modal-head"><div><span class="eyebrow">FINISH EDITING ROUND</span><h2>完成本轮编辑</h2><p>更改包已经下载。你可以继续保留本轮记录，或归档后开始下一轮。</p></div><button class="modal-close" data-close-modal="roundModal">×</button></div>
+      <div id="roundSummary" class="round-summary"></div>
+      <div class="round-choice-grid">
+        <button id="roundKeepBtn" class="round-choice"><i>留</i><span><strong>继续保留本轮更改</strong><small>更改记录和地图标记保持不变，稍后仍可继续编辑或再次导出。</small></span></button>
+        <button id="roundArchiveBtn" class="round-choice primary"><i>归</i><span><strong>归档并开始新一轮</strong><small>本轮记录进入历史提交，顶部未提交计数归零；地图数据与回收站不受影响。</small></span></button>
+      </div>
+      <div class="round-note">归档不会删除更改历史。后续可在“更改记录”中查看，并手动标记为“已上传 GitHub”。</div>
+      <div class="form-actions"><button class="btn secondary" data-close-modal="roundModal">稍后决定</button></div>
+    </section>
+  </div>
+
   <div class="modal hidden" id="deleteModal" role="dialog" aria-modal="true">
     <div class="modal-backdrop" data-close-modal="deleteModal"></div>
     <section class="modal-card delete-card">
@@ -267,7 +282,11 @@
   <div class="modal hidden" id="trashModal" role="dialog" aria-modal="true">
     <div class="modal-backdrop" data-close-modal="trashModal"></div>
     <section class="modal-card trash-card">
-      <div class="modal-head"><div><span class="eyebrow">RECYCLE BIN</span><h2>回收站</h2><p>可恢复误删的对象、地块档案或整格内容。</p></div><button class="modal-close" data-close-modal="trashModal">×</button></div>
+      <div class="modal-head"><div><span class="eyebrow">RECYCLE BIN</span><h2>回收站</h2><p>恢复、永久删除或清空误删内容。永久删除不会抹掉“曾经删除”的更改记录。</p></div><button class="modal-close" data-close-modal="trashModal">×</button></div>
+      <div class="trash-toolbar">
+        <label><span>自动保留</span><select id="trashRetentionSelect"><option value="0">永久保留</option><option value="30">30天</option><option value="90">90天</option></select></label>
+        <button id="clearTrashBtn" class="btn danger compact">清空回收站</button>
+      </div>
       <div id="trashList" class="trash-list"></div>
       <div class="form-actions"><button class="btn secondary" data-close-modal="trashModal">关闭</button></div>
     </section>
