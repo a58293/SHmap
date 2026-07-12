@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v017</title>
+  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v020</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具</span><i></i><span id="saveState">本地工作区</span></div>
-          <h1>山海经原典地图研究台 <small>DEMO v017</small></h1>
+          <h1>山海经原典地图研究台 <small>DEMO v020</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -49,7 +49,7 @@
         <div id="searchHighlightSummary" class="search-highlight-summary hidden"></div>
         <div class="filter-row">
           <label class="field"><span>经篇</span><select id="chapterFilter"><option value="">全部</option></select></label>
-          <label class="field"><span>类型</span><select id="typeFilter"><option value="">全部</option></select></label>
+          <div class="field type-filter-field"><span>类型</span><details id="typeFilterMenu" class="type-filter-menu"><summary id="typeFilterSummary">全部</summary><div id="typeFilterTree" class="type-filter-tree"></div></details></div>
         </div>
         <div class="quick-nav">
           <div class="section-label">快速定位</div>
@@ -200,6 +200,12 @@
       </div>
       <form id="tileProfileForm" class="tile-profile-form">
         <input type="hidden" id="tileProfileKey" />
+        <section class="profile-form-section summary-layer-editor">
+          <div class="profile-section-title"><b>卷</b><div><h3>博物志三层简述</h3><p>用于“简述”阅读模式；文案可以稍后补充。</p></div></div>
+          <label class="field"><span>简要</span><textarea id="tileBriefSummary" rows="3" placeholder="一句话或极短摘要"></textarea></label>
+          <label class="field"><span>基础</span><textarea id="tileBasicSummary" rows="5" placeholder="基础设定与核心信息"></textarea></label>
+          <label class="field"><span>详细</span><textarea id="tileDetailedSummary" rows="8" placeholder="完整叙述与扩展说明"></textarea></label>
+        </section>
         <section class="profile-form-section">
           <div class="profile-section-title"><b>一</b><div><h3>地块简述</h3><p>描述这个地块本身，而不是单独某一个对象。</p></div></div>
           <label class="field"><span>地理环境</span><textarea id="tileGeoEnvironment" rows="4" placeholder="山地、河谷、湿地、气候、光照、水系等"></textarea></label>
@@ -216,7 +222,11 @@
           <label class="field"><span>当地风俗</span><textarea id="tileCustoms" rows="4"></textarea></label>
         </section>
         <section class="profile-form-section">
-          <div class="profile-section-title"><b>三</b><div><h3>剧情</h3><p>玩家相关内容单独记录；其余事件进入十八经篇归档。</p></div></div>
+          <div class="profile-section-title"><b>三</b><div><h3>文明与神话奇遇</h3><p>记录地方传说、神迹、祭祀奇遇、文明异象与特殊空间遭遇。</p></div></div>
+          <label class="field"><span>文明与神话奇遇</span><textarea id="tileMythicEncounters" rows="6" placeholder="例如神明降临、祭祀异象、地方传说、特殊空间入口等"></textarea></label>
+        </section>
+        <section class="profile-form-section">
+          <div class="profile-section-title"><b>四</b><div><h3>剧情</h3><p>玩家相关内容单独记录；其余事件进入十八经篇归档。</p></div></div>
           <label class="field"><span>已发生事件（综合简述）</span><textarea id="tileOccurredEvents" rows="4"></textarea></label>
           <div class="form-grid two"><label class="field"><span>时间流逝是否正常</span><select id="tileTimeNormal"><option value="unknown">未判定</option><option value="yes">正常</option><option value="no">异常</option><option value="stopped">停滞</option><option value="loop">循环</option></select></label><label class="field"><span>玩家是否可以抵达</span><select id="tilePlayerReachable"><option value="unknown">未判定</option><option value="yes">可以抵达</option><option value="no">不可抵达</option><option value="conditional">满足条件后可抵达</option></select></label></div>
           <label class="field"><span>其他剧情说明</span><textarea id="tileStoryOther" rows="3"></textarea></label>
@@ -333,6 +343,7 @@
         <div><span class="eyebrow">TILE MONOGRAPH</span><h1 id="dossierPageTitle">地块博物志</h1><p id="dossierPageMeta">读取地块资料中……</p></div>
       </div>
       <div class="dossier-top-actions">
+        <div class="dossier-mode-toggle" role="group" aria-label="博物志显示模式"><button id="dossierModeBrief" class="active" type="button">简述</button><button id="dossierModeFull" type="button">完整</button></div>
         <button class="btn secondary" id="copyPromptBtn">▣ 复制绘图提示</button>
         <button class="btn secondary" id="copyBriefBtn">▤ 复制美术简报</button>
         <button class="btn primary" id="editDossierBtn">✎ 编辑地块档案</button>

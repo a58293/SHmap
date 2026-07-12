@@ -1,15 +1,14 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v017",
+  "app_version": "demo-v020",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.1",
-  "updated_at": "2026-07-12T14:30:00+09:00",
+  "updated_at": "2026-07-12T17:20:00+09:00",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "区域聚焦时点击灰暗地块可自动退出聚焦并切换地块",
-    "点击地图空白区域可退出聚焦并恢复完整地图",
-    "中倍率地块显示图标与当前地块名称",
-    "继续支持 GitHub pending 更改包扫描、预览与应用"
+    "简述模式改为居中小卡牌，不再铺满整个屏幕",
+    "完整模式继续使用全屏地块博物志",
+    "点击卡牌外部背景或按Esc返回地图"
   ]
 }
