@@ -12,5 +12,7 @@
     "x_li": 0,
     "y_li": 0
   },
-  "notes": "当前 Demo 为纯本地前端，运行数据暂嵌入 app/data.js。后续接入正式发布包时再将运行数据从程序代码中拆分。"
+  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。程序已能读取 GitHub 正式版本与 submissions/pending 更改包，并在本地校验、预览和应用。",
+  "github_pending_path": "submissions/pending",
+  "github_patch_apply": "enabled-local"
 }

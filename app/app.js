@@ -1,14 +1,15 @@
 (() => {
   "use strict";
   const INITIAL = window.SHJ_INITIAL_DATA || {metadata:{}, objects:[]};
-  const STORAGE_KEY = "shj_infinite_tile_demo_v014_v031";
-  const LEGACY_STORAGE_KEYS = ["shj_infinite_tile_demo_v013_v031","shj_infinite_tile_demo_v012_v031","shj_infinite_tile_demo_v011_v031","shj_infinite_tile_demo_v010_v031","shj_infinite_tile_demo_v009_v031","shj_infinite_tile_demo_v008_v031","shj_infinite_tile_demo_v007_v031","shj_infinite_tile_demo_v006_v031","shj_infinite_tile_demo_v005_v031"];
+  const STORAGE_KEY = "shj_infinite_tile_demo_v015_v031";
+  const LEGACY_STORAGE_KEYS = ["shj_infinite_tile_demo_v014_v031","shj_infinite_tile_demo_v013_v031","shj_infinite_tile_demo_v012_v031","shj_infinite_tile_demo_v011_v031","shj_infinite_tile_demo_v010_v031","shj_infinite_tile_demo_v009_v031","shj_infinite_tile_demo_v008_v031","shj_infinite_tile_demo_v007_v031","shj_infinite_tile_demo_v006_v031","shj_infinite_tile_demo_v005_v031"];
 
   const GITHUB_CONFIG = {
     owner: "a58293",
     repo: "SHmap",
     branch: "main",
     currentPath: "data/current.json",
+    pendingPath: "submissions/pending",
     repoUrl: "https://github.com/a58293/SHmap",
     apiBase: "https://api.github.com"
   };
@@ -135,6 +136,11 @@
     objects: saved?.objects || structuredClone(INITIAL.objects || []),
     changes: saved?.changes || [],
     changeArchives: saved?.changeArchives || [],
+    appliedRemotePatches: saved?.appliedRemotePatches || [],
+    remotePatchHistory: saved?.remotePatchHistory || [],
+    githubPendingFiles: [],
+    githubPendingCache: {},
+    githubCurrent: null,
     dataVersion: saved?.dataVersion || INITIAL.metadata?.dataVersion || "v031-r0001",
     camera: saved?.camera || {x:0,y:0,zoom:.92},
     selectedId: saved?.selectedId || (INITIAL.objects?.[0]?.id || null),
@@ -174,7 +180,7 @@
 
   function loadSaved(){try{const current=localStorage.getItem(STORAGE_KEY);if(current)return JSON.parse(current);for(const key of LEGACY_STORAGE_KEYS){const legacy=localStorage.getItem(key);if(legacy)return JSON.parse(legacy)}return null}catch{return null}}
   function persist(){
-    try{localStorage.setItem(STORAGE_KEY, JSON.stringify({objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter})); els.saveState.textContent="已保存到本地"; setTimeout(()=>els.saveState.textContent="本地工作区",900)}catch(e){console.warn(e)}
+    try{localStorage.setItem(STORAGE_KEY, JSON.stringify({objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter})); els.saveState.textContent="已保存到本地"; setTimeout(()=>els.saveState.textContent="本地工作区",900)}catch(e){console.warn(e)}
   }
   function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
   function fmt(v,d=1){const n=Number(v)||0; return Math.abs(n-Math.round(n))<1e-8?String(Math.round(n)):n.toFixed(d).replace(/\.0+$/,"")}
@@ -584,45 +590,179 @@
   function archiveStatusLabel(a){return a.status==="uploaded"?"已上传 GitHub":"已导出"}
   function markArchiveUploaded(id){const a=state.changeArchives.find(x=>x.archiveId===id);if(!a)return;a.status="uploaded";a.statusLabel="已上传 GitHub";a.uploadedAt=new Date().toISOString();persist();showChanges();toast("已标记为已上传",a.filename||a.archiveId)}
   function archiveRows(a){return (a.changes||[]).slice().reverse().map(c=>`<tr><td>${esc(c.operationLabel||c.operation||'更改')}</td><td>${esc(c.after?.name||c.before?.name||c.entityId||'')}</td><td>${esc(c.summary||'')}</td><td>${esc(c.time||'')}</td></tr>`).join("")||`<tr><td colspan="4">归档中没有具体更改条目。</td></tr>`}
-  function showChanges(){const rows=state.changes.length?state.changes.slice().reverse().map(c=>`<tr><td>${esc(c.operationLabel)}</td><td>${esc(c.after?.name||c.before?.name||c.entityId)}</td><td>${esc(c.summary)}</td><td>${esc(c.time)}</td></tr>`).join(""):`<tr><td colspan="4">本轮尚无更改。</td></tr>`;const archives=state.changeArchives.length?`<div class="archive-list">${state.changeArchives.map(a=>`<details class="archive-item"><summary><span><strong>${esc(a.filename||a.archiveId)}</strong><small>${esc(a.createdLabel||a.createdAt||'')} · ${esc(a.summary||'')}</small></span><em class="archive-status ${a.status==='uploaded'?'uploaded':''}">${archiveStatusLabel(a)}</em></summary><div class="archive-body"><div class="archive-meta"><span>基础数据 ${esc(a.baseVersion||'')}</span><span>${a.changeCount||a.changes?.length||0}项更改</span></div><table class="change-table"><thead><tr><th>操作</th><th>对象</th><th>内容</th><th>时间</th></tr></thead><tbody>${archiveRows(a)}</tbody></table>${a.status!=='uploaded'?`<div class="archive-actions"><button class="btn secondary compact" data-archive-uploaded="${esc(a.archiveId)}">标记为已上传 GitHub</button></div>`:''}</div></details>`).join("")}</div>`:`<div class="info-section"><p>还没有历史提交。完成一轮编辑并选择“归档并开始新一轮”后，记录会出现在这里。</p></div>`;els.infoEyebrow.textContent="LOCAL CHANGE LOG";els.infoTitle.textContent=`更改记录 · 本轮 ${state.changes.length} 项`;els.infoBody.innerHTML=`<div class="change-actions"><button class="btn secondary compact" id="changesExportNow" ${state.changes.length?'':'disabled'}>仅导出本轮</button><button class="btn primary compact" id="changesFinishRound" ${state.changes.length?'':'disabled'}>完成本轮编辑</button></div><div class="info-section"><h3>本轮自动简述</h3><p>${esc(buildChangeSummary())}</p></div><table class="change-table"><thead><tr><th>操作</th><th>对象</th><th>内容</th><th>时间</th></tr></thead><tbody>${rows}</tbody></table><div class="change-section-title"><h3>历史提交</h3><span>${state.changeArchives.length}轮</span></div>${archives}`;openModal("infoModal");const exportBtn=$("#changesExportNow"),finishBtn=$("#changesFinishRound");if(exportBtn)exportBtn.addEventListener("click",()=>exportPatch(false));if(finishBtn)finishBtn.addEventListener("click",()=>{closeModal("infoModal");exportPatch(true)});els.infoBody.querySelectorAll("[data-archive-uploaded]").forEach(b=>b.addEventListener("click",()=>markArchiveUploaded(b.dataset.archiveUploaded)))}
+  function showChanges(){
+    const rows=state.changes.length?state.changes.slice().reverse().map(c=>`<tr><td>${esc(c.operationLabel)}</td><td>${esc(c.after?.name||c.before?.name||c.entityId)}</td><td>${esc(c.summary)}</td><td>${esc(c.time)}</td></tr>`).join(""):`<tr><td colspan="4">本轮尚无更改。</td></tr>`;
+    const archives=state.changeArchives.length?`<div class="archive-list">${state.changeArchives.map(a=>`<details class="archive-item"><summary><span><strong>${esc(a.filename||a.archiveId)}</strong><small>${esc(a.createdLabel||a.createdAt||"")} · ${esc(a.summary||"")}</small></span><em class="archive-status ${a.status==="uploaded"?"uploaded":""}">${archiveStatusLabel(a)}</em></summary><div class="archive-body"><div class="archive-meta"><span>基础数据 ${esc(a.baseVersion||"")}</span><span>${a.changeCount||a.changes?.length||0}项更改</span></div><table class="change-table"><thead><tr><th>操作</th><th>对象</th><th>内容</th><th>时间</th></tr></thead><tbody>${archiveRows(a)}</tbody></table>${a.status!=="uploaded"?`<div class="archive-actions"><button class="btn secondary compact" data-archive-uploaded="${esc(a.archiveId)}">标记为已上传 GitHub</button></div>`:""}</div></details>`).join("")}</div>`:`<div class="info-section"><p>还没有历史提交。完成一轮编辑并选择“归档并开始新一轮”后，记录会出现在这里。</p></div>`;
+    const remote=state.remotePatchHistory.length?`<div class="archive-list remote-archive-list">${state.remotePatchHistory.map(a=>`<details class="archive-item"><summary><span><strong>${esc(a.name||a.path||a.historyId)}</strong><small>${esc(new Date(a.appliedAt).toLocaleString("zh-CN"))} · ${esc(a.summary||"")}</small></span><em class="archive-status uploaded">${a.netNoop?"已确认同步":"已应用"}</em></summary><div class="archive-body"><div class="archive-meta"><span>基础数据 ${esc(a.baseVersion||"")}</span><span>应用${a.applyCount||0}项 · 跳过${a.skipCount||0}项</span></div><p class="remote-archive-note">该记录来自 GitHub <code>submissions/pending</code>，不会重复写入本轮导出的 .shjpatch。</p></div></details>`).join("")}</div>`:`<div class="info-section"><p>尚未从 GitHub 应用待处理更改包。</p></div>`;
+    els.infoEyebrow.textContent="LOCAL CHANGE LOG";els.infoTitle.textContent=`更改记录 · 本轮 ${state.changes.length} 项`;els.infoBody.innerHTML=`<div class="change-actions"><button class="btn secondary compact" id="changesExportNow" ${state.changes.length?"":"disabled"}>仅导出本轮</button><button class="btn primary compact" id="changesFinishRound" ${state.changes.length?"":"disabled"}>完成本轮编辑</button></div><div class="info-section"><h3>本轮自动简述</h3><p>${esc(buildChangeSummary())}</p></div><table class="change-table"><thead><tr><th>操作</th><th>对象</th><th>内容</th><th>时间</th></tr></thead><tbody>${rows}</tbody></table><div class="change-section-title"><h3>历史提交</h3><span>${state.changeArchives.length}轮</span></div>${archives}<div class="change-section-title"><h3>GitHub已应用包</h3><span>${state.remotePatchHistory.length}个</span></div>${remote}`;
+    openModal("infoModal");const exportBtn=$("#changesExportNow"),finishBtn=$("#changesFinishRound");if(exportBtn)exportBtn.addEventListener("click",()=>exportPatch(false));if(finishBtn)finishBtn.addEventListener("click",()=>{closeModal("infoModal");exportPatch(true)});els.infoBody.querySelectorAll("[data-archive-uploaded]").forEach(b=>b.addEventListener("click",()=>markArchiveUploaded(b.dataset.archiveUploaded)))
+  }
   function showSpecs(){els.infoEyebrow.textContent="ACTIVE SPECIFICATION";els.infoTitle.textContent="当前地图规格";els.infoBody.innerHTML=`<div class="info-section"><h3>当前执行优先级</h3><p>研究方法 v002作为基础研究规范；制图执行规则 v004具有更高优先级。冲突条款以v004为准。</p></div><div class="info-section"><h3>本Demo已落实</h3><ul><li>都广之野（0，0）固定为全局原点。</li><li>底层坐标单位为里；100里主格用于无限索引。</li><li>每个主格可下钻为10×10格内视图，每小格10里。</li><li>同一地块允许多个对象，不因重叠自动合并。</li><li>普通河流使用线型叠加；面积与作用域在底层连续显示。</li><li>空白地块不写入数据库，只有新增对象后才形成记录。</li></ul></div><div class="info-section"><h3>交互结构</h3><p>无限拖动棋盘 → 单击翻转100里地块 → 右侧查看地块简述／文明部落／剧情 → 双击或按钮进入10里格内视图。</p></div>`;openModal("infoModal")}
   function versionParts(value){const m=String(value||"").match(/v?(\d+)(?:\D+r?(\d+))?/i);return m?[Number(m[1]||0),Number(m[2]||0)]:[0,0]}
   function compareDataVersion(a,b){const av=versionParts(a),bv=versionParts(b);return av[0]===bv[0]?Math.sign(av[1]-bv[1]):Math.sign(av[0]-bv[0])}
+  function githubContentsApi(path){return `${GITHUB_CONFIG.apiBase}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${String(path||"").split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}&t=${Date.now()}`}
+  function decodeGithubContent(content){const raw=atob(String(content||"").replace(/\s/g,"")),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));return new TextDecoder("utf-8").decode(bytes)}
+  async function githubFetch(url){const res=await fetch(url,{headers:{Accept:"application/vnd.github+json"},cache:"no-store"});if(res.status===403){let detail="";try{const body=await res.json();detail=body?.message||""}catch{}throw new Error(detail||"GitHub访问次数达到临时上限，请稍后再试")};return res}
   async function fetchGithubCurrent(){
-    const api=`${GITHUB_CONFIG.apiBase}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.currentPath}?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}&t=${Date.now()}`;
-    const res=await fetch(api,{headers:{Accept:"application/vnd.github+json"},cache:"no-store"});
+    const res=await githubFetch(githubContentsApi(GITHUB_CONFIG.currentPath));
     if(res.status===404)throw new Error("仓库已连接，但尚未找到 data/current.json");
     if(!res.ok)throw new Error(`GitHub返回 ${res.status}`);
     const payload=await res.json();
-    const raw=atob(String(payload.content||"").replace(/\s/g,""));
-    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
-    return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+    if(!payload?.content)throw new Error("data/current.json 内容为空");
+    return JSON.parse(decodeGithubContent(payload.content));
   }
-  function githubStatusHtml(current){
-    const remote=current?.data_version||current?.dataVersion||"未标注";
-    const cmp=compareDataVersion(remote,state.dataVersion);
-    const update=cmp>0;
-    const changes=Array.isArray(current?.highlights)?current.highlights:[];
-    const releaseUrl=current?.release_url||current?.releaseUrl||GITHUB_CONFIG.repoUrl;
-    const downloadUrl=current?.download_url||current?.downloadUrl||"";
-    return `<div class="info-section"><h3>GitHub仓库</h3><p><strong style="color:#19715f">● 公开读取已接入</strong><br>${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} · ${esc(GITHUB_CONFIG.branch)}</p></div><div class="info-section"><h3>版本对比</h3><p>本地：<strong>${esc(state.dataVersion)}</strong><br>仓库：<strong>${esc(remote)}</strong></p><p>${update?'发现新的地图数据版本。':cmp===0?'当前已经是最新数据版本。':'本地版本高于仓库标记，请检查 current.json。'}</p>${changes.length?`<ul>${changes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div><div class="info-section"><h3>更新方式</h3><p>下载检查不需要GitHub登录；更改包上传仍通过GitHub Desktop完成，程序不会保存你的密码或访问令牌。</p><p><a class="btn secondary" href="${esc(releaseUrl)}" target="_blank" rel="noopener">打开仓库发布页</a>${downloadUrl?` <a class="btn primary" href="${esc(downloadUrl)}" target="_blank" rel="noopener">下载更新包</a>`:''}</p></div>`
+  async function fetchGithubPendingFiles(){
+    const res=await githubFetch(githubContentsApi(GITHUB_CONFIG.pendingPath));
+    if(res.status===404)return [];
+    if(!res.ok)throw new Error(`读取 pending 目录失败：GitHub返回 ${res.status}`);
+    const payload=await res.json();
+    if(!Array.isArray(payload))return [];
+    return payload.filter(x=>x?.type==="file"&&/\.shjpatch$/i.test(x.name||"")).sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"zh-CN"));
+  }
+  async function fetchGithubPatch(entry){
+    const cacheKey=entry?.sha||entry?.path||entry?.name;if(cacheKey&&state.githubPendingCache[cacheKey])return state.githubPendingCache[cacheKey];
+    let payload=null,text="";
+    const detailUrl=entry?.url||githubContentsApi(entry?.path||"");
+    const res=await githubFetch(detailUrl);
+    if(!res.ok)throw new Error(`下载更改包失败：GitHub返回 ${res.status}`);
+    payload=await res.json();
+    if(payload?.content)text=decodeGithubContent(payload.content);
+    else if(payload?.download_url){const rawRes=await fetch(payload.download_url,{cache:"no-store"});if(!rawRes.ok)throw new Error(`下载更改包失败：${rawRes.status}`);text=await rawRes.text()}
+    if(!text)throw new Error("更改包内容为空");
+    let pkg;try{pkg=JSON.parse(text)}catch{throw new Error("更改包不是有效的 JSON 文件")}
+    if(cacheKey)state.githubPendingCache[cacheKey]=pkg;
+    return pkg;
+  }
+  function remotePatchKey(entry){return String(entry?.sha||entry?.path||entry?.name||"")}
+  function appliedRemoteRecord(entry){const key=remotePatchKey(entry);return state.appliedRemotePatches.find(x=>x.key===key||x.sha&&x.sha===entry?.sha||x.path&&x.path===entry?.path)}
+  function isRemotePatchApplied(entry){return !!appliedRemoteRecord(entry)}
+  function normalizedComparable(value){
+    if(Array.isArray(value))return value.map(normalizedComparable);
+    if(value&&typeof value==="object"){const out={};Object.keys(value).sort().forEach(k=>{if(k==="coordinateText"||k==="distance"||k==="originalLink")return;out[k]=normalizedComparable(value[k])});return out}
+    return value===undefined?null:value
+  }
+  function sameValue(a,b){return JSON.stringify(normalizedComparable(a))===JSON.stringify(normalizedComparable(b))}
+  function changedTopKeys(before,after){const keys=new Set([...Object.keys(before||{}),...Object.keys(after||{})]);return [...keys].filter(k=>!["coordinateText","distance","originalLink"].includes(k)&&!sameValue(before?.[k],after?.[k]))}
+  function cleanTileProfile(value){if(!value||typeof value!=="object")return value;const out=cloneJSON(value);delete out.name;return out}
+  function patchTargetLabel(change){return change?.after?.name||change?.before?.name||change?.after?.objects?.[0]?.name||change?.before?.objects?.[0]?.name||String(change?.entityId||"未命名对象")}
+  function normalizeObjectAfterApply(obj){if(!obj)return obj;obj.x=Number(obj.x)||0;obj.y=Number(obj.y)||0;obj.coordinateText=coordText(obj.x,obj.y);if(obj.distance!==undefined)obj.distance=Math.hypot(obj.x,obj.y);return obj}
+  function patchResult(change,status,reason){return {change,status,reason,target:patchTargetLabel(change),operationLabel:change?.operationLabel||change?.operation||"更改"}}
+  function simulatePatchChange(change,draft){
+    if(!change||typeof change!=="object")return patchResult(change,"conflict","更改记录格式无效");
+    const op=String(change.operation||"").toLowerCase(),label=String(change.operationLabel||""),entityId=String(change.entityId||change.after?.id||change.before?.id||""),entityType=String(change.entityType||"");
+    const isCell=entityId.startsWith("CELL-"),cellKeyValue=isCell?entityId.slice(5):"";
+    const tileBundle=isCell&&(Array.isArray(change.before?.objects)||Array.isArray(change.after?.objects)||/清空地块|恢复地块/.test(label));
+    const tileProfile=isCell&&!tileBundle&&(entityType==="tile_profile"||/地块档案/.test(label));
+    if(tileBundle){
+      if(op==="delete"){
+        const objects=change.before?.objects||[],profile=cleanTileProfile(change.before?.profile),issues=[];
+        objects.forEach(expected=>{const current=draft.objects.find(o=>o.id===expected.id);if(current&&!sameValue(current,expected))issues.push(`对象“${expected.name||expected.id}”已被修改`)});
+        const currentProfile=draft.tileProfiles[cellKeyValue];if(profile&&currentProfile&&!sameValue(currentProfile,profile))issues.push("地块档案已被修改");
+        if(issues.length)return patchResult(change,"conflict",issues.join("；"));
+        const ids=new Set(objects.map(o=>o.id)),hadObjects=draft.objects.some(o=>ids.has(o.id)),hadProfile=!!draft.tileProfiles[cellKeyValue];
+        if(!hadObjects&&!hadProfile)return patchResult(change,"skip","本地已经是清空后的状态");
+        draft.objects=draft.objects.filter(o=>!ids.has(o.id));delete draft.tileProfiles[cellKeyValue];return patchResult(change,"apply",`清空地块 ${cellKeyValue}`)
+      }
+      if(op==="restore"||op==="create"){
+        const objects=change.after?.objects||[],profile=cleanTileProfile(change.after?.profile),issues=[];
+        objects.forEach(incoming=>{const current=draft.objects.find(o=>o.id===incoming.id);if(current&&!sameValue(current,incoming))issues.push(`对象ID ${incoming.id} 已被其他对象占用`)});
+        if(profile&&draft.tileProfiles[cellKeyValue]&&!sameValue(draft.tileProfiles[cellKeyValue],profile))issues.push("地块档案已存在不同内容");
+        if(issues.length)return patchResult(change,"conflict",issues.join("；"));
+        let applied=false;objects.forEach(incoming=>{if(!draft.objects.some(o=>o.id===incoming.id)){draft.objects.push(normalizeObjectAfterApply(cloneJSON(incoming)));applied=true}});if(profile&&!draft.tileProfiles[cellKeyValue]){draft.tileProfiles[cellKeyValue]=cloneJSON(profile);applied=true}
+        return patchResult(change,applied?"apply":"skip",applied?`恢复地块 ${cellKeyValue}`:"本地已经包含该地块内容")
+      }
+      return patchResult(change,"conflict",`暂不支持地块操作：${op||"未标注"}`)
+    }
+    if(tileProfile){
+      const before=cleanTileProfile(change.before),after=cleanTileProfile(change.after),current=draft.tileProfiles[cellKeyValue];
+      if(op==="delete"){
+        if(!current)return patchResult(change,"skip","地块档案已不存在");
+        if(before&&!sameValue(current,before))return patchResult(change,"conflict","本地地块档案已被修改");
+        delete draft.tileProfiles[cellKeyValue];return patchResult(change,"apply",`删除地块 ${cellKeyValue} 档案`)
+      }
+      if(op==="create"||op==="restore"){
+        if(!after)return patchResult(change,"conflict","缺少要写入的地块档案");
+        if(current)return sameValue(current,after)?patchResult(change,"skip","本地已包含相同地块档案"):patchResult(change,"conflict","本地已有不同地块档案");
+        draft.tileProfiles[cellKeyValue]=cloneJSON(after);return patchResult(change,"apply",`写入地块 ${cellKeyValue} 档案`)
+      }
+      if(op==="update"){
+        if(!current)return patchResult(change,"conflict","本地不存在要更新的地块档案");
+        const keys=changedTopKeys(before,after);if(keys.every(k=>sameValue(current[k],after?.[k])))return patchResult(change,"skip","本地已经包含该档案修改");
+        const conflicts=keys.filter(k=>!sameValue(current[k],before?.[k])&&!sameValue(current[k],after?.[k]));if(conflicts.length)return patchResult(change,"conflict",`字段已被本地修改：${conflicts.join("、")}`);
+        keys.forEach(k=>{if(after&&Object.prototype.hasOwnProperty.call(after,k))current[k]=cloneJSON(after[k]);else delete current[k]});return patchResult(change,"apply",`更新地块 ${cellKeyValue} 档案`)
+      }
+      return patchResult(change,"conflict",`暂不支持地块档案操作：${op||"未标注"}`)
+    }
+    if(!entityId)return patchResult(change,"conflict","缺少对象ID");
+    const index=draft.objects.findIndex(o=>o.id===entityId),current=index>=0?draft.objects[index]:null,before=change.before,after=change.after;
+    if(op==="create"||op==="restore"){
+      if(!after||typeof after!=="object")return patchResult(change,"conflict","缺少要写入的对象内容");
+      if(current)return sameValue(current,after)?patchResult(change,"skip","本地已经包含相同对象"):patchResult(change,"conflict",`对象ID ${entityId} 已存在不同内容`);
+      draft.objects.push(normalizeObjectAfterApply(cloneJSON(after)));return patchResult(change,"apply",`写入对象“${after.name||entityId}”`)
+    }
+    if(op==="update"){
+      if(!current)return patchResult(change,"conflict","本地不存在要更新的对象");
+      if(!after||typeof after!=="object")return patchResult(change,"conflict","缺少更新后的对象内容");
+      const keys=changedTopKeys(before,after);if(!keys.length)return patchResult(change,"skip","更改包没有实际字段变化");
+      if(keys.every(k=>sameValue(current[k],after[k])))return patchResult(change,"skip","本地已经包含该对象修改");
+      const conflicts=keys.filter(k=>!sameValue(current[k],before?.[k])&&!sameValue(current[k],after?.[k]));
+      if(conflicts.length)return patchResult(change,"conflict",`字段已被本地修改：${conflicts.join("、")}`);
+      keys.forEach(k=>{if(Object.prototype.hasOwnProperty.call(after,k))current[k]=cloneJSON(after[k]);else delete current[k]});normalizeObjectAfterApply(current);return patchResult(change,"apply",`更新对象“${current.name||entityId}”`)
+    }
+    if(op==="delete"){
+      if(!current)return patchResult(change,"skip","对象已不存在");
+      if(before&&!sameValue(current,before))return patchResult(change,"conflict","本地对象已被修改，不能直接删除");
+      draft.objects.splice(index,1);return patchResult(change,"apply",`删除对象“${current.name||entityId}”`)
+    }
+    return patchResult(change,"conflict",`暂不支持对象操作：${op||"未标注"}`)
+  }
+  function simulatePatchPackage(pkg){
+    const packageErrors=[];if(!pkg||typeof pkg!=="object")packageErrors.push("文件内容不是对象");if(pkg?.package_type!=="shjpatch")packageErrors.push("package_type 必须为 shjpatch");if(!Array.isArray(pkg?.changes))packageErrors.push("changes 必须是数组");
+    const initial={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles)},draft={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles)},results=[];
+    if(!packageErrors.length)(pkg.changes||[]).forEach(change=>results.push(simulatePatchChange(change,draft)));
+    const applyCount=results.filter(x=>x.status==="apply").length,skipCount=results.filter(x=>x.status==="skip").length,conflictCount=results.filter(x=>x.status==="conflict").length;
+    const netNoop=sameValue(initial,draft);return {pkg,draft,results,packageErrors,applyCount,skipCount,conflictCount,netNoop,baseMismatch:!!pkg?.base_data_version&&pkg.base_data_version!==state.dataVersion}
+  }
+  function rememberRemotePatch(entry,pkg,simulation){
+    const key=remotePatchKey(entry);if(!state.appliedRemotePatches.some(x=>x.key===key))state.appliedRemotePatches.unshift({key,sha:entry?.sha||"",path:entry?.path||"",name:entry?.name||"",appliedAt:new Date().toISOString(),packageCreatedAt:pkg?.created_at||"",changeCount:Number(pkg?.change_count)||pkg?.changes?.length||0,summary:pkg?.summary||"",baseVersion:pkg?.base_data_version||"",netNoop:!!simulation?.netNoop});
+    state.remotePatchHistory.unshift({historyId:`REMOTE-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:entry?.name||"GitHub更改包",path:entry?.path||"",sha:entry?.sha||"",appliedAt:new Date().toISOString(),summary:pkg?.summary||"",changeCount:Number(pkg?.change_count)||pkg?.changes?.length||0,applyCount:simulation?.applyCount||0,skipCount:simulation?.skipCount||0,baseVersion:pkg?.base_data_version||"",netNoop:!!simulation?.netNoop});
+    state.remotePatchHistory=state.remotePatchHistory.slice(0,100)
+  }
+  function patchStatusText(status){return status==="apply"?"将应用":status==="skip"?"已包含":"有冲突"}
+  function patchPreviewHtml(entry,pkg,simulation){
+    const applied=isRemotePatchApplied(entry),invalid=simulation.packageErrors.length>0,rows=simulation.results.map((r,i)=>`<tr><td><span class="patch-status ${r.status}">${patchStatusText(r.status)}</span></td><td>${esc(r.operationLabel)}</td><td>${esc(r.target)}</td><td>${esc(r.reason)}</td></tr>`).join("")||`<tr><td colspan="4">没有可识别的更改记录。</td></tr>`;
+    const warnings=[simulation.baseMismatch?`更改包基于 ${pkg.base_data_version}，当前本地为 ${state.dataVersion}`:"",state.changes.length?`本地另有 ${state.changes.length} 项尚未归档的编辑；程序已逐字段检查冲突。`:""].filter(Boolean);
+    const actionLabel=simulation.netNoop?"标记为本机已同步":"下载并应用到本地地图";
+    return `<div class="github-update-actions"><button class="btn secondary compact" id="pendingBackBtn">← 返回更新列表</button>${entry?.download_url?`<a class="btn secondary compact" href="${esc(entry.download_url)}" download>另存原始包</a>`:""}</div><div class="pending-preview-head"><div><span class="pending-file-icon">PATCH</span><div><h3>${esc(entry?.name||"更改包")}</h3><p>${esc(pkg?.summary||"未提供更改简述")}</p></div></div><span class="pending-package-state ${applied?'applied':''}">${applied?'本机已应用':'等待处理'}</span></div><div class="patch-meta-grid"><span>基础版本<b>${esc(pkg?.base_data_version||"未标注")}</b></span><span>生成时间<b>${esc(pkg?.created_at||"未标注")}</b></span><span>记录数量<b>${Number(pkg?.change_count)||pkg?.changes?.length||0}</b></span><span>本地未归档<b>${state.changes.length}</b></span></div>${warnings.length?`<div class="patch-warning">${warnings.map(x=>`<p>${esc(x)}</p>`).join("")}</div>`:""}${invalid?`<div class="patch-error-box"><strong>文件不能应用</strong>${simulation.packageErrors.map(x=>`<p>${esc(x)}</p>`).join("")}</div>`:`<div class="patch-counts"><span class="apply">将应用 ${simulation.applyCount}</span><span class="skip">已包含 ${simulation.skipCount}</span><span class="conflict">冲突 ${simulation.conflictCount}</span></div><table class="change-table patch-table"><thead><tr><th>状态</th><th>操作</th><th>对象／地块</th><th>说明</th></tr></thead><tbody>${rows}</tbody></table>`}<div class="pending-preview-footer"><p>${simulation.conflictCount?"存在冲突，程序不会写入任何内容。请先处理冲突或换一台没有本地修改的设备。":simulation.netNoop?"本机当前地图已经包含该包的最终结果，可以直接标记为已同步。":"确认后会先在内存中完整应用，再一次性保存；远程更改不会重复进入本轮 .shjpatch。"}</p><button class="btn primary" id="pendingApplyBtn" ${applied||invalid||simulation.conflictCount?'disabled':''}>${applied?'本机已应用':actionLabel}</button></div>`
+  }
+  function pendingPackageListHtml(files){
+    if(!files.length)return `<div class="pending-empty"><strong>没有待处理更改包</strong><span>仓库 ${esc(GITHUB_CONFIG.pendingPath)} 中暂无 .shjpatch 文件。</span></div>`;
+    return `<div class="pending-package-list">${files.map((entry,index)=>{const applied=appliedRemoteRecord(entry);return `<article class="pending-package-card ${applied?'applied':''}"><div class="pending-file-icon">PATCH</div><div class="pending-package-copy"><strong>${esc(entry.name)}</strong><small>${Math.max(1,Math.round((Number(entry.size)||0)/1024))} KB · ${esc(entry.path||"")}</small>${applied?`<em>本机已于 ${esc(new Date(applied.appliedAt).toLocaleString("zh-CN"))} 应用</em>`:`<em>尚未在本机应用</em>`}</div><button class="btn ${applied?'secondary':'primary'} compact" data-pending-index="${index}">${applied?'查看记录':'查看并应用'}</button></article>`}).join("")}</div>`
+  }
+  function githubStatusHtml(current,pendingFiles,currentError="",pendingError=""){
+    const remote=current?.data_version||current?.dataVersion||"未读取",cmp=current?compareDataVersion(remote,state.dataVersion):0,update=current&&cmp>0,changes=Array.isArray(current?.highlights)?current.highlights:[],releaseUrl=current?.release_url||current?.releaseUrl||GITHUB_CONFIG.repoUrl,downloadUrl=current?.download_url||current?.downloadUrl||"",newCount=(pendingFiles||[]).filter(x=>!isRemotePatchApplied(x)).length;
+    return `<div class="github-connection-strip"><span><b>● GitHub公开读取已接入</b>${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} · ${esc(GITHUB_CONFIG.branch)}</span><a href="${esc(GITHUB_CONFIG.repoUrl)}" target="_blank" rel="noopener">打开仓库 ↗</a></div><div class="github-update-grid"><section class="info-section"><h3>正式地图数据</h3>${currentError?`<div class="patch-error-box"><p>${esc(currentError)}</p></div>`:`<p>本地：<strong>${esc(state.dataVersion)}</strong><br>仓库：<strong>${esc(remote)}</strong></p><p>${update?'发现新的正式地图数据版本。':cmp===0?'当前正式数据已经是最新版本。':'本地版本高于仓库标记，请检查 current.json。'}</p>${changes.length?`<ul>${changes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}<p><a class="btn secondary compact" href="${esc(releaseUrl)}" target="_blank" rel="noopener">发布页</a>${downloadUrl?` <a class="btn primary compact" href="${esc(downloadUrl)}" target="_blank" rel="noopener">下载正式数据包</a>`:""}</p>`}</section><section class="info-section"><h3>待处理更改包</h3><p>发现 <strong>${pendingFiles?.length||0}</strong> 个包，其中 <strong>${newCount}</strong> 个尚未在本机应用。</p><p>这些文件来自 <code>${esc(GITHUB_CONFIG.pendingPath)}</code>，与正式数据版本分开处理。</p>${pendingError?`<div class="patch-error-box"><p>${esc(pendingError)}</p></div>`:""}</section></div><div class="change-section-title"><h3>GitHub待处理包</h3><span>${newCount}个未应用</span></div>${pendingPackageListHtml(pendingFiles||[])}`
+  }
+  function bindPendingListActions(){els.infoBody.querySelectorAll("[data-pending-index]").forEach(btn=>btn.addEventListener("click",()=>openPendingPatchPreview(Number(btn.dataset.pendingIndex))))}
+  function renderGithubUpdateModal(){els.infoEyebrow.textContent="GITHUB DATA & PATCHES";els.infoTitle.textContent="GitHub数据与待处理包";els.infoBody.innerHTML=githubStatusHtml(state.githubCurrent,state.githubPendingFiles,state.githubCurrentError||"",state.githubPendingError||"");bindPendingListActions()}
+  async function openPendingPatchPreview(index){
+    const entry=state.githubPendingFiles[index];if(!entry)return;els.infoEyebrow.textContent="GITHUB PENDING PATCH";els.infoTitle.textContent="正在下载更改包";els.infoBody.innerHTML=`<div class="info-section"><h3>${esc(entry.name)}</h3><p>正在从GitHub读取并校验内容……</p></div>`;
+    try{const pkg=await fetchGithubPatch(entry),simulation=simulatePatchPackage(pkg);els.infoTitle.textContent="待处理更改包预览";els.infoBody.innerHTML=patchPreviewHtml(entry,pkg,simulation);$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal);$("#pendingApplyBtn")?.addEventListener("click",()=>applyGithubPatch(index,pkg,simulation))}
+    catch(error){els.infoTitle.textContent="更改包读取失败";els.infoBody.innerHTML=`<div class="github-update-actions"><button class="btn secondary compact" id="pendingBackBtn">← 返回更新列表</button></div><div class="patch-error-box"><strong>无法读取 ${esc(entry.name)}</strong><p>${esc(error?.message||"未知错误")}</p></div>`;$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal)}
+  }
+  function applyGithubPatch(index,pkg,simulation){
+    const entry=state.githubPendingFiles[index];if(!entry||isRemotePatchApplied(entry))return;if(simulation.packageErrors.length||simulation.conflictCount){toast("更改包未应用","请先处理格式错误或冲突。","error");return}
+    if(!simulation.netNoop){state.objects=simulation.draft.objects;state.tileProfiles=simulation.draft.tileProfiles;state.nextIdCounter=Math.max(state.nextIdCounter,maxKnownObjectNumber())}
+    rememberRemotePatch(entry,pkg,simulation);populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();toast(simulation.netNoop?"已标记为本机同步":"GitHub更改包已应用",simulation.netNoop?"本地地图原本已经包含这些变化。":`写入${simulation.applyCount}项，跳过${simulation.skipCount}项`);renderGithubUpdateModal()
   }
   async function checkUpdate(silent=false){
-    if(!silent){els.infoEyebrow.textContent="GITHUB DATA UPDATE";els.infoTitle.textContent="正在连接GitHub";els.infoBody.innerHTML=`<div class="info-section"><h3>连接中</h3><p>正在读取 ${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} 的 data/current.json……</p></div>`;openModal("infoModal")}
-    try{
-      const current=await fetchGithubCurrent();
-      if(!silent){els.infoTitle.textContent="GitHub数据更新";els.infoBody.innerHTML=githubStatusHtml(current)}
-      const remote=current?.data_version||current?.dataVersion||"";
-      const cmp=compareDataVersion(remote,state.dataVersion);
-      if(silent&&cmp>0)toast("发现地图数据更新",`${state.dataVersion} → ${remote}`);
-      else if(silent&&cmp===0)toast("GitHub已连接",`当前数据 ${state.dataVersion} 已是最新版本`);
-      return current;
-    }catch(error){
-      const msg=error?.message||"无法连接GitHub";
-      if(!silent){els.infoTitle.textContent="GitHub连接状态";els.infoBody.innerHTML=`<div class="info-section"><h3>尚未完成数据索引配置</h3><p>${esc(msg)}</p><p>仓库本身可以访问；上传本更新包后，程序会从 <code>data/current.json</code> 读取版本。</p><p><a class="btn secondary" href="${esc(GITHUB_CONFIG.repoUrl)}" target="_blank" rel="noopener">打开SHmap仓库</a></p></div>`}
-      else console.warn("GitHub update check failed:",error);
-      return null;
-    }
+    if(!silent){els.infoEyebrow.textContent="GITHUB DATA UPDATE";els.infoTitle.textContent="正在连接GitHub";els.infoBody.innerHTML=`<div class="info-section"><h3>连接中</h3><p>正在同时检查正式数据与 ${esc(GITHUB_CONFIG.pendingPath)}……</p></div>`;openModal("infoModal")}
+    const [currentResult,pendingResult]=await Promise.allSettled([fetchGithubCurrent(),fetchGithubPendingFiles()]);
+    state.githubCurrent=currentResult.status==="fulfilled"?currentResult.value:null;state.githubCurrentError=currentResult.status==="rejected"?(currentResult.reason?.message||"无法读取正式数据版本"):"";state.githubPendingFiles=pendingResult.status==="fulfilled"?pendingResult.value:[];state.githubPendingError=pendingResult.status==="rejected"?(pendingResult.reason?.message||"无法读取待处理目录"):"";
+    if(!silent)renderGithubUpdateModal();
+    const newPending=state.githubPendingFiles.filter(x=>!isRemotePatchApplied(x)).length,remote=state.githubCurrent?.data_version||state.githubCurrent?.dataVersion||"",cmp=remote?compareDataVersion(remote,state.dataVersion):0;
+    if(silent){if(newPending>0)toast("发现GitHub待处理包",`${newPending}个更改包等待查看`);else if(cmp>0)toast("发现地图数据更新",`${state.dataVersion} → ${remote}`);else if(state.githubCurrent&&!state.githubPendingError)toast("GitHub已连接",`正式数据最新，pending无新包`);else console.warn("GitHub update check:",state.githubCurrentError,state.githubPendingError)}
+    return {current:state.githubCurrent,pending:state.githubPendingFiles}
   }
 
   function openImportWorkspace(){els.importWorkspace.classList.remove("hidden");renderExamplePanel();if(!els.importText.value.trim()){els.importText.value="";updateImportCharCount();renderImportAnalysis(null)}}
@@ -693,7 +833,7 @@
     els.jumpCoordBtn.addEventListener("click",()=>{els.jumpX.value=Math.round(state.camera.x);els.jumpY.value=Math.round(state.camera.y);openModal("jumpModal")});els.jumpForm.addEventListener("submit",e=>{e.preventDefault();state.camera.x=Number(els.jumpX.value)||0;state.camera.y=Number(els.jumpY.value)||0;state.camera.zoom=Math.max(.72,state.camera.zoom);state.flippedCell=null;closeModal("jumpModal");scheduleRender();persist()});
     [[els.layerAreas,"areas"],[els.layerRivers,"rivers"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,k])=>el.addEventListener("change",()=>{state.layers[k]=el.checked;scheduleRender()}));
     els.openImportBtn.addEventListener("click",openImportWorkspace);els.closeImportBtn.addEventListener("click",closeImportWorkspace);els.importChooseFileBtn.addEventListener("click",()=>els.importFileInput.click());els.importDropZone.addEventListener("click",()=>els.importFileInput.click());els.importFileInput.addEventListener("change",()=>readImportFile(els.importFileInput.files?.[0]));["dragenter","dragover"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.add("dragover")}));["dragleave","drop"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.remove("dragover")}));els.importDropZone.addEventListener("drop",e=>readImportFile(e.dataTransfer.files?.[0]));els.importText.addEventListener("input",()=>{updateImportCharCount();debouncedImportAnalyze()});els.reanalyzeImportBtn.addEventListener("click",analyzeImportText);els.clearImportBtn.addEventListener("click",()=>{els.importText.value="";els.importFileName.textContent="尚未选择文件";state.importAnalysis=null;updateImportCharCount();renderImportAnalysis(null)});els.importApplyBtn.addEventListener("click",applyMarkdownImport);$$('.example-tabs button').forEach(b=>b.addEventListener('click',()=>{state.exampleTab=b.dataset.exampleTab;renderExamplePanel()}));els.loadExampleBtn.addEventListener("click",()=>{els.importText.value=state.exampleTab==='wrong'?WRONG_MD_SAMPLE:state.exampleTab==='rules'?CORRECT_MD_SAMPLE:CORRECT_MD_SAMPLE;els.importFileName.textContent=state.exampleTab==='wrong'?'错误案例.md':'正确案例.md';analyzeImportText()});
-    $$(".detail-tabs button").forEach(b=>b.addEventListener("click",()=>{state.detailTab=b.dataset.tab;renderDetails()}));els.editTileBtn.addEventListener("click",openTileProfileForm);els.deleteTileBtn.addEventListener("click",()=>openDeleteModal("tile"));els.openDossierBtn.addEventListener("click",openDossierWorkspace);els.openRangeEditorBtn.addEventListener("click",()=>openRangeEditor());els.closeDossierBtn.addEventListener("click",closeDossierWorkspace);els.editDossierBtn.addEventListener("click",openTileProfileForm);els.dossierLocateBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;closeDossierWorkspace();animateCameraTo(cellCenter(tile.gx),cellCenter(tile.gy),Math.max(state.camera.zoom,.88),()=>{state.flippedCell=tile.key;scheduleRender()})});els.copyPromptBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makePrompt(profile,tile,main),"绘图提示已复制")});els.copyBriefBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makeArtBrief(profile,tile,main),"美术简报已复制")});$$('[data-dossier-tab]').forEach(b=>b.addEventListener('click',()=>{state.dossierTab=b.dataset.dossierTab;renderDossierWorkspace()}));els.tileProfileForm.addEventListener("submit",saveTileProfileForm);els.tilePlayerReachable.addEventListener("change",togglePlayerFields);els.objectForm.addEventListener("submit",saveObjectForm);els.deleteObjectBtn.addEventListener("click",()=>{const id=els.formObjectId.value;if(id){closeModal("objectModal");openDeleteModal("object",id)}});els.formGeometry.addEventListener("change",updateGeometryRangeHint);els.exportPatchBtn.addEventListener("click",()=>exportPatch(false));els.finishRoundBtn.addEventListener("click",()=>exportPatch(true));els.roundKeepBtn.addEventListener("click",()=>{state.pendingRoundExport=null;closeModal("roundModal");toast("已保留本轮更改","可继续编辑或稍后完成本轮")});els.roundArchiveBtn.addEventListener("click",archiveCurrentRound);els.openChangesTab.addEventListener("click",showChanges);els.openTrashTab.addEventListener("click",openTrash);els.clearTrashBtn.addEventListener("click",clearTrash);els.trashRetentionSelect.addEventListener("change",()=>{state.trashRetentionDays=Number(els.trashRetentionSelect.value)||0;const removed=cleanupExpiredTrash(true);renderTrash();persist();updateHeader();if(!removed)toast("回收站保留规则已更新",state.trashRetentionDays?`自动清理超过${state.trashRetentionDays}天的内容`:"永久保留")});els.openSpecTab.addEventListener("click",showSpecs);els.checkUpdateBtn.addEventListener("click",checkUpdate);els.closeFlipBtn.addEventListener("click",()=>{state.flippedCell=null;scheduleRender()});if(els.clearSpatialFocusBtn)els.clearSpatialFocusBtn.addEventListener("click",()=>{state.spatialFocusArmed=false;state.selectedCell=null;state.selectedId=null;state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();toast("已退出区域聚焦","地图恢复完整显示")});
+    $$(".detail-tabs button").forEach(b=>b.addEventListener("click",()=>{state.detailTab=b.dataset.tab;renderDetails()}));els.editTileBtn.addEventListener("click",openTileProfileForm);els.deleteTileBtn.addEventListener("click",()=>openDeleteModal("tile"));els.openDossierBtn.addEventListener("click",openDossierWorkspace);els.openRangeEditorBtn.addEventListener("click",()=>openRangeEditor());els.closeDossierBtn.addEventListener("click",closeDossierWorkspace);els.editDossierBtn.addEventListener("click",openTileProfileForm);els.dossierLocateBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;closeDossierWorkspace();animateCameraTo(cellCenter(tile.gx),cellCenter(tile.gy),Math.max(state.camera.zoom,.88),()=>{state.flippedCell=tile.key;scheduleRender()})});els.copyPromptBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makePrompt(profile,tile,main),"绘图提示已复制")});els.copyBriefBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makeArtBrief(profile,tile,main),"美术简报已复制")});$$('[data-dossier-tab]').forEach(b=>b.addEventListener('click',()=>{state.dossierTab=b.dataset.dossierTab;renderDossierWorkspace()}));els.tileProfileForm.addEventListener("submit",saveTileProfileForm);els.tilePlayerReachable.addEventListener("change",togglePlayerFields);els.objectForm.addEventListener("submit",saveObjectForm);els.deleteObjectBtn.addEventListener("click",()=>{const id=els.formObjectId.value;if(id){closeModal("objectModal");openDeleteModal("object",id)}});els.formGeometry.addEventListener("change",updateGeometryRangeHint);els.exportPatchBtn.addEventListener("click",()=>exportPatch(false));els.finishRoundBtn.addEventListener("click",()=>exportPatch(true));els.roundKeepBtn.addEventListener("click",()=>{state.pendingRoundExport=null;closeModal("roundModal");toast("已保留本轮更改","可继续编辑或稍后完成本轮")});els.roundArchiveBtn.addEventListener("click",archiveCurrentRound);els.openChangesTab.addEventListener("click",showChanges);els.openTrashTab.addEventListener("click",openTrash);els.clearTrashBtn.addEventListener("click",clearTrash);els.trashRetentionSelect.addEventListener("change",()=>{state.trashRetentionDays=Number(els.trashRetentionSelect.value)||0;const removed=cleanupExpiredTrash(true);renderTrash();persist();updateHeader();if(!removed)toast("回收站保留规则已更新",state.trashRetentionDays?`自动清理超过${state.trashRetentionDays}天的内容`:"永久保留")});els.openSpecTab.addEventListener("click",showSpecs);els.checkUpdateBtn.addEventListener("click",()=>checkUpdate(false));els.closeFlipBtn.addEventListener("click",()=>{state.flippedCell=null;scheduleRender()});if(els.clearSpatialFocusBtn)els.clearSpatialFocusBtn.addEventListener("click",()=>{state.spatialFocusArmed=false;state.selectedCell=null;state.selectedId=null;state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();toast("已退出区域聚焦","地图恢复完整显示")});
     els.closeRangeEditorBtn.addEventListener("click",closeRangeEditor);els.rangeSaveBtn.addEventListener("click",saveRangeEditor);els.rangeUndoBtn.addEventListener("click",undoRange);els.rangeResetBtn.addEventListener("click",resetRange);els.rangeFitBtn.addEventListener("click",fitRangeEditor);els.createAreaObjectBtn.addEventListener("click",()=>createSpatialObject("area"));els.createFieldObjectBtn.addEventListener("click",()=>createSpatialObject("field"));$$('[data-range-tool]').forEach(b=>b.addEventListener('click',()=>setRangeTool(b.dataset.rangeTool)));els.rangeSnapSelect.addEventListener("change",()=>{state.rangeEditor.snap=Number(els.rangeSnapSelect.value)||10});els.rangeShape.addEventListener("change",()=>convertRangeShape(els.rangeShape.value));els.rangeKind.addEventListener("change",()=>{const o=currentRangeObject();if(o)els.rangeObjectBadge.textContent=`${els.rangeKind.value==='field'?'作用域':'面积'} · ${o.name}`;drawRangeEditor()});els.rangeEvidence.addEventListener("change",()=>{if(state.rangeEditor.draft){state.rangeEditor.draft.evidence=els.rangeEvidence.value;renderRangeAnalysis();drawRangeEditor()}});[els.rangeCenterX,els.rangeCenterY,els.rangeWidth,els.rangeHeight,els.rangeRadius].forEach(x=>x.addEventListener("input",updateRangeFromInputs));els.rangePoints.addEventListener("change",updateRangePoints);els.rangeViewport.addEventListener("pointerdown",rangePointerDown);els.rangeViewport.addEventListener("pointermove",rangePointerMove);els.rangeViewport.addEventListener("pointerup",rangePointerUp);els.rangeViewport.addEventListener("pointercancel",rangePointerUp);els.rangeViewport.addEventListener("click",rangeCanvasClick);els.rangeViewport.addEventListener("dblclick",rangeCanvasDblClick);els.rangeViewport.addEventListener("wheel",rangeWheel,{passive:false});
     $$('[data-close-modal]').forEach(x=>x.addEventListener("click",()=>closeModal(x.dataset.closeModal)));
     els.drillAddBtn.addEventListener("click",()=>{if(!state.drillCell)return;const b=cellBounds(state.drillCell.gx,state.drillCell.gy);closeModal("drillModal");openObjectForm(null,{x:b.cx,y:b.cy})});

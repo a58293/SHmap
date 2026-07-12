@@ -13,3 +13,14 @@
 8. 回到 GitHub 网页刷新，确认能看到 `app`、`data`、`specs`、`docs` 等目录。
 
 不要向仓库提交密码、验证码、访问令牌、`.env`、密钥文件或个人隐私资料。
+
+
+## 上传地图更改包
+
+将 `.shjpatch` 复制到：
+
+```text
+submissions/pending/
+```
+
+GitHub Desktop 出现变化后提交并 Push。地图程序下次点击“检查数据更新”会自动扫描该目录。

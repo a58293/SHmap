@@ -1,15 +1,15 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v014",
+  "app_version": "demo-v015",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.1",
-  "updated_at": "2026-07-11T13:00:00+09:00",
+  "updated_at": "2026-07-11T13:30:00+09:00",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "更改记录支持归档与开始新一轮",
-    "历史提交可标记已上传 GitHub",
-    "回收站支持永久删除、清空与保留期限",
-    "新增对象永久 ID 不再因删除而重复使用"
+    "检查数据更新时同时扫描 submissions/pending",
+    "支持在线预览并应用 .shjpatch 更改包",
+    "应用前检查基础版本、字段冲突和重复对象 ID",
+    "已经应用的包在本机标记，不会重复写入"
   ]
 }

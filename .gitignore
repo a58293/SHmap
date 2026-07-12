@@ -12,11 +12,11 @@ desktop.ini
 *.autosave
 ~$*.xlsx
 
-# Local exported packages
-# .shjpatch 文件默认忽略，但 submissions 目录中的正式提交包允许进入仓库
+# Exported packages are ignored by default, except the formal submissions folders
 *.shjpatch
-!submissions/**/*.shjpatch
 *.shjdata
+!submissions/**/*.shjpatch
+!submissions/**/*.shjdata
 
 # Secrets: never commit
 .env
