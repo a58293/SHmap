@@ -17,6 +17,22 @@
   const BASE_CELL_PX = 190;
   const MIN_ZOOM = 0.18;
   const MAX_ZOOM = 30;
+  const PRECISION_ENTER_ZOOM = 4.2;
+  const PRECISION_EXIT_ZOOM = 3.8;
+  const TERRAIN_PALETTE = {
+    mountain:{color:"#756b5b",cell:"rgba(117,107,91,.48)",line:"#5e5548"},
+    hill:{color:"#9a9272",cell:"rgba(154,146,114,.42)",line:"#777054"},
+    forest:{color:"#718b66",cell:"rgba(113,139,102,.44)",line:"#526e4a"},
+    plain:{color:"#c1ae7d",cell:"rgba(193,174,125,.42)",line:"#9c8857"},
+    water:{color:"#5b94a8",cell:"rgba(91,148,168,.48)",line:"#2b7f99"},
+    wetland:{color:"#75a099",cell:"rgba(117,160,153,.43)",line:"#527b75"},
+    desert:{color:"#b48858",cell:"rgba(180,136,88,.45)",line:"#8b663e"},
+    ice:{color:"#b9ced2",cell:"rgba(185,206,210,.54)",line:"#789ca4"},
+    settlement:{color:"#a66f5d",cell:"rgba(166,111,93,.38)",line:"#7f4f41"},
+    myth:{color:"#8873a3",cell:"rgba(136,115,163,.25)",line:"#685482"},
+    event:{color:"#cf8240",cell:"rgba(207,130,64,.25)",line:"#9e5c29"},
+    unknown:{color:"#858b87",cell:"rgba(133,139,135,.16)",line:"#676d69"}
+  };
   const COLORS = {grid:"rgba(79,84,84,.28)",minor:"rgba(79,84,84,.10)",axis:"rgba(55,61,61,.52)",hard:"rgba(145,111,42,.19)",candidate:"rgba(145,111,42,.08)",field:"rgba(173,77,61,.08)",river:"#2b7f99"};
   const CHAPTER_GROUPS = [
     {name:"五藏山经",chapters:["南山经","西山经","北山经","东山经","中山经"]},
@@ -28,9 +44,9 @@
   const CHAPTERS_18 = CHAPTER_GROUPS.flatMap(g=>g.chapters);
 
 
-  const CORRECT_MD_SAMPLE = `# 山海经地图对象导入
+  const CORRECT_MD_SAMPLE = `# 山海经地图对象与地块档案导入
 
-* 文件格式版本：1.0
+* 文件格式版本：1.1
 * 基础数据版本：v031-r0001
 * 本批名称：冰夷与从极之渊补充
 
@@ -49,6 +65,23 @@
 * 锁定状态：方向／拓扑锁定，实际距离未锁
 * 原文：冰夷人面，乘两龙。
 * 设定与推导：依据从极之渊关系与现有核心坐标暂定。
+
+---
+
+### 地块档案：X-012_Y+009
+
+* 简要：从极之渊及冰夷相关地块的快速摘要。
+* 基础：此地块以寒渊、水域和神祇活动为主要特征。
+* 详细：
+  地块档案支持多行文本。
+  缩进两格后的内容会继续写入当前字段。
+* 地理环境：寒冷深渊与水域交叠。
+* 信仰对象：冰夷
+* 文明与神话奇遇：可能出现乘龙神祇及异常寒水现象。
+* 时间流逝：正常
+* 玩家是否可以抵达：条件可达
+* 玩家遭遇的敌人：寒水异兽
+* 海内北经事件：冰夷相关事件归入本经篇。
 
 ---
 
@@ -78,6 +111,15 @@
 
 ---
 
+### 地块档案：第十二格
+
+* 简要：缺少可识别的 X、Y 主格坐标。
+* 时间流逝：永恒但又正常
+* 玩家是否可以抵达：大概可以
+* 不存在的地块字段：不会被映射
+
+---
+
 ### 对象：弱水核心段
 
 * 地名：弱水核心段
@@ -98,15 +140,100 @@
 * 东西宽（里）：八百
 * 南北长（里）：800`;
 
-  const IMPORT_RULES_TEXT = `识别入口：每个对象必须以“### 对象：对象名称”开始。
-字段格式：使用“* 字段名：字段值”。
-坐标单位：数字坐标统一使用“里”，支持小数。
+  const BLANK_MD_TEMPLATE = `# 山海经地图对象与地块档案导入
+
+* 文件格式版本：1.1
+* 基础数据版本：v031-r0001
+* 本批名称：
+
+---
+
+### 对象：对象名称
+
+* 对象ID：
+* 地名：对象名称
+* 类型：
+* 所属经篇：
+* 所属区域／山系：
+* 几何类型：点
+* X坐标（里）：0
+* Y坐标（里）：0
+* 坐标性质：
+* 锁定状态：
+* 原文：
+* 设定与推导：
+* 来源URL：
+
+---
+
+### 地块档案：X+000_Y+000
+
+* 简要：
+* 基础：
+* 详细：
+* 地理环境：
+* 建筑群：
+* 生活物种：
+* 所属国度：
+* 信仰对象：
+* 统治者：
+* 守护神：
+* 奇珍异兽／栖息生物：
+* 神木／神话植被：
+* 仙草药草：
+* 丰富矿产：
+* 特殊生命：
+* 当地风俗：
+* 文明与神话奇遇：
+* 已发生事件：
+* 时间流逝：未判定
+* 其他剧情说明：
+* 玩家是否可以抵达：未判定
+* 玩家遭遇的敌人：
+* 玩家触发的剧情：
+* 玩家得到的东西：
+* 海内经事件：`;
+
+  const IMPORT_RULES_TEXT = `支持两种区块，可在同一个 Markdown 文件中混合使用。
+
+对象区块：以“### 对象：对象名称”开始。
+地块档案区块：以“### 地块档案：X+000_Y+000”开始。
+字段格式：统一使用“* 字段名：字段值”。
+多行文本：下一行缩进至少两个空格，将继续写入当前字段。
+坐标单位：对象数字坐标统一使用“里”；地块档案使用100里主格编号。
 点对象：需要X坐标与Y坐标。
 线对象：路径节点至少2个，每行写“  - X,Y”。
 面积对象：需要中心、形状和尺寸；多边形至少3个顶点。
 作用域：可以使用圆形半径、矩形尺寸或多边形顶点。
-空字段：可以保留为空，但不能省略必填的几何与坐标字段。
+地块档案：可更新简要、基础、详细、环境、文明、奇遇、玩家字段及十八经篇事件。
+空字段：在地块档案中，明确保留的空字段会清空该字段；未写出的字段保持原值。
 同名对象：不会自动覆盖；程序会提示可能重复。`;
+
+  const TILE_PROFILE_FIELD_DEFS = [
+    {key:"briefSummary",label:"简要",aliases:["简要","简要文案"]},
+    {key:"basicSummary",label:"基础",aliases:["基础","基础文案"]},
+    {key:"detailedSummary",label:"详细",aliases:["详细","详细文案"]},
+    {key:"geoEnvironment",label:"地理环境",aliases:["地理环境"]},
+    {key:"architecture",label:"建筑群",aliases:["建筑群"]},
+    {key:"livingSpecies",label:"生活物种",aliases:["生活物种"]},
+    {key:"country",label:"所属国度",aliases:["所属国度"]},
+    {key:"faith",label:"信仰对象",aliases:["信仰对象"]},
+    {key:"ruler",label:"统治者",aliases:["统治者"]},
+    {key:"guardian",label:"守护神",aliases:["守护神","有无守护神"]},
+    {key:"beasts",label:"奇珍异兽／栖息生物",aliases:["奇珍异兽/栖息生物","奇珍异兽／栖息生物","奇珍异兽","栖息生物"]},
+    {key:"divinePlants",label:"神木／神话植被",aliases:["神木/神话植被","神木／神话植被","神木","神话植被"]},
+    {key:"herbs",label:"仙草药草",aliases:["仙草药草","仙草/药草","仙草／药草"]},
+    {key:"minerals",label:"丰富矿产",aliases:["丰富矿产","矿产"]},
+    {key:"specialLife",label:"特殊生命",aliases:["特殊生命"]},
+    {key:"customs",label:"当地风俗",aliases:["当地风俗"]},
+    {key:"mythicEncounters",label:"文明与神话奇遇",aliases:["文明与神话奇遇","神话奇遇"]},
+    {key:"occurredEvents",label:"已发生事件",aliases:["已发生事件","已发生事件综合简述"]},
+    {key:"storyOther",label:"其他剧情说明",aliases:["其他剧情说明","其他"]},
+    {key:"playerEnemies",label:"玩家遭遇的敌人",aliases:["玩家遭遇的敌人"]},
+    {key:"playerPlots",label:"玩家触发的剧情",aliases:["玩家触发的剧情"]},
+    {key:"playerLoot",label:"玩家得到的东西",aliases:["玩家得到的东西"]}
+  ];
+
 
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
@@ -114,9 +241,9 @@
     versionLine:$("#versionLine"), saveState:$("#saveState"), topChangeCount:$("#topChangeCount"), topTrashCount:$("#topTrashCount"), openTrashTab:$("#openTrashTab"), finishRoundBtn:$("#finishRoundBtn"),
     searchInput:$("#searchInput"), chapterFilter:$("#chapterFilter"), typeFilterMenu:$("#typeFilterMenu"), typeFilterSummary:$("#typeFilterSummary"), typeFilterTree:$("#typeFilterTree"), resetFilterBtn:$("#resetFilterBtn"),
     objectList:$("#objectList"), resultCount:$("#resultCount"), mapStats:$("#mapStats"),
-    viewport:$("#mapViewport"), canvas:$("#worldCanvas"), tileLayer:$("#tileLayer"), coordStatus:$("#coordStatus"), cameraStatus:$("#cameraStatus"), zoomReadout:$("#zoomReadout"),
+    viewport:$("#mapViewport"), canvas:$("#worldCanvas"), tileLayer:$("#tileLayer"), coordStatus:$("#coordStatus"), cameraStatus:$("#cameraStatus"), zoomReadout:$("#zoomReadout"), precisionModeBadge:$("#precisionModeBadge"), precisionTerrainLegend:$("#precisionTerrainLegend"), mapGuide:$("#mapGuide"),
     zoomInBtn:$("#zoomInBtn"), zoomOutBtn:$("#zoomOutBtn"), originBtn:$("#originBtn"), jumpCoordBtn:$("#jumpCoordBtn"), fitAllBtn:$("#fitAllBtn"), closeFlipBtn:$("#closeFlipBtn"), clearSpatialFocusBtn:$("#clearSpatialFocusBtn"),
-    layerAreas:$("#layerAreas"), layerRivers:$("#layerRivers"), layerEmpty:$("#layerEmpty"), layerChanges:$("#layerChanges"),
+    layerAreas:$("#layerAreas"), layerTerrain:$("#layerTerrain"), layerRivers:$("#layerRivers"), layerEmpty:$("#layerEmpty"), layerChanges:$("#layerChanges"),
     emptyDetail:$("#emptyDetail"), detailContent:$("#detailContent"), detailRef:$("#detailRef"), detailName:$("#detailName"), detailMeta:$("#detailMeta"), detailLocation:$("#detailLocation"), detailBody:$("#detailBody"), editTileBtn:$("#editTileBtn"), openDossierBtn:$("#openDossierBtn"), openRangeEditorBtn:$("#openRangeEditorBtn"), deleteTileBtn:$("#deleteTileBtn"),
     dossierWorkspace:$("#dossierWorkspace"), closeDossierBtn:$("#closeDossierBtn"), dossierPageTitle:$("#dossierPageTitle"), dossierPageMeta:$("#dossierPageMeta"), dossierCoordBadge:$("#dossierCoordBadge"), dossierCardTitle:$("#dossierCardTitle"), dossierBrief:$("#dossierBrief"), dossierStandard:$("#dossierStandard"), dossierBadges:$("#dossierBadges"), dossierCompletenessText:$("#dossierCompletenessText"), dossierCompletenessBar:$("#dossierCompletenessBar"), dossierCompletenessMeta:$("#dossierCompletenessMeta"), dossierObjectCount:$("#dossierObjectCount"), dossierObjectIndex:$("#dossierObjectIndex"), dossierLocateBtn:$("#dossierLocateBtn"), dossierChapterBadge:$("#dossierChapterBadge"), dossierHeroTitle:$("#dossierHeroTitle"), dossierContent:$("#dossierContent"), copyPromptBtn:$("#copyPromptBtn"), copyBriefBtn:$("#copyBriefBtn"), editDossierBtn:$("#editDossierBtn"), dossierModeBrief:$("#dossierModeBrief"), dossierModeFull:$("#dossierModeFull"),
     drillModal:$("#drillModal"), drillTitle:$("#drillTitle"), drillSubtitle:$("#drillSubtitle"), innerGrid:$("#innerGrid"), innerCoord:$("#innerCoord"), drillCount:$("#drillCount"), drillObjectList:$("#drillObjectList"), drillAddBtn:$("#drillAddBtn"),
@@ -159,7 +286,9 @@
     dossierTab:"overview",
     dossierMode:saved?.dossierMode||"brief",
     filters:{q:"",chapter:"",type:""},
-    layers:{areas:true,rivers:true,empty:true,changes:true},
+    layers:{areas:true,terrain:true,rivers:true,empty:true,changes:true},
+    precisionMode:false,
+    precisionClusterOpen:null,
     renderQueued:false,
     suppressClickUntil:0,
     pan:{active:false,moved:false,pointerId:null,startX:0,startY:0,startCameraX:0,startCameraY:0,downTile:null},
@@ -320,15 +449,112 @@
   }
   function searchSnippet(o,q){const hit=matchEntries(objectSearchEntries(o),q)[0];return hit?hit.value:`${o.name} · ${o.type||'未分类'} · ${o.chapter||'未标经篇'}`}
 
+
+  function terrainCategory(o){
+    const strong=`${o?.type||""} ${o?.name||""}`,text=`${strong} ${o?.terrain||""}`;
+    if(/冰|雪|寒域|寒原|极地|冰原/.test(text))return "ice";
+    if(/湿地|沼泽|泽地|水泽/.test(text))return "wetland";
+    if(/河|溪|江|海|湖|池|渊|泉|水系|水域|瀑/.test(strong)||o?.geometryType==="line"&&/水|河|溪|流/.test(text))return "water";
+    if(/山|岳|峰|岭|崖|岩|峦/.test(strong))return "mountain";
+    if(/丘|陵|坡/.test(strong))return "hill";
+    if(/林|森林|树林|木|树|植被|草木/.test(strong))return "forest";
+    if(/荒漠|沙地|沙漠|旱地|炎地|赤地/.test(text))return "desert";
+    if(/国|城|邑|都|宫|台|坛|聚落|建筑|墓|葬|冢|村/.test(strong))return "settlement";
+    if(/野|平原|原野|田|谷地|草原/.test(text))return "plain";
+    if(/作用域|神域|光照域|神力|神明|神祇/.test(strong))return "myth";
+    if(/事件|战|祭祀|神迹|奇遇|地标/.test(strong)||String(o?.events||"").trim())return "event";
+    return "unknown";
+  }
+  function terrainCategoryFromProfile(p){
+    const text=`${p?.geoEnvironment||""} ${p?.architecture||""} ${p?.livingSpecies||""}`;
+    if(!text.trim())return "unknown";
+    return terrainCategory({type:text,name:"",terrain:text,geometryType:"point"});
+  }
+  function terrainRadiusLi(category){return ({mountain:22,hill:18,forest:25,plain:30,water:14,wetland:22,desert:28,ice:28,settlement:16}[category]||0)}
+  function isBaseTerrainCategory(category){return ["mountain","hill","forest","plain","water","wetland","desert","ice","settlement"].includes(category)}
+  function objectAnchor(o){
+    if(o?.geometryType==="line"&&o.path?.length){const pts=o.path,idx=Math.floor((pts.length-1)/2);if(pts.length%2)return {x:Number(pts[idx][0])||0,y:Number(pts[idx][1])||0};return {x:(Number(pts[idx][0])+Number(pts[idx+1][0]))/2||0,y:(Number(pts[idx][1])+Number(pts[idx+1][1]))/2||0}}
+    if(o?.area){const a=o.area;if(a.shape==="circle")return {x:Number(a.cx??o.x)||0,y:Number(a.cy??o.y)||0};if(a.shape==="polygon"&&a.points?.length){const n=a.points.length;return {x:a.points.reduce((s,p)=>s+(Number(p[0])||0),0)/n,y:a.points.reduce((s,p)=>s+(Number(p[1])||0),0)/n}}const b=rangeBounds(a);return {x:(b.west+b.east)/2,y:(b.south+b.north)/2}}
+    return {x:Number(o?.x)||0,y:Number(o?.y)||0};
+  }
+  function terrainCellCategory(x,y,areas,points,profiles){
+    let bestArea=null,bestAreaScore=-1;
+    for(const o of areas){if(!pointInSpatial(o,x,y))continue;const cat=terrainCategory(o),ev=o.area?.evidence,score=(ev==="hard"||ev==="original"?5:ev==="candidate"?3:2)+(cat==="water"?1:0);if(score>bestAreaScore){bestArea={cat,o};bestAreaScore=score}}
+    if(bestArea&&isBaseTerrainCategory(bestArea.cat))return bestArea.cat;
+    let best="unknown",bestScore=Infinity;
+    for(const o of points){const cat=terrainCategory(o);if(!isBaseTerrainCategory(cat))continue;const radius=terrainRadiusLi(cat);if(!radius)continue;const d=Math.hypot(x-(Number(o.x)||0),y-(Number(o.y)||0));if(d<=radius&&d/radius<bestScore){best=cat;bestScore=d/radius}}
+    if(best!=="unknown")return best;
+    const key=cellKey(cellIndex(x),cellIndex(y)),profile=profiles[key],pc=terrainCategoryFromProfile(profile);return isBaseTerrainCategory(pc)?pc:"unknown";
+  }
+  function drawPrecisionTerrain(ctx,v,s){
+    const step=10,areas=state.objects.filter(o=>o.area&&(o.geometryType==="area"||o.geometryType==="field")),pad=40;
+    const points=state.objects.filter(o=>{const x=Number(o.x)||0,y=Number(o.y)||0;return x>=v.left-pad&&x<=v.right+pad&&y>=v.bottom-pad&&y<=v.top+pad&&!o.area&&o.geometryType!=="field"});
+    const profiles=state.tileProfiles||{},x0=Math.floor(v.left/step)*step,y0=Math.floor(v.bottom/step)*step;
+    if(state.layers.terrain){
+      for(let x=x0;x<=v.right;x+=step){for(let y=y0;y<=v.top;y+=step){const cat=terrainCellCategory(x+step/2,y+step/2,areas,points,profiles);if(cat==="unknown")continue;const nw=worldToScreen(x,y+step),se=worldToScreen(x+step,y);ctx.fillStyle=TERRAIN_PALETTE[cat].cell;ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y)}}
+      drawPrecisionTerrainContours(ctx,points,s);
+    }
+    if(state.layers.areas)drawPrecisionAreas(ctx,v,s,areas);
+  }
+  function drawPrecisionTerrainContours(ctx,points,s){
+    ctx.save();
+    points.forEach(o=>{const cat=terrainCategory(o);if(!["mountain","hill","forest","wetland","desert","ice","settlement"].includes(cat))return;const p=worldToScreen(Number(o.x)||0,Number(o.y)||0),r=Math.min(230,terrainRadiusLi(cat)*s),pal=TERRAIN_PALETTE[cat];if(r<8)return;ctx.strokeStyle=pal.line;ctx.globalAlpha=(cat==="mountain"||cat==="hill") ? .28 : .16;ctx.lineWidth=1.2;
+      if(cat==="mountain"||cat==="hill"){for(let i=1;i<=3;i++){ctx.beginPath();ctx.ellipse(p.x,p.y,r*i/3,r*i/5,(Number(o.x)+Number(o.y))%7/18,0,Math.PI*2);ctx.stroke()}}
+      else if(cat==="forest"){for(let i=0;i<5;i++){const a=i*1.256,rr=r*(.25+.09*(i%2));ctx.fillStyle=pal.color;ctx.globalAlpha=.10;ctx.beginPath();ctx.arc(p.x+Math.cos(a)*r*.38,p.y+Math.sin(a)*r*.28,rr,0,Math.PI*2);ctx.fill()}}
+      else if(cat==="settlement"){ctx.globalAlpha=.16;ctx.fillStyle=pal.color;ctx.fillRect(p.x-r*.42,p.y-r*.30,r*.84,r*.60)}
+    });ctx.restore();
+  }
+  function drawPrecisionAreas(ctx,v,s,areas){
+    areas.forEach(o=>{const b=rangeBounds(o.area);if(b.east<v.left||b.west>v.right||b.north<v.bottom||b.south>v.top)return;const cat=terrainCategory(o),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.unknown,hard=o.area?.evidence==="hard"||o.area?.evidence==="original";ctx.save();
+      if(o.geometryType==="field"&&o.area?.shape==="circle"){const c=worldToScreen(o.area.cx??o.x,o.area.cy??o.y),r=Math.abs((o.area.radius||0)*s),g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,r);g.addColorStop(0,hexToRgba(pal.color,.30));g.addColorStop(.62,hexToRgba(pal.color,.14));g.addColorStop(1,hexToRgba(pal.color,0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(c.x,c.y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=hexToRgba(pal.line,.7);ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.stroke();ctx.restore();return}
+      if(!traceSpatialPath(ctx,o)){ctx.restore();return}ctx.fillStyle=hexToRgba(pal.color,o.geometryType==="field"?.16:hard?.28:.18);ctx.strokeStyle=hexToRgba(pal.line,.78);ctx.lineWidth=hard?2.5:1.8;ctx.setLineDash(hard?[]:o.geometryType==="field"?[5,5]:[9,6]);ctx.fill();ctx.stroke();ctx.restore();
+    })
+  }
+  function hexToRgba(hex,alpha){const h=String(hex||"#777").replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`}
+  function drawPrecisionGrid(ctx,v,s){
+    const minor=10,minorPx=minor*s,startX=Math.floor(v.left/minor)*minor,endX=v.right+minor,startY=Math.floor(v.bottom/minor)*minor,endY=v.top+minor;
+    ctx.save();ctx.lineWidth=1;for(let x=startX;x<=endX;x+=minor){const p=worldToScreen(x,0),major=Math.abs((((x-50)%100)+100)%100)<.001;ctx.strokeStyle=major?"rgba(52,59,56,.44)":"rgba(60,67,64,.16)";ctx.lineWidth=major?1.5:1;ctx.beginPath();ctx.moveTo(Math.round(p.x)+.5,0);ctx.lineTo(Math.round(p.x)+.5,v.height);ctx.stroke()}
+    for(let y=startY;y<=endY;y+=minor){const p=worldToScreen(0,y),major=Math.abs((((y-50)%100)+100)%100)<.001;ctx.strokeStyle=major?"rgba(52,59,56,.44)":"rgba(60,67,64,.16)";ctx.lineWidth=major?1.5:1;ctx.beginPath();ctx.moveTo(0,Math.round(p.y)+.5);ctx.lineTo(v.width,Math.round(p.y)+.5);ctx.stroke()}
+    if(minorPx>76){ctx.font="600 7px ui-monospace,monospace";ctx.fillStyle="rgba(48,55,51,.48)";ctx.textBaseline="top";for(let x=startX;x<=endX;x+=minor){for(let y=startY;y<=endY;y+=minor){const p=worldToScreen(x,y+minor);ctx.fillText(`${signed(x+5)},${signed(y+5)}`,p.x+4,p.y+4)}}}
+    const zero=worldToScreen(0,0);ctx.strokeStyle="rgba(48,55,52,.62)";ctx.lineWidth=2;if(zero.x>-10&&zero.x<v.width+10){ctx.beginPath();ctx.moveTo(zero.x,0);ctx.lineTo(zero.x,v.height);ctx.stroke()}if(zero.y>-10&&zero.y<v.height+10){ctx.beginPath();ctx.moveTo(0,zero.y);ctx.lineTo(v.width,zero.y);ctx.stroke()}ctx.restore();
+  }
+  function drawFlowArrow(ctx,x,y,angle,color,size=7){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*.65,-size*.55);ctx.lineTo(-size*.25,0);ctx.lineTo(-size*.65,size*.55);ctx.closePath();ctx.fill();ctx.restore()}
+  function drawPrecisionLines(ctx,v,s){
+    state.objects.filter(o=>o.geometryType==="line"&&o.path?.length>=2).forEach(o=>{const cat=terrainCategory(o),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.water,pts=o.path.map(pt=>worldToScreen(pt[0],pt[1]));ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle="rgba(244,248,246,.72)";ctx.lineWidth=Math.max(7,Math.min(18,4.2*state.camera.zoom));ctx.stroke();ctx.strokeStyle=pal.line;ctx.lineWidth=Math.max(3.5,Math.min(11,2.2*state.camera.zoom));ctx.stroke();
+      if(cat==="water"){let carry=0,spacing=82;for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(!len)continue;let d=spacing-carry;while(d<len){const t=d/len;drawFlowArrow(ctx,a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx),"rgba(237,249,252,.9)",6);d+=spacing}carry=Math.max(0,len-(d-spacing))}}
+      ctx.restore();
+    })
+  }
+  function updatePrecisionMode(){
+    const before=state.precisionMode;if(!state.precisionMode&&state.camera.zoom>=PRECISION_ENTER_ZOOM)state.precisionMode=true;else if(state.precisionMode&&state.camera.zoom<=PRECISION_EXIT_ZOOM)state.precisionMode=false;
+    if(before!==state.precisionMode){state.flippedCell=null;state.precisionClusterOpen=null;els.viewport.classList.add("precision-mode-enter");setTimeout(()=>els.viewport.classList.remove("precision-mode-enter"),320)}
+    els.viewport.classList.toggle("precision-mode",state.precisionMode);els.viewport.classList.toggle("precision-deep",state.precisionMode&&state.camera.zoom>=7.5);els.precisionModeBadge?.classList.toggle("hidden",!state.precisionMode);els.precisionTerrainLegend?.classList.toggle("hidden",!state.precisionMode||!state.layers.terrain);
+    if(els.mapGuide)els.mapGuide.innerHTML=state.precisionMode?"<span>10里彩色地形</span><i></i><span>拖动地图</span><i></i><span>单击彩色对象查看资料</span><i></i><span>双击空白处按精确坐标新增</span>":"<span>拖动地图</span><i></i><span>滚轮缩放</span><i></i><span>单击地块</span><i></i><span>放大至420%进入彩色精细地图</span>";
+  }
+  function precisionSearchClass(items,anchorKey,search){if(!search.q)return "";if(items.some(o=>nameMatchKind(o,search.q)==="exact"))return "search-exact";if(items.some(o=>nameMatchKind(o,search.q)))return "search-name";if(items.some(o=>search.objectMatches.some(h=>h.object.id===o.id)))return "search-match";if(search.relatedCells.has(anchorKey))return "search-related";return "search-dim"}
+  function renderPrecisionLayer(){
+    const v=visibleWorld(),pad=35,stateSearch=getSearchContext(),focus=getSpatialFocusContext(),groups=new Map();
+    state.objects.forEach(o=>{const a=objectAnchor(o);if(a.x<v.left-pad||a.x>v.right+pad||a.y<v.bottom-pad||a.y>v.top+pad)return;const key=`${a.x.toFixed(1)},${a.y.toFixed(1)}`;if(!groups.has(key))groups.set(key,{key,x:a.x,y:a.y,items:[]});groups.get(key).items.push(o)});
+    const html=[];groups.forEach(g=>{const items=sortObjects(g.items),selected=items.some(o=>o.id===state.selectedId),ordered=state.filters.q?[...items].sort((a,b)=>searchRank(a,state.filters.q)-searchRank(b,state.filters.q)):items,main=ordered.find(o=>o.id===state.selectedId)||ordered[0],cat=terrainCategory(main),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.unknown,p=worldToScreen(g.x,g.y),anchorCell=cellKey(cellIndex(g.x),cellIndex(g.y)),searchClass=precisionSearchClass(items,anchorCell,stateSearch),spatialClass=!stateSearch.q&&focus.active&&!focus.memberCells.has(anchorCell)?"spatial-dim":"",hasEvents=items.some(o=>String(o.events||"").trim()||terrainCategory(o)==="event"),open=state.precisionClusterOpen===g.key;
+      const popup=open&&items.length>1?`<div class="precision-cluster-popover">${ordered.map(o=>{const oc=terrainCategory(o),op=TERRAIN_PALETTE[oc]||TERRAIN_PALETTE.unknown;return `<button data-precision-object="${esc(o.id)}" class="${o.id===state.selectedId?'selected':''}"><i style="--dot:${op.color}"></i><span><strong>${esc(o.name)}</strong><small>${esc(o.type||'未分类')} · ${coordText(o.x,o.y)}</small></span></button>`}).join("")}</div>`:"";
+      html.push(`<div class="precision-object-group ${cat} ${main.geometryType==='field'?'field':''} ${selected?'selected':''} ${hasEvents?'has-events':''} ${searchClass} ${spatialClass}" data-precision-group="${esc(g.key)}" style="left:${p.x}px;top:${p.y}px;--marker-color:${pal.color};--marker-soft:${hexToRgba(pal.color,.23)}"><button class="precision-marker" data-precision-main="${esc(main.id)}" title="${esc(main.name)} · ${coordText(g.x,g.y)}"><span class="precision-marker-core"></span>${items.length>1?`<span class="precision-marker-count">${items.length}</span>`:""}<span class="precision-marker-name">${state.filters.q?markSearchText(main.name,state.filters.q):esc(main.name)}</span><span class="precision-marker-coord">${coordText(g.x,g.y)}</span></button>${popup}</div>`)
+    });els.tileLayer.innerHTML=html.join("");bindPrecisionEvents();
+  }
+  function bindPrecisionEvents(){
+    els.tileLayer.querySelectorAll(".precision-object-group").forEach(group=>{group.addEventListener("pointerdown",e=>e.stopPropagation());const main=group.querySelector("[data-precision-main]");main?.addEventListener("click",e=>{e.stopPropagation();const key=group.dataset.precisionGroup,items=state.objects.filter(o=>{const a=objectAnchor(o);return `${a.x.toFixed(1)},${a.y.toFixed(1)}`===key});if(items.length>1){state.precisionClusterOpen=state.precisionClusterOpen===key?null:key;scheduleRender()}else if(main.dataset.precisionMain)selectObject(main.dataset.precisionMain)});main?.addEventListener("dblclick",e=>{e.stopPropagation();openObjectForm(state.objects.find(o=>o.id===main.dataset.precisionMain))});main?.addEventListener("mouseenter",e=>{const o=state.objects.find(x=>x.id===main.dataset.precisionMain);if(o)showTooltip(`${o.name} · ${o.type||'未分类'} · ${coordText(o.x,o.y)}`,e.clientX,e.clientY)});main?.addEventListener("mousemove",e=>moveTooltip(e.clientX,e.clientY));main?.addEventListener("mouseleave",hideTooltip);
+      group.querySelectorAll("[data-precision-object]").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();state.precisionClusterOpen=null;selectObject(btn.dataset.precisionObject)}));
+    })
+  }
   function resizeCanvas(){const r=els.viewport.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);els.canvas.width=Math.max(1,Math.round(r.width*dpr));els.canvas.height=Math.max(1,Math.round(r.height*dpr));els.canvas.style.width=r.width+"px";els.canvas.style.height=r.height+"px"}
   function scheduleRender(){if(state.renderQueued)return;state.renderQueued=true;requestAnimationFrame(()=>{state.renderQueued=false;renderMap()})}
   function visibleWorld(){const r=els.viewport.getBoundingClientRect(),s=scale();return {left:state.camera.x-r.width/(2*s),right:state.camera.x+r.width/(2*s),bottom:state.camera.y-r.height/(2*s),top:state.camera.y+r.height/(2*s),width:r.width,height:r.height}}
   function renderMap(){
     if(!els.viewport.clientWidth)return;
+    updatePrecisionMode();
     drawCanvas(); renderTiles();
     els.zoomReadout.textContent=Math.round(state.camera.zoom*100)+"%";
-    els.cameraStatus.textContent=`中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
-    els.closeFlipBtn.classList.toggle("hidden",!state.flippedCell);
+    els.cameraStatus.textContent=`${state.precisionMode?"10里彩色精细地图 · ":""}中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
+    els.closeFlipBtn.classList.toggle("hidden",state.precisionMode||!state.flippedCell);
     const spatial=getSpatialFocusContext();
     if(els.clearSpatialFocusBtn){
       els.clearSpatialFocusBtn.classList.toggle("hidden",!spatial.active);
@@ -338,15 +564,11 @@
   function drawCanvas(){
     const ctx=els.canvas.getContext("2d"),r=els.viewport.getBoundingClientRect(),dpr=els.canvas.width/r.width;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,r.width,r.height);
     const v=visibleWorld(),s=scale(),cellPx=CELL_LI*s;
-    ctx.fillStyle="#cfd1d0";ctx.fillRect(0,0,r.width,r.height);
-    // neutral gray foundation with a restrained light falloff
+    ctx.fillStyle=state.precisionMode?"#aeb1af":"#cfd1d0";ctx.fillRect(0,0,r.width,r.height);
     const grad=ctx.createRadialGradient(r.width*.15,r.height*.05,0,r.width*.15,r.height*.05,r.width*.72);grad.addColorStop(0,"rgba(255,255,255,.22)");grad.addColorStop(1,"rgba(255,255,255,0)");ctx.fillStyle=grad;ctx.fillRect(0,0,r.width,r.height);
-    if(state.layers.areas)drawAreas(ctx,v,s);
-    drawGrid(ctx,v,s,cellPx);
-    if(state.layers.rivers)drawLines(ctx,v,s);
-    drawContextDimming(ctx,v);
-    drawSearchHighlights(ctx,v,s);
-    drawOrigin(ctx,s);
+    if(state.precisionMode){drawPrecisionTerrain(ctx,v,s);drawPrecisionGrid(ctx,v,s);if(state.layers.rivers)drawPrecisionLines(ctx,v,s)}
+    else{if(state.layers.areas)drawAreas(ctx,v,s);drawGrid(ctx,v,s,cellPx);if(state.layers.rivers)drawLines(ctx,v,s)}
+    drawContextDimming(ctx,v);drawSearchHighlights(ctx,v,s);drawOrigin(ctx,s);
   }
   function drawGrid(ctx,v,s,cellPx){
     const startX=Math.floor((v.left-50)/100)*100+50, endX=v.right+100;const startY=Math.floor((v.bottom-50)/100)*100+50,endY=v.top+100;
@@ -380,6 +602,7 @@
   function drawOrigin(ctx,s){const p=worldToScreen(0,0),size=Math.max(6,Math.min(32,8*state.camera.zoom));ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle="#ad4d3d";ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.fillRect(-size/2,-size/2,size,size);ctx.strokeRect(-size/2,-size/2,size,size);ctx.restore();if(state.camera.zoom>.42){ctx.fillStyle="#7b3329";ctx.font="700 10px sans-serif";ctx.fillText("都广原点",p.x+10,p.y-10)}}
 
   function renderTiles(){
+    if(state.precisionMode){renderPrecisionLayer();return}
     const v=visibleWorld(),cellPx=BASE_CELL_PX*state.camera.zoom;const gxMin=Math.floor((v.left-50)/100)-1,gxMax=Math.ceil((v.right+50)/100)+1,gyMin=Math.floor((v.bottom-50)/100)-1,gyMax=Math.ceil((v.top+50)/100)+1;
     const search=getSearchContext(),spatialFocus=getSpatialFocusContext(),filteredIds=new Set(search.filteredObjects.map(o=>o.id)),allMap=buildCellMap(state.objects),changed=changedObjectIds(),q=!!search.q;const fragments=[];
     for(let gy=gyMax;gy>=gyMin;gy--){for(let gx=gxMin;gx<=gxMax;gx++){
@@ -846,66 +1069,109 @@
   function normalizeKey(k){return String(k||"").replace(/\s+/g,"").replace(/[（）()]/g,"").replace(/／/g,"/")}
   function parseNumber(value,label,issues,line){const s=String(value??"").trim();if(!s){issues.push({level:"error",message:`缺少${label}`,line});return null}const n=Number(s.replace(/[里公里]/g,""));if(!Number.isFinite(n)){issues.push({level:"error",message:`${label}必须是数字，当前为“${s}”`,line});return null}return n}
   function parsePointList(values,label,issues,line,min){const out=[];(values||[]).forEach((v,i)=>{const m=String(v).trim().match(/^([+-]?\d+(?:\.\d+)?)\s*[,，]\s*([+-]?\d+(?:\.\d+)?)$/);if(!m)issues.push({level:"error",message:`${label}第${i+1}项应为“X,Y”，当前为“${v}”`,line});else out.push([Number(m[1]),Number(m[2])])});if(out.length<min)issues.push({level:"error",message:`${label}至少需要${min}个有效坐标点`,line});return out}
-  function parseMarkdown(text){
-    const src=String(text||"").replace(/\r\n?/g,"\n"), lines=src.split("\n"), headerRe=/^###\s*对象\s*[：:]\s*(.+?)\s*$/gm, matches=[...src.matchAll(headerRe)];
-    const legacy=[...src.matchAll(/^###\s*坐标\s*[：:]\s*(.+?)\s*$/gm)];
-    const malformedHeaders=[];lines.forEach((line,i)=>{if(/^#{1,2}\s*对象\s*[：:]/.test(line)||/^#{4,}\s*对象\s*[：:]/.test(line))malformedHeaders.push({level:"error",message:"对象标题层级错误，应使用三个#：### 对象：名称。",line:i+1})});
-    if(!matches.length){return {format:legacy.length?"legacy":"unknown",objects:[],globalIssues:legacy.length?[{level:"error",message:"识别到旧版“### 坐标：”格式。本Demo先进行格式提示，建议转换为“### 对象：”格式后导入。",line:1}]:malformedHeaders.length?malformedHeaders:[{level:"error",message:"未识别到对象标题。每个对象必须使用“### 对象：名称”。",line:1}]}}
-    const objects=[];matches.forEach((m,index)=>{
-      const start=m.index, end=index+1<matches.length?matches[index+1].index:src.length, block=src.slice(start,end), startLine=src.slice(0,start).split("\n").length, blockLines=block.split("\n"), fields={}, fieldLines={}, unknown=[], issues=[], headerName=m[1].trim();let listKey=null;
-      blockLines.slice(1).forEach((raw,i)=>{const ln=startLine+i+1,field=raw.match(/^\s*\*\s*([^：:]+)\s*[：:]\s*(.*)$/);if(field){const key=normalizeKey(field[1]),value=field[2].trim();fields[key]=value;fieldLines[key]=ln;listKey=(value===""&&/路径节点|边界顶点/.test(key))?key:null;return}const li=raw.match(/^\s{2,}[-*]\s*(.+)$/);if(li&&listKey){if(!Array.isArray(fields[listKey]))fields[listKey]=[];fields[listKey].push(li[1].trim())}});
-      const get=(...keys)=>{for(const k of keys){const nk=normalizeKey(k);if(fields[nk]!==undefined)return fields[nk]}return ""}, lineOf=(...keys)=>{for(const k of keys){const nk=normalizeKey(k);if(fieldLines[nk])return fieldLines[nk]}return startLine};
-      let name=String(get("地名")||"").trim();if(!name){name=headerName;issues.push({level:"warn",message:"未填写“地名”字段，已暂用对象标题作为地名。",line:startLine})}
-      const rawGeom=String(get("几何类型")||"").trim(), geomMap={"点":"point","点对象":"point","point":"point","线":"line","线型对象":"line","line":"line","面积":"area","面积对象":"area","area":"area","作用域":"field","field":"field"}, geometryType=geomMap[rawGeom.toLowerCase()]||geomMap[rawGeom];
-      if(!rawGeom)issues.push({level:"error",message:"缺少必填字段“几何类型”。",line:startLine});else if(!geometryType)issues.push({level:"error",message:`无法识别几何类型“${rawGeom}”；可用：点、线、面积、作用域。`,line:lineOf("几何类型")});
-      let x=null,y=null,path=[],area=null;
-      if(geometryType==="point"){
-        x=parseNumber(get("X坐标里","X坐标","中心X里","中心X"),"X坐标（里）",issues,lineOf("X坐标里","X坐标"));y=parseNumber(get("Y坐标里","Y坐标","中心Y里","中心Y"),"Y坐标（里）",issues,lineOf("Y坐标里","Y坐标"));
-      }else if(geometryType==="line"){
-        path=parsePointList(Array.isArray(get("路径节点"))?get("路径节点"):[],"路径节点",issues,lineOf("路径节点"),2);if(path.length){x=path[0][0];y=path[0][1]}
-      }else if(geometryType==="area"||geometryType==="field"){
-        x=parseNumber(get("中心X里","中心X","X坐标里","X坐标"),"中心X（里）",issues,lineOf("中心X里","中心X"));y=parseNumber(get("中心Y里","中心Y","Y坐标里","Y坐标"),"中心Y（里）",issues,lineOf("中心Y里","中心Y"));
-        const shapeRaw=String(get("面积形状","作用域形状")||"").trim(), shapeMap={"方形":"square","矩形":"rect","圆形":"circle","多边形":"polygon"},shape=shapeMap[shapeRaw]||shapeRaw.toLowerCase();if(!shapeRaw)issues.push({level:"error",message:`缺少“${geometryType==='field'?'作用域形状':'面积形状'}”。`,line:startLine});else if(!["square","rect","circle","polygon"].includes(shape))issues.push({level:"error",message:`无法识别形状“${shapeRaw}”。`,line:lineOf("面积形状","作用域形状")});
-        const evidenceText=String(get("面积证据等级","证据等级")||"");const evidence=/原文|硬面积/.test(evidenceText)?"hard":"candidate";
-        if(shape==="circle"){
-          const radius=parseNumber(get("作用半径里","作用半径","半径里","半径"),"半径（里）",issues,lineOf("作用半径里","作用半径","半径里","半径"));if(x!==null&&y!==null&&radius!==null)area={shape:"circle",cx:x,cy:y,radius,west:x-radius,east:x+radius,south:y-radius,north:y+radius,evidence};
-        }else if(shape==="polygon"){
-          const pts=parsePointList(Array.isArray(get("边界顶点"))?get("边界顶点"):[],"边界顶点",issues,lineOf("边界顶点"),3);if(pts.length>=3){const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);area={shape:"polygon",points:pts,west:Math.min(...xs),east:Math.max(...xs),south:Math.min(...ys),north:Math.max(...ys),evidence};if(x===null||y===null){x=xs.reduce((a,b)=>a+b,0)/xs.length;y=ys.reduce((a,b)=>a+b,0)/ys.length}}
-        }else if(shape==="square"||shape==="rect"){
-          let w=parseNumber(get("东西宽里","东西宽","边长里","边长"),shape==="square"?"边长／东西宽（里）":"东西宽（里）",issues,lineOf("东西宽里","东西宽","边长里","边长"));let h=shape==="square"?w:parseNumber(get("南北长里","南北长"),"南北长（里）",issues,lineOf("南北长里","南北长"));if(x!==null&&y!==null&&w!==null&&h!==null)area={shape,west:x-w/2,east:x+w/2,south:y-h/2,north:y+h/2,evidence};
-        }
+  function parseMarkdownFields(block,startLine){
+    const blockLines=block.split("\n"),fields={},fieldLines={},duplicateFields=[];let currentKey=null,listMode=false;
+    blockLines.slice(1).forEach((raw,i)=>{const ln=startLine+i+1,field=raw.match(/^\s*\*\s*([^：:]+)\s*[：:]\s*(.*)$/);if(field){const key=normalizeKey(field[1]),value=field[2].trim();if(Object.prototype.hasOwnProperty.call(fields,key))duplicateFields.push({key,line:ln});currentKey=key;listMode=value===""&&/路径节点|边界顶点/.test(key);fields[key]=listMode?[]:value;fieldLines[key]=ln;return}
+      if(!currentKey)return;const list=raw.match(/^\s{2,}[-*]\s*(.+)$/);if(list&&listMode){fields[currentKey].push(list[1].trim());return}
+      if(/^\s{2,}/.test(raw)||(/^\s*$/.test(raw)&&!Array.isArray(fields[currentKey]))){if(Array.isArray(fields[currentKey]))return;const add=raw.trim();const old=String(fields[currentKey]||"");fields[currentKey]=add?(old?`${old}\n${add}`:add):old;return}
+      if(raw.trim()&&!/^---\s*$/.test(raw)){currentKey=null;listMode=false}
+    });return {fields,fieldLines,duplicateFields}
+  }
+  function markdownFieldAccess(fields,fieldLines,startLine){
+    const find=(...keys)=>{for(const k of keys){const nk=normalizeKey(k);if(Object.prototype.hasOwnProperty.call(fields,nk))return {present:true,value:fields[nk],line:fieldLines[nk]||startLine,key:nk}}return {present:false,value:"",line:startLine,key:""}};
+    return {find,get:(...keys)=>find(...keys).value,lineOf:(...keys)=>find(...keys).line}
+  }
+  function parseTileCell(value,fields,access,issues,line){
+    const sources=[value,access.get("地块坐标","主格坐标")].map(v=>String(v||"").trim()).filter(Boolean);let gx=null,gy=null;
+    for(const source of sources){let m=source.match(/X\s*([+-]\d+)\s*_?\s*Y\s*([+-]\d+)/i);if(m){gx=Number(m[1]);gy=Number(m[2]);break}m=source.match(/^[（(]?\s*([+-]?\d+)\s*[,，]\s*([+-]?\d+)\s*[）)]?$/);if(m){gx=Number(m[1]);gy=Number(m[2]);break}}
+    if(gx===null){const fx=access.find("主格X","地块X"),fy=access.find("主格Y","地块Y");if(fx.present&&fy.present){gx=Number(fx.value);gy=Number(fy.value)}}
+    if(!Number.isInteger(gx)||!Number.isInteger(gy)){issues.push({level:"error",message:"地块档案必须提供整数主格坐标，例如“### 地块档案：X+002_Y+014”。",line});return {gx:null,gy:null,key:""}}
+    return {gx,gy,key:cellKey(gx,gy)}
+  }
+  function parseTimeState(value,issues,line){const s=String(value||"").trim();if(!s)return "unknown";if(/未判定|未知/.test(s))return "unknown";if(/循环/.test(s))return "loop";if(/停滞|停止/.test(s))return "stopped";if(/异常|不正常/.test(s))return "no";if(/正常/.test(s))return "yes";issues.push({level:"warn",message:`无法标准化时间流逝“${s}”，将保留为未判定。`,line});return "unknown"}
+  function parseReachableState(value,issues,line){const s=String(value||"").trim();if(!s)return "unknown";if(/未判定|未知/.test(s))return "unknown";if(/条件/.test(s))return "conditional";if(/不可|不能|否/.test(s))return "no";if(/可以|可达|自由抵达|是/.test(s))return "yes";issues.push({level:"warn",message:`无法标准化玩家可达性“${s}”，将保留为未判定。`,line});return "unknown"}
+  function parseObjectEntry(headerName,block,startLine){
+    const {fields,fieldLines,duplicateFields}=parseMarkdownFields(block,startLine),access=markdownFieldAccess(fields,fieldLines,startLine),get=access.get,lineOf=access.lineOf,unknown=[],issues=[];duplicateFields.forEach(d=>issues.push({level:"warn",message:`字段“${d.key}”在同一区块重复出现，程序采用最后一次内容。`,line:d.line}));
+    let name=String(get("地名")||"").trim();if(!name){name=headerName;issues.push({level:"warn",message:"未填写“地名”字段，已暂用对象标题作为地名。",line:startLine})}
+    const rawGeom=String(get("几何类型")||"").trim(),geomMap={"点":"point","点对象":"point","point":"point","线":"line","线型对象":"line","line":"line","面积":"area","面积对象":"area","area":"area","作用域":"field","field":"field"},geometryType=geomMap[rawGeom.toLowerCase()]||geomMap[rawGeom];
+    if(!rawGeom)issues.push({level:"error",message:"缺少必填字段“几何类型”。",line:startLine});else if(!geometryType)issues.push({level:"error",message:`无法识别几何类型“${rawGeom}”；可用：点、线、面积、作用域。`,line:lineOf("几何类型")});
+    let x=null,y=null,path=[],area=null;
+    if(geometryType==="point"){
+      x=parseNumber(get("X坐标里","X坐标","中心X里","中心X"),"X坐标（里）",issues,lineOf("X坐标里","X坐标"));y=parseNumber(get("Y坐标里","Y坐标","中心Y里","中心Y"),"Y坐标（里）",issues,lineOf("Y坐标里","Y坐标"));
+    }else if(geometryType==="line"){
+      path=parsePointList(Array.isArray(get("路径节点"))?get("路径节点"):[],"路径节点",issues,lineOf("路径节点"),2);if(path.length){x=path[0][0];y=path[0][1]}
+    }else if(geometryType==="area"||geometryType==="field"){
+      x=parseNumber(get("中心X里","中心X","X坐标里","X坐标"),"中心X（里）",issues,lineOf("中心X里","中心X"));y=parseNumber(get("中心Y里","中心Y","Y坐标里","Y坐标"),"中心Y（里）",issues,lineOf("中心Y里","中心Y"));
+      const shapeRaw=String(get("面积形状","作用域形状")||"").trim(),shapeMap={"方形":"square","矩形":"rect","圆形":"circle","多边形":"polygon"},shape=shapeMap[shapeRaw]||shapeRaw.toLowerCase();if(!shapeRaw)issues.push({level:"error",message:`缺少“${geometryType==='field'?'作用域形状':'面积形状'}”。`,line:startLine});else if(!["square","rect","circle","polygon"].includes(shape))issues.push({level:"error",message:`无法识别形状“${shapeRaw}”。`,line:lineOf("面积形状","作用域形状")});
+      const evidenceText=String(get("面积证据等级","证据等级")||"");const evidence=/原文|硬面积/.test(evidenceText)?"hard":/项目/.test(evidenceText)?"project":"candidate";
+      if(shape==="circle"){
+        const radius=parseNumber(get("作用半径里","作用半径","半径里","半径"),"半径（里）",issues,lineOf("作用半径里","作用半径","半径里","半径"));if(x!==null&&y!==null&&radius!==null)area={shape:"circle",cx:x,cy:y,radius,west:x-radius,east:x+radius,south:y-radius,north:y+radius,evidence};
+      }else if(shape==="polygon"){
+        const pts=parsePointList(Array.isArray(get("边界顶点"))?get("边界顶点"):[],"边界顶点",issues,lineOf("边界顶点"),3);if(pts.length>=3){const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);area={shape:"polygon",points:pts,west:Math.min(...xs),east:Math.max(...xs),south:Math.min(...ys),north:Math.max(...ys),evidence};if(x===null||y===null){x=xs.reduce((a,b)=>a+b,0)/xs.length;y=ys.reduce((a,b)=>a+b,0)/ys.length}}
+      }else if(shape==="square"||shape==="rect"){
+        const w=parseNumber(get("东西宽里","东西宽","边长里","边长"),shape==="square"?"边长／东西宽（里）":"东西宽（里）",issues,lineOf("东西宽里","东西宽","边长里","边长"));const h=shape==="square"?w:parseNumber(get("南北长里","南北长"),"南北长（里）",issues,lineOf("南北长里","南北长"));if(x!==null&&y!==null&&w!==null&&h!==null)area={shape,west:x-w/2,east:x+w/2,south:y-h/2,north:y+h/2,evidence};
       }
-      const id=String(get("对象ID")||"").trim();if(id&&state.objects.some(o=>o.id===id))issues.push({level:"error",message:`对象ID“${id}”已存在，不能重复导入。`,line:lineOf("对象ID")});
-      const chapter=String(get("所属经篇")||"").trim();if(state.objects.some(o=>o.name===name&&(!chapter||o.chapter===chapter)))issues.push({level:"warn",message:`地图中已有可能同名对象“${name}”，导入时不会自动覆盖。`,line:startLine});
-      const known=new Set(["对象ID","地名","类型","所属经篇","所属区域/山系","所属区域／山系","几何类型","X坐标里","X坐标","Y坐标里","Y坐标","中心X里","中心X","中心Y里","中心Y","坐标性质","锁定状态","对象范围/占地","对象范围／占地","直接参照地和原文方向","原文距离","原文","古注","其他古籍","异文","现代考证","常见定位说","百度/维基补充","百度／维基补充","误传辨析","设定与推导","来源URL","面积形状","作用域形状","作用半径里","作用半径","半径里","半径","东西宽里","东西宽","南北长里","南北长","边长里","边长","面积证据等级","证据等级","边界顶点","路径节点","原文流向","汇入对象"] .map(normalizeKey));Object.keys(fields).forEach(k=>{if(!known.has(k))unknown.push(k)});if(unknown.length)issues.push({level:"warn",message:`发现未映射字段：${unknown.join("、")}。这些字段会暂存，但不会进入标准栏位。`,line:startLine});
-      const status=issues.some(i=>i.level==="error")?"error":issues.some(i=>i.level==="warn")?"warn":"ok";
-      objects.push({headerName,name,id,geometryType,x,y,path,area,fields,fieldLines,issues,status,startLine,raw:block,chapter,type:String(get("类型")||"").trim(),region:String(get("所属区域/山系","所属区域／山系")||"").trim(),lockStatus:String(get("锁定状态")||"").trim(),coordinateNature:String(get("坐标性质")||"").trim(),reference:String(get("直接参照地和原文方向")||"").trim(),originalDistance:String(get("原文距离")||"").trim(),range:String(get("对象范围/占地","对象范围／占地")||"").trim(),original:String(get("原文")||"").trim(),annotations:String(get("古注")||"").trim(),otherTexts:String(get("其他古籍")||"").trim(),variants:String(get("异文")||"").trim(),modernResearch:String(get("现代考证")||"").trim(),commonLocation:String(get("常见定位说")||"").trim(),popularSources:String(get("百度/维基补充","百度／维基补充")||"").trim(),misconceptions:String(get("误传辨析")||"").trim(),derivation:String(get("设定与推导")||"").trim(),sourceUrl:String(get("来源URL")||"").trim()});
-    });
-    return {format:"object-v1",objects,globalIssues:malformedHeaders};
+    }
+    const id=String(get("对象ID")||"").trim();if(id&&state.objects.some(o=>o.id===id))issues.push({level:"error",message:`对象ID“${id}”已存在，不能重复导入。`,line:lineOf("对象ID")});
+    const chapter=String(get("所属经篇")||"").trim();if(state.objects.some(o=>o.name===name&&(!chapter||o.chapter===chapter)))issues.push({level:"warn",message:`地图中已有可能同名对象“${name}”，导入时不会自动覆盖。`,line:startLine});
+    const known=new Set(["对象ID","地名","类型","所属经篇","所属区域/山系","所属区域／山系","几何类型","X坐标里","X坐标","Y坐标里","Y坐标","中心X里","中心X","中心Y里","中心Y","坐标性质","锁定状态","对象范围/占地","对象范围／占地","直接参照地和原文方向","原文距离","原文","古注","其他古籍","异文","现代考证","常见定位说","百度/维基补充","百度／维基补充","误传辨析","设定与推导","来源URL","面积形状","作用域形状","作用半径里","作用半径","半径里","半径","东西宽里","东西宽","南北长里","南北长","边长里","边长","面积证据等级","证据等级","边界顶点","路径节点","原文流向","汇入对象"].map(normalizeKey));Object.keys(fields).forEach(k=>{if(!known.has(k))unknown.push(k)});if(unknown.length)issues.push({level:"warn",message:`发现未映射字段：${unknown.join("、")}。这些字段不会进入对象标准栏位。`,line:startLine});
+    const status=issues.some(i=>i.level==="error")?"error":issues.some(i=>i.level==="warn")?"warn":"ok";
+    return {kind:"object",headerName,name,id,geometryType,x,y,path,area,fields,fieldLines,issues,status,startLine,raw:block,chapter,type:String(get("类型")||"").trim(),region:String(get("所属区域/山系","所属区域／山系")||"").trim(),lockStatus:String(get("锁定状态")||"").trim(),coordinateNature:String(get("坐标性质")||"").trim(),reference:String(get("直接参照地和原文方向")||"").trim(),originalDistance:String(get("原文距离")||"").trim(),range:String(get("对象范围/占地","对象范围／占地")||"").trim(),original:String(get("原文")||"").trim(),annotations:String(get("古注")||"").trim(),otherTexts:String(get("其他古籍")||"").trim(),variants:String(get("异文")||"").trim(),modernResearch:String(get("现代考证")||"").trim(),commonLocation:String(get("常见定位说")||"").trim(),popularSources:String(get("百度/维基补充","百度／维基补充")||"").trim(),misconceptions:String(get("误传辨析")||"").trim(),derivation:String(get("设定与推导")||"").trim(),sourceUrl:String(get("来源URL")||"").trim()}
   }
-  function analyzeImportText(){updateImportCharCount();const text=els.importText.value;if(!text.trim()){state.importAnalysis=null;renderImportAnalysis(null);return}state.importAnalysis=parseMarkdown(text);state.importSelectedIndex=Math.min(state.importSelectedIndex,Math.max(0,state.importAnalysis.objects.length-1));renderImportAnalysis(state.importAnalysis)}
+  function parseTileProfileEntry(headerName,block,startLine){
+    const {fields,fieldLines,duplicateFields}=parseMarkdownFields(block,startLine),access=markdownFieldAccess(fields,fieldLines,startLine),issues=[],unknown=[];duplicateFields.forEach(d=>issues.push({level:"warn",message:`字段“${d.key}”在同一区块重复出现，程序采用最后一次内容。`,line:d.line}));
+    const cell=parseTileCell(headerName,fields,access,issues,startLine),patch={},specifiedKeys=[],scriptureEvents={},scriptureSpecified=[];
+    TILE_PROFILE_FIELD_DEFS.forEach(def=>{const hit=access.find(...def.aliases);if(hit.present){patch[def.key]=String(hit.value??"").trim();specifiedKeys.push(def.key)}});
+    const timeHit=access.find("时间流逝","是否时间流逝正常");if(timeHit.present){patch.timeNormal=parseTimeState(timeHit.value,issues,timeHit.line);specifiedKeys.push("timeNormal")}
+    const reachHit=access.find("玩家是否可以抵达","玩家可达性");if(reachHit.present){patch.playerReachable=parseReachableState(reachHit.value,issues,reachHit.line);specifiedKeys.push("playerReachable")}
+    CHAPTERS_18.forEach(ch=>{const hit=access.find(`${ch}事件`,`《${ch}》事件`);if(hit.present){scriptureEvents[ch]=String(hit.value??"").trim();scriptureSpecified.push(ch)}});
+    const known=new Set(["地块坐标","主格坐标","主格X","主格Y","地块X","地块Y","时间流逝","是否时间流逝正常","玩家是否可以抵达","玩家可达性",...TILE_PROFILE_FIELD_DEFS.flatMap(d=>d.aliases),...CHAPTERS_18.flatMap(ch=>[`${ch}事件`,`《${ch}》事件`])].map(normalizeKey));Object.keys(fields).forEach(k=>{if(!known.has(k))unknown.push(k)});if(unknown.length)issues.push({level:"warn",message:`发现未映射的地块档案字段：${unknown.join("、")}。`,line:startLine});
+    if(!specifiedKeys.length&&!scriptureSpecified.length)issues.push({level:"warn",message:"地块档案没有可更新的标准字段。",line:startLine});
+    if(cell.key&&!objectsInCellKey(cell.key).length&&!state.tileProfiles[cell.key])issues.push({level:"warn",message:"该主格目前没有对象；仍可建立独立地块档案。",line:startLine});
+    const status=issues.some(i=>i.level==="error")?"error":issues.some(i=>i.level==="warn")?"warn":"ok";
+    return {kind:"tile_profile",headerName,name:`地块档案 ${cell.key||headerName}`,cellKey:cell.key,gx:cell.gx,gy:cell.gy,profilePatch:patch,specifiedKeys,scriptureEvents,scriptureSpecified,fields,fieldLines,issues,status,startLine,raw:block}
+  }
+  function parseMarkdown(text){
+    const src=String(text||"").replace(/\r\n?/g,"\n"),lines=src.split("\n"),headerRe=/^###\s*(对象|地块档案)\s*[：:]\s*(.+?)\s*$/gm,matches=[...src.matchAll(headerRe)],legacy=[...src.matchAll(/^###\s*坐标\s*[：:]\s*(.+?)\s*$/gm)],malformedHeaders=[];
+    lines.forEach((line,i)=>{if(/^#{1,2}\s*(对象|地块档案)\s*[：:]/.test(line)||/^#{4,}\s*(对象|地块档案)\s*[：:]/.test(line))malformedHeaders.push({level:"error",message:"标题层级错误，应使用三个#：### 对象：… 或 ### 地块档案：…。",line:i+1})});
+    if(!matches.length)return {format:legacy.length?"legacy":"unknown",entries:[],objects:[],profiles:[],globalIssues:legacy.length?[{level:"error",message:"识别到旧版“### 坐标：”格式。请转换为对象或地块档案格式后导入。",line:1}]:malformedHeaders.length?malformedHeaders:[{level:"error",message:"未识别到“### 对象：”或“### 地块档案：”标题。",line:1}]};
+    const entries=[];matches.forEach((m,index)=>{const start=m.index,end=index+1<matches.length?matches[index+1].index:src.length,block=src.slice(start,end),startLine=src.slice(0,start).split("\n").length,kind=m[1],headerName=m[2].trim();entries.push(kind==="对象"?parseObjectEntry(headerName,block,startLine):parseTileProfileEntry(headerName,block,startLine))});
+    const objectIds=new Map(),profileCells=new Map();entries.forEach(e=>{if(e.kind==="object"&&e.id){if(objectIds.has(e.id)){e.issues.push({level:"error",message:`同一文件中对象ID“${e.id}”重复。`,line:e.startLine});objectIds.get(e.id).issues.push({level:"error",message:`同一文件中对象ID“${e.id}”重复。`,line:objectIds.get(e.id).startLine})}else objectIds.set(e.id,e)}if(e.kind==="tile_profile"&&e.cellKey){if(profileCells.has(e.cellKey))e.issues.push({level:"warn",message:`同一文件中地块 ${e.cellKey} 出现多次，将按文件顺序依次更新。`,line:e.startLine});else profileCells.set(e.cellKey,e)}e.status=e.issues.some(i=>i.level==="error")?"error":e.issues.some(i=>i.level==="warn")?"warn":"ok"});
+    const kinds=new Set(entries.map(e=>e.kind)),format=kinds.size>1?"mixed-v1":kinds.has("tile_profile")?"tile-profile-v1":"object-v1";
+    return {format,entries,objects:entries.filter(e=>e.kind==="object"),profiles:entries.filter(e=>e.kind==="tile_profile"),globalIssues:malformedHeaders}
+  }
+  function analyzeImportText(){updateImportCharCount();const text=els.importText.value;if(!text.trim()){state.importAnalysis=null;renderImportAnalysis(null);return}state.importAnalysis=parseMarkdown(text);const entries=state.importAnalysis.entries||[];state.importSelectedIndex=Math.min(state.importSelectedIndex,Math.max(0,entries.length-1));renderImportAnalysis(state.importAnalysis)}
+  function importFormatLabel(format){return {"object-v1":"地图对象格式 v1.1","tile-profile-v1":"地块档案格式 v1.1","mixed-v1":"对象＋地块档案 v1.1","legacy":"旧版坐标索引","unknown":"格式未识别"}[format]||"格式未识别"}
   function renderImportAnalysis(a){
-    if(!a){els.importFormatBadge.className="format-badge neutral";els.importFormatBadge.textContent="等待输入";els.importValidationState.className="validation-state";els.importValidationState.textContent="尚未分析";els.importSummary.innerHTML='<div><strong>0</strong><span>识别对象</span></div><div class="ok"><strong>0</strong><span>可导入</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div>';els.importObjectList.innerHTML='<div class="import-empty">载入文件后，这里会列出识别到的对象。</div>';els.importInspector.innerHTML='<div class="import-empty">正确字段、格式错误、缺失项和重复对象会在这里逐条标示。</div>';els.importApplyBtn.disabled=true;return}
-    const ok=a.objects.filter(o=>o.status==="ok").length,warn=a.objects.filter(o=>o.status==="warn").length,error=a.objects.filter(o=>o.status==="error").length+(a.globalIssues||[]).filter(i=>i.level==="error").length,importable=a.objects.filter(o=>o.status!=="error").length;
-    const cls=a.format==="object-v1"?(error?"error":warn?"warn":"ok"):"error";els.importFormatBadge.className=`format-badge ${cls}`;els.importFormatBadge.textContent=a.format==="object-v1"?"地图对象格式 v1.0":a.format==="legacy"?"旧版坐标索引":"格式未识别";els.importValidationState.className=`validation-state ${cls}`;els.importValidationState.textContent=error?"存在阻断错误":warn?"可导入，但有警告":"全部通过";els.importSummary.innerHTML=`<div><strong>${a.objects.length}</strong><span>识别对象</span></div><div class="ok"><strong>${importable}</strong><span>可导入</span></div><div class="warn"><strong>${warn}</strong><span>警告对象</span></div><div class="error"><strong>${error}</strong><span>错误</span></div>`;
+    if(!a){els.importFormatBadge.className="format-badge neutral";els.importFormatBadge.textContent="等待输入";els.importValidationState.className="validation-state";els.importValidationState.textContent="尚未分析";els.importSummary.innerHTML='<div><strong>0</strong><span>识别条目</span></div><div class="ok"><strong>0</strong><span>可导入</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div>';els.importObjectList.innerHTML='<div class="import-empty">载入文件后，这里会列出对象和地块档案。</div>';els.importInspector.innerHTML='<div class="import-empty">正确字段、格式错误、缺失项和更新目标会在这里逐条标示。</div>';els.importApplyBtn.disabled=true;return}
+    const entries=a.entries||[],ok=entries.filter(o=>o.status==="ok").length,warn=entries.filter(o=>o.status==="warn").length,error=entries.filter(o=>o.status==="error").length+(a.globalIssues||[]).filter(i=>i.level==="error").length,importable=entries.filter(o=>o.status!=="error").length,validFormat=["object-v1","tile-profile-v1","mixed-v1"].includes(a.format),cls=validFormat?(error?"error":warn?"warn":"ok"):"error";
+    els.importFormatBadge.className=`format-badge ${cls}`;els.importFormatBadge.textContent=importFormatLabel(a.format);els.importValidationState.className=`validation-state ${cls}`;els.importValidationState.textContent=error?"存在阻断错误":warn?"可导入，但有警告":"全部通过";els.importSummary.innerHTML=`<div><strong>${entries.length}</strong><span>识别条目</span></div><div class="ok"><strong>${importable}</strong><span>可导入</span></div><div class="warn"><strong>${warn}</strong><span>警告条目</span></div><div class="error"><strong>${error}</strong><span>错误</span></div>`;
     const globalHtml=(a.globalIssues||[]).map(i=>`<div class="issue ${i.level}">第${i.line||1}行：${esc(i.message)}</div>`).join("");
-    els.importObjectList.innerHTML=globalHtml+a.objects.map((o,i)=>`<button class="import-result-item ${o.status} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${o.status==='ok'?'通过':o.status==='warn'?'警告':'错误'}</em><strong>${esc(o.name||o.headerName||'未命名对象')}</strong><small>第${o.startLine}行 · ${esc(o.geometryType||'几何类型未识别')} · ${o.x===null?'坐标未完成':coordText(o.x,o.y)}</small></button>`).join("");els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(a.objects.length)renderImportInspector(a.objects[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable;
+    els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{const meta=o.kind==="tile_profile"?`地块档案 · ${o.cellKey||"坐标未完成"}`:`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;return `<button class="import-result-item ${o.status} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${o.status==='ok'?'通过':o.status==='warn'?'警告':'错误'}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
+    els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(entries.length)renderImportInspector(entries[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable
   }
-  function renderImportInspector(o){if(!o){els.importInspector.innerHTML='<div class="import-empty">未选择对象。</div>';return}els.importInspectorMeta.textContent=`第${o.startLine}行开始`;
-    const issueHtml=o.issues.length?`<div class="issue-list">${o.issues.map(i=>`<div class="issue ${i.level}"><strong>${i.level==='error'?'格式错误':'提示'}</strong> · 第${i.line||o.startLine}行<br>${esc(i.message)}</div>`).join("")}</div>`:`<div class="issue-list"><div class="issue ok"><strong>格式正确</strong><br>必填字段与几何参数均可识别。</div></div>`;
-    const rows=[["对象标题",o.headerName],["地名",o.name],["类型",o.type||""],["所属经篇",o.chapter||""],["几何类型",o.geometryType||""],["坐标",o.x===null?"":coordText(o.x,o.y)],["面积／作用域",o.area?JSON.stringify(o.area,null,2):""],["路径节点",o.path?.length?o.path.map(p=>p.join(", ")).join("\n"):""],["锁定状态",o.lockStatus||""],["原文",o.original||""]];els.importInspector.innerHTML=issueHtml+`<div class="field-audit">${rows.map(([k,v])=>`<div class="field-audit-row"><b>${esc(k)}</b><code>${v?esc(v):'—'}</code></div>`).join("")}</div>`;
+  function renderImportInspector(o){if(!o){els.importInspector.innerHTML='<div class="import-empty">未选择条目。</div>';return}els.importInspectorMeta.textContent=`第${o.startLine}行开始`;
+    const issueHtml=o.issues.length?`<div class="issue-list">${o.issues.map(i=>`<div class="issue ${i.level}"><strong>${i.level==='error'?'格式错误':'提示'}</strong> · 第${i.line||o.startLine}行<br>${esc(i.message)}</div>`).join("")}</div>`:`<div class="issue-list"><div class="issue ok"><strong>格式正确</strong><br>${o.kind==='tile_profile'?'可更新指定地块档案。':'必填字段与几何参数均可识别。'}</div></div>`;
+    let rows;if(o.kind==="tile_profile"){const profileRows=TILE_PROFILE_FIELD_DEFS.filter(d=>o.specifiedKeys.includes(d.key)).map(d=>[d.label,o.profilePatch[d.key]??""]);rows=[["条目类型","地块档案更新"],["目标主格",o.cellKey||""],["更新方式",state.tileProfiles[o.cellKey]?"更新已有档案":"新建地块档案"],...profileRows,["时间流逝",o.specifiedKeys.includes("timeNormal")?statusText(o.profilePatch.timeNormal,"time"):""],["玩家可达性",o.specifiedKeys.includes("playerReachable")?statusText(o.profilePatch.playerReachable,"player"):""],["经篇事件",o.scriptureSpecified.map(ch=>`${ch}：${o.scriptureEvents[ch]}`).join("\n")]]}else rows=[["条目类型","地图对象"],["对象标题",o.headerName],["地名",o.name],["类型",o.type||""],["所属经篇",o.chapter||""],["几何类型",o.geometryType||""],["坐标",o.x===null?"":coordText(o.x,o.y)],["面积／作用域",o.area?JSON.stringify(o.area,null,2):""],["路径节点",o.path?.length?o.path.map(p=>p.join(", ")).join("\n"):""],["锁定状态",o.lockStatus||""],["原文",o.original||""]];
+    els.importInspector.innerHTML=issueHtml+`<div class="field-audit">${rows.map(([k,v])=>`<div class="field-audit-row"><b>${esc(k)}</b><code>${v!==""?esc(v):'—'}</code></div>`).join("")}</div>`
   }
   function importedObjectFromParsed(p){const id=p.id||nextObjectId(),obj={id,rowRef:"NEW",name:p.name,type:p.type||"未分类",x:Number(p.x)||0,y:Number(p.y)||0,coordinateText:coordText(p.x,p.y),chapter:p.chapter,region:p.region,direction:"",distance:Math.hypot(Number(p.x)||0,Number(p.y)||0),reference:p.reference,originalDistance:p.originalDistance,coordinateNature:p.coordinateNature||"Markdown导入，待复核",lockStatus:p.lockStatus,range:p.range,terrain:"",water:"",plants:"",animals:"",minerals:"",wildlife:"",beasts:"",people:"",gods:"",residents:"",appearance:"",abilities:"",events:"",original:p.original,sameName:"",annotations:p.annotations,otherTexts:p.otherTexts,variants:p.variants,modernResearch:p.modernResearch,commonLocation:p.commonLocation,popularSources:p.popularSources,misconceptions:p.misconceptions,derivation:p.derivation,sourceUrl:p.sourceUrl,geometryType:p.geometryType||"point",area:p.area||null};if(p.path?.length)obj.path=p.path;return obj}
-  function applyMarkdownImport(){const a=state.importAnalysis;if(!a)return;const valid=a.objects.filter(o=>o.status!=="error");if(!valid.length){toast("没有可导入对象","请先修正格式错误。","error");return}const added=[];valid.forEach(p=>{const obj=importedObjectFromParsed(p);if(state.objects.some(o=>o.id===obj.id))return;state.objects.push(obj);recordChange({entityId:obj.id,operation:"create",operationLabel:"Markdown导入",before:null,after:obj,summary:`从Markdown导入“${obj.name}”，${coordText(obj.x,obj.y)}`});added.push(obj)});populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();closeImportWorkspace();if(added[0])jumpToObject(added[0].id,true,true);toast("Markdown导入完成",`成功添加${added.length}个对象；错误对象未写入地图。`)}
+  function applyMarkdownImport(){const a=state.importAnalysis;if(!a)return;const valid=(a.entries||[]).filter(o=>o.status!=="error");if(!valid.length){toast("没有可导入条目","请先修正格式错误。","error");return}const added=[],profiles=[],unchanged=[];
+    valid.forEach(p=>{if(p.kind==="object"){const obj=importedObjectFromParsed(p);if(state.objects.some(o=>o.id===obj.id))return;state.objects.push(obj);recordChange({entityId:obj.id,operation:"create",operationLabel:"Markdown导入",before:null,after:obj,summary:`从Markdown导入“${obj.name}”，${coordText(obj.x,obj.y)}`});added.push(obj);return}
+      const before=state.tileProfiles[p.cellKey]?structuredClone(state.tileProfiles[p.cellKey]):null,after=structuredClone(before||{});p.specifiedKeys.forEach(k=>{after[k]=p.profilePatch[k]});const scripture={...(after.scriptureEvents||{})};p.scriptureSpecified.forEach(ch=>{scripture[ch]=p.scriptureEvents[ch]});if(p.scriptureSpecified.length)after.scriptureEvents=scripture;if(sameValue(before||{},after)){unchanged.push(p.cellKey);return}state.tileProfiles[p.cellKey]=after;recordChange({entityId:`CELL-${p.cellKey}`,entityType:"tile_profile",operation:before?"update":"create",operationLabel:before?"Markdown更新地块档案":"Markdown新增地块档案",before,after:{name:`地块 ${p.cellKey}`,...after},summary:`从Markdown${before?'更新':'建立'}地块 ${p.cellKey} 档案`});profiles.push(p.cellKey)
+    });
+    populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();closeImportWorkspace();if(added[0])jumpToObject(added[0].id,true,true);else if(profiles[0])jumpToCell(profiles[0],false);toast("Markdown导入完成",`新增对象${added.length}个，更新地块档案${profiles.length}个${unchanged.length?`，${unchanged.length}个无变化`:""}。`)
+  }
   function readImportFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{els.importFileName.textContent=file.name;els.importText.value=String(reader.result||"");analyzeImportText()};reader.onerror=()=>toast("无法读取文件",file.name,"error");reader.readAsText(file,"utf-8")}
-  function renderExamplePanel(){const tab=state.exampleTab;$$('.example-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.exampleTab===tab));if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML='<strong>正确案例</strong><span>标题、字段、坐标和几何参数均符合识别规则。</span>';els.exampleCode.textContent=CORRECT_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>每个对象以“### 对象：”开始。</li><li>所有字段使用星号与中文冒号。</li><li>数值字段只写数字，单位由字段名说明。</li><li>作用域与实体面积使用不同几何类型。</li></ul>';els.loadExampleBtn.textContent='载入正确案例到左侧'}else if(tab==='wrong'){els.exampleNotice.className='example-notice error';els.exampleNotice.innerHTML='<strong>错误案例</strong><span>包含标题级别、字段分隔、数字和几何参数错误。</span>';els.exampleCode.textContent=WRONG_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>“## 对象”少一个#，无法形成对象块。</li><li>“地名 烛光”缺少冒号。</li><li>“圆形”不是几何类型，应写在作用域形状或面积形状。</li><li>“向东三百”“八百”不是可计算数字。</li><li>线对象只有一个路径节点，不能形成线路。</li></ul>';els.loadExampleBtn.textContent='载入错误案例并查看识别'}else{els.exampleNotice.className='example-notice neutral';els.exampleNotice.innerHTML='<strong>识别规则</strong><span>这是程序实际执行的最低格式要求。</span>';els.exampleCode.textContent=IMPORT_RULES_TEXT;els.exampleNotes.innerHTML='<ul><li>格式错误会阻止对应对象导入。</li><li>警告不会阻止导入，但会进入本轮更改记录。</li><li>可能同名只提示，不自动合并。</li><li>空白普通字段允许保留为空。</li></ul>';els.loadExampleBtn.textContent='载入空白正确模板'} }
+  function renderExamplePanel(){const tab=state.exampleTab;$$('.example-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.exampleTab===tab));if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML='<strong>正确案例</strong><span>一个文件可同时新增对象并更新地块档案。</span>';els.exampleCode.textContent=CORRECT_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>对象使用“### 对象：”。</li><li>地块档案使用“### 地块档案：X+000_Y+000”。</li><li>简要、基础、详细和文明／剧情字段都可更新。</li><li>缩进两格可书写多行内容。</li></ul>';els.loadExampleBtn.textContent='载入正确案例到左侧'}else if(tab==='wrong'){els.exampleNotice.className='example-notice error';els.exampleNotice.innerHTML='<strong>错误案例</strong><span>包含标题、坐标、枚举值与几何参数错误。</span>';els.exampleCode.textContent=WRONG_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>“## 对象”标题层级错误。</li><li>地块档案必须提供 X、Y 整数主格坐标。</li><li>时间流逝和玩家可达性应使用示例中的标准值。</li><li>线对象至少需要两个路径节点。</li></ul>';els.loadExampleBtn.textContent='载入错误案例并查看识别'}else{els.exampleNotice.className='example-notice neutral';els.exampleNotice.innerHTML='<strong>识别规则</strong><span>对象和地块档案可混合导入。</span>';els.exampleCode.textContent=IMPORT_RULES_TEXT;els.exampleNotes.innerHTML='<ul><li>地块档案只改写 Markdown 中明确出现的字段。</li><li>明确写出空字段会清空该字段；省略字段则保留原值。</li><li>警告不会阻止导入，但会进入本轮更改记录。</li><li>错误条目不会写入本地地图。</li></ul>';els.loadExampleBtn.textContent='载入空白正确模板'} }
+
 
   function bindEvents(){
     els.searchInput.addEventListener("input",()=>{state.filters.q=els.searchInput.value;renderSidebar();scheduleRender()});els.exitSearchBtn.addEventListener("click",()=>{state.filters.q="";els.searchInput.value="";state.previewCell=null;renderSidebar();scheduleRender();els.searchInput.focus()});els.chapterFilter.addEventListener("change",()=>{state.filters.chapter=els.chapterFilter.value;renderSidebar();scheduleRender()});els.resetFilterBtn.addEventListener("click",()=>{state.filters={q:"",chapter:"",type:""};els.searchInput.value="";els.chapterFilter.value="";renderTypeFilterTree();renderSidebar();scheduleRender()});
     $$("[data-jump-name]").forEach(b=>b.addEventListener("click",()=>jumpName(b.dataset.jumpName)));els.fitAllBtn.addEventListener("click",fitAll);els.originBtn.addEventListener("click",()=>{state.camera={...state.camera,x:0,y:0,zoom:.92};state.flippedCell=null;scheduleRender();persist()});els.zoomInBtn.addEventListener("click",()=>setZoom(state.camera.zoom*1.18));els.zoomOutBtn.addEventListener("click",()=>setZoom(state.camera.zoom/1.18));els.zoomReadout.addEventListener("click",()=>setZoom(1));
     els.jumpCoordBtn.addEventListener("click",()=>{els.jumpX.value=Math.round(state.camera.x);els.jumpY.value=Math.round(state.camera.y);openModal("jumpModal")});els.jumpForm.addEventListener("submit",e=>{e.preventDefault();state.camera.x=Number(els.jumpX.value)||0;state.camera.y=Number(els.jumpY.value)||0;state.camera.zoom=Math.max(.72,state.camera.zoom);state.flippedCell=null;closeModal("jumpModal");scheduleRender();persist()});
-    [[els.layerAreas,"areas"],[els.layerRivers,"rivers"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,k])=>el.addEventListener("change",()=>{state.layers[k]=el.checked;scheduleRender()}));
-    els.openImportBtn.addEventListener("click",openImportWorkspace);els.closeImportBtn.addEventListener("click",closeImportWorkspace);els.importChooseFileBtn.addEventListener("click",()=>els.importFileInput.click());els.importDropZone.addEventListener("click",()=>els.importFileInput.click());els.importFileInput.addEventListener("change",()=>readImportFile(els.importFileInput.files?.[0]));["dragenter","dragover"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.add("dragover")}));["dragleave","drop"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.remove("dragover")}));els.importDropZone.addEventListener("drop",e=>readImportFile(e.dataTransfer.files?.[0]));els.importText.addEventListener("input",()=>{updateImportCharCount();debouncedImportAnalyze()});els.reanalyzeImportBtn.addEventListener("click",analyzeImportText);els.clearImportBtn.addEventListener("click",()=>{els.importText.value="";els.importFileName.textContent="尚未选择文件";state.importAnalysis=null;updateImportCharCount();renderImportAnalysis(null)});els.importApplyBtn.addEventListener("click",applyMarkdownImport);$$('.example-tabs button').forEach(b=>b.addEventListener('click',()=>{state.exampleTab=b.dataset.exampleTab;renderExamplePanel()}));els.loadExampleBtn.addEventListener("click",()=>{els.importText.value=state.exampleTab==='wrong'?WRONG_MD_SAMPLE:state.exampleTab==='rules'?CORRECT_MD_SAMPLE:CORRECT_MD_SAMPLE;els.importFileName.textContent=state.exampleTab==='wrong'?'错误案例.md':'正确案例.md';analyzeImportText()});
+    [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,k])=>el.addEventListener("change",()=>{state.layers[k]=el.checked;scheduleRender()}));
+    els.openImportBtn.addEventListener("click",openImportWorkspace);els.closeImportBtn.addEventListener("click",closeImportWorkspace);els.importChooseFileBtn.addEventListener("click",()=>els.importFileInput.click());els.importDropZone.addEventListener("click",()=>els.importFileInput.click());els.importFileInput.addEventListener("change",()=>readImportFile(els.importFileInput.files?.[0]));["dragenter","dragover"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.add("dragover")}));["dragleave","drop"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.remove("dragover")}));els.importDropZone.addEventListener("drop",e=>readImportFile(e.dataTransfer.files?.[0]));els.importText.addEventListener("input",()=>{updateImportCharCount();debouncedImportAnalyze()});els.reanalyzeImportBtn.addEventListener("click",analyzeImportText);els.clearImportBtn.addEventListener("click",()=>{els.importText.value="";els.importFileName.textContent="尚未选择文件";state.importAnalysis=null;updateImportCharCount();renderImportAnalysis(null)});els.importApplyBtn.addEventListener("click",applyMarkdownImport);$$('.example-tabs button').forEach(b=>b.addEventListener('click',()=>{state.exampleTab=b.dataset.exampleTab;renderExamplePanel()}));els.loadExampleBtn.addEventListener("click",()=>{els.importText.value=state.exampleTab==='wrong'?WRONG_MD_SAMPLE:state.exampleTab==='rules'?BLANK_MD_TEMPLATE:CORRECT_MD_SAMPLE;els.importFileName.textContent=state.exampleTab==='wrong'?'错误案例.md':state.exampleTab==='rules'?'空白导入模板.md':'正确案例.md';analyzeImportText()});
     $$(".detail-tabs button").forEach(b=>b.addEventListener("click",()=>{state.detailTab=b.dataset.tab;renderDetails()}));els.editTileBtn.addEventListener("click",openTileProfileForm);els.deleteTileBtn.addEventListener("click",()=>openDeleteModal("tile"));els.openDossierBtn.addEventListener("click",openDossierWorkspace);els.openRangeEditorBtn.addEventListener("click",()=>openRangeEditor());els.closeDossierBtn.addEventListener("click",closeDossierWorkspace);els.dossierWorkspace.addEventListener("click",e=>{if(e.target===els.dossierWorkspace)closeDossierWorkspace()});els.editDossierBtn.addEventListener("click",openTileProfileForm);els.dossierModeBrief.addEventListener("click",()=>{state.dossierMode="brief";renderDossierWorkspace();persist()});els.dossierModeFull.addEventListener("click",()=>{state.dossierMode="full";renderDossierWorkspace();persist()});els.dossierLocateBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;closeDossierWorkspace();animateCameraTo(cellCenter(tile.gx),cellCenter(tile.gy),Math.max(state.camera.zoom,.88),()=>{state.flippedCell=tile.key;scheduleRender()})});els.copyPromptBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makePrompt(profile,tile,main),"绘图提示已复制")});els.copyBriefBtn.addEventListener("click",()=>{const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makeArtBrief(profile,tile,main),"美术简报已复制")});$$('[data-dossier-tab]').forEach(b=>b.addEventListener('click',()=>{state.dossierTab=b.dataset.dossierTab;renderDossierWorkspace()}));els.tileProfileForm.addEventListener("submit",saveTileProfileForm);els.tilePlayerReachable.addEventListener("change",togglePlayerFields);els.objectForm.addEventListener("submit",saveObjectForm);els.deleteObjectBtn.addEventListener("click",()=>{const id=els.formObjectId.value;if(id){closeModal("objectModal");openDeleteModal("object",id)}});els.formGeometry.addEventListener("change",updateGeometryRangeHint);els.exportPatchBtn.addEventListener("click",()=>exportPatch(false));els.finishRoundBtn.addEventListener("click",()=>exportPatch(true));els.roundKeepBtn.addEventListener("click",()=>{state.pendingRoundExport=null;closeModal("roundModal");toast("已保留本轮更改","可继续编辑或稍后完成本轮")});els.roundArchiveBtn.addEventListener("click",archiveCurrentRound);els.openChangesTab.addEventListener("click",showChanges);els.openTrashTab.addEventListener("click",openTrash);els.clearTrashBtn.addEventListener("click",clearTrash);els.trashRetentionSelect.addEventListener("change",()=>{state.trashRetentionDays=Number(els.trashRetentionSelect.value)||0;const removed=cleanupExpiredTrash(true);renderTrash();persist();updateHeader();if(!removed)toast("回收站保留规则已更新",state.trashRetentionDays?`自动清理超过${state.trashRetentionDays}天的内容`:"永久保留")});els.openSpecTab.addEventListener("click",showSpecs);els.checkUpdateBtn.addEventListener("click",()=>checkUpdate(false));els.closeFlipBtn.addEventListener("click",()=>{state.flippedCell=null;scheduleRender()});if(els.clearSpatialFocusBtn)els.clearSpatialFocusBtn.addEventListener("click",()=>clearSpatialFocus());
     els.closeRangeEditorBtn.addEventListener("click",closeRangeEditor);els.rangeSaveBtn.addEventListener("click",saveRangeEditor);els.rangeUndoBtn.addEventListener("click",undoRange);els.rangeResetBtn.addEventListener("click",resetRange);els.rangeFitBtn.addEventListener("click",fitRangeEditor);els.createAreaObjectBtn.addEventListener("click",()=>createSpatialObject("area"));els.createFieldObjectBtn.addEventListener("click",()=>createSpatialObject("field"));$$('[data-range-tool]').forEach(b=>b.addEventListener('click',()=>setRangeTool(b.dataset.rangeTool)));els.rangeSnapSelect.addEventListener("change",()=>{state.rangeEditor.snap=Number(els.rangeSnapSelect.value)||10});els.rangeShape.addEventListener("change",()=>convertRangeShape(els.rangeShape.value));els.rangeKind.addEventListener("change",()=>{const o=currentRangeObject();if(o)els.rangeObjectBadge.textContent=`${els.rangeKind.value==='field'?'作用域':'面积'} · ${o.name}`;drawRangeEditor()});els.rangeEvidence.addEventListener("change",()=>{if(state.rangeEditor.draft){state.rangeEditor.draft.evidence=els.rangeEvidence.value;renderRangeAnalysis();drawRangeEditor()}});[els.rangeCenterX,els.rangeCenterY,els.rangeWidth,els.rangeHeight,els.rangeRadius].forEach(x=>x.addEventListener("input",updateRangeFromInputs));els.rangePoints.addEventListener("change",updateRangePoints);els.rangeViewport.addEventListener("pointerdown",rangePointerDown);els.rangeViewport.addEventListener("pointermove",rangePointerMove);els.rangeViewport.addEventListener("pointerup",rangePointerUp);els.rangeViewport.addEventListener("pointercancel",rangePointerUp);els.rangeViewport.addEventListener("click",rangeCanvasClick);els.rangeViewport.addEventListener("dblclick",rangeCanvasDblClick);els.rangeViewport.addEventListener("wheel",rangeWheel,{passive:false});
     $$('[data-close-modal]').forEach(x=>x.addEventListener("click",()=>closeModal(x.dataset.closeModal)));
@@ -916,6 +1182,7 @@
     els.viewport.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.closest("button,input,select,textarea"))return;const tile=e.target.closest(".tile");state.pan={active:true,moved:false,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,startCameraX:state.camera.x,startCameraY:state.camera.y,downTile:tile?{key:tile.dataset.cell,gx:Number(tile.dataset.gx),gy:Number(tile.dataset.gy)}:null};els.viewport.setPointerCapture(e.pointerId);els.viewport.classList.add("dragging")});
     els.viewport.addEventListener("pointermove",e=>{const w=screenToWorld(e.clientX,e.clientY);els.coordStatus.textContent=`鼠标 ${coordText(Math.round(w.x),Math.round(w.y))}`;if(!state.pan.active)return;const dx=e.clientX-state.pan.startX,dy=e.clientY-state.pan.startY;if(Math.hypot(dx,dy)>4)state.pan.moved=true;const s=scale();state.camera.x=state.pan.startCameraX-dx/s;state.camera.y=state.pan.startCameraY+dy/s;scheduleRender()});
     const endPan=e=>{if(!state.pan.active)return;const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(wasMoved){state.suppressClickUntil=Date.now()+160}else if(downTile){const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;const exitedFocus=clickOutsideSpatialFocus(downTile.key);if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else if(exitedFocus){state.lastTileTap={key:null,time:0}}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails();scheduleRender()}}else if(clickOutsideSpatialFocus(null)){state.suppressClickUntil=Date.now()+160}state.pan.active=false;els.viewport.classList.remove("dragging");try{els.viewport.releasePointerCapture(e.pointerId)}catch{}persist()};els.viewport.addEventListener("pointerup",endPan);els.viewport.addEventListener("pointercancel",endPan);
+    els.viewport.addEventListener("dblclick",e=>{if(!state.precisionMode||e.target.closest(".precision-object-group,button,input,select,textarea"))return;e.preventDefault();const w=screenToWorld(e.clientX,e.clientY),x=Math.round(w.x*10)/10,y=Math.round(w.y*10)/10;openObjectForm(null,{x,y})});
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
   }
 

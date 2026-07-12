@@ -1,14 +1,15 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v020",
+  "app_version": "demo-v023",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.1",
-  "updated_at": "2026-07-12T17:20:00+09:00",
+  "updated_at": "2026-07-12T23:40:00+09:00",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "简述模式改为居中小卡牌，不再铺满整个屏幕",
-    "完整模式继续使用全屏地块博物志",
-    "点击卡牌外部背景或按Esc返回地图"
+    "420%以上自动进入10里彩色精细地图",
+    "地形以颜色和连续色块表达，对象按真实XY坐标显示",
+    "明确路径的河流显示连续蓝色和流向箭头",
+    "缺少路径证据的水系仅显示精确位置，不自动生成线路"
   ]
 }

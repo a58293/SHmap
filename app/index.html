@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v020</title>
+  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v023</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具</span><i></i><span id="saveState">本地工作区</span></div>
-          <h1>山海经原典地图研究台 <small>DEMO v020</small></h1>
+          <h1>山海经原典地图研究台 <small>DEMO v023</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -63,6 +63,7 @@
         <div class="layer-box">
           <div class="section-label">图层</div>
           <label><input type="checkbox" id="layerAreas" checked /> 面积与作用域</label>
+          <label><input type="checkbox" id="layerTerrain" checked /> 高倍率彩色地形</label>
           <label><input type="checkbox" id="layerRivers" checked /> 河流与线型对象</label>
           <label><input type="checkbox" id="layerEmpty" checked /> 空白地块</label>
           <label><input type="checkbox" id="layerChanges" checked /> 本轮更改标记</label>
@@ -76,7 +77,7 @@
         <div class="map-toolbar">
           <div class="map-heading">
             <span class="eyebrow">INFINITE 100-LI TILE MAP</span>
-            <h2>无限棋盘 · 100里主格 · 10里格内下钻</h2>
+            <h2>无限棋盘 · 100里地块 · 420%以上彩色精细地图</h2>
           </div>
           <div class="map-controls">
             <button class="icon-btn" id="zoomOutBtn" title="缩小">−</button>
@@ -90,7 +91,11 @@
           <canvas id="worldCanvas"></canvas>
           <div id="tileLayer" class="tile-layer"></div>
           <div id="mapTooltip" class="map-tooltip hidden"></div>
-          <div class="map-guide">
+          <div id="precisionModeBadge" class="precision-mode-badge hidden"><strong>10里彩色精细地图</strong><span>真实里坐标 · 地形色块 · 路径流向</span></div>
+          <div id="precisionTerrainLegend" class="precision-terrain-legend hidden">
+            <span><i style="--c:#756b5b"></i>山地</span><span><i style="--c:#9a9272"></i>丘陵</span><span><i style="--c:#718b66"></i>林地</span><span><i style="--c:#c1ae7d"></i>平原</span><span><i style="--c:#5b94a8"></i>水域</span><span><i style="--c:#75a099"></i>湿地</span><span><i style="--c:#b48858"></i>荒漠</span><span><i style="--c:#b9ced2"></i>冰雪</span><span><i style="--c:#a66f5d"></i>聚落</span><span><i style="--c:#8873a3"></i>神话域</span><span><i style="--c:#cf8240"></i>事件</span>
+          </div>
+          <div class="map-guide" id="mapGuide">
             <span>拖动地图</span><i></i><span>滚轮缩放</span><i></i><span>单击翻转地块</span><i></i><span>双击进入10里格内视图</span>
           </div>
           <div class="coord-status" id="coordStatus">鼠标 X 0里 · Y 0里</div>
@@ -109,6 +114,7 @@
           <span><i class="legend-search-content"></i>其他内容命中</span>
           <span><i class="legend-search-related"></i>关联区域</span>
           <span><i class="legend-spatial-focus"></i>同面积／作用域聚焦</span>
+          <span><i class="legend-precision"></i>420%以上自动进入彩色精细地图</span>
         </div>
       </section>
 
@@ -304,13 +310,13 @@
 
   <div id="importWorkspace" class="import-workspace hidden" aria-label="Markdown 导入工作台">
     <header class="import-topbar">
-      <div class="import-title-block"><button class="import-back" id="closeImportBtn">← 返回地图</button><div><span class="eyebrow">MARKDOWN IMPORT WORKSPACE</span><h1>地图对象 Markdown 导入</h1><p>文件解析、格式校验、错误定位与导入预览在同一界面完成。</p></div></div>
+      <div class="import-title-block"><button class="import-back" id="closeImportBtn">← 返回地图</button><div><span class="eyebrow">MARKDOWN IMPORT WORKSPACE</span><h1>地图对象与地块档案 Markdown 导入</h1><p>对象新增、地块档案更新、格式校验和导入预览在同一界面完成。</p></div></div>
       <div class="import-top-actions"><span id="importFormatBadge" class="format-badge neutral">等待输入</span><button class="btn secondary" id="importChooseFileBtn">选择 .md 文件</button><button class="btn primary" id="importApplyBtn" disabled>添加到本地地图</button></div>
     </header>
     <main class="import-layout">
       <section class="import-pane import-editor-pane">
         <div class="import-pane-head"><div><span class="eyebrow">SOURCE</span><h2>输入文件</h2></div><button class="mini-action" id="clearImportBtn">清空</button></div>
-        <div id="importDropZone" class="import-drop-zone"><strong>拖入 Markdown 文件</strong><span>或点击“选择 .md 文件”</span><small>支持新版“### 对象：”格式，并识别旧版“### 坐标：”格式</small></div>
+        <div id="importDropZone" class="import-drop-zone"><strong>拖入 Markdown 文件</strong><span>或点击“选择 .md 文件”</span><small>支持“### 对象：”与“### 地块档案：”格式，并提示旧版坐标格式</small></div>
         <div class="import-file-line"><span id="importFileName">尚未选择文件</span><b id="importCharCount">0 字</b></div>
         <textarea id="importText" class="import-textarea" spellcheck="false" placeholder="# 山海经地图对象导入
 
@@ -319,13 +325,21 @@
 * 地名：冰夷
 * 几何类型：点
 * X坐标（里）：-1200
-* Y坐标（里）：900"></textarea>
+* Y坐标（里）：900
+
+---
+
+### 地块档案：X-012_Y+009
+
+* 简要：地块简要文案
+* 基础：地块基础文案
+* 详细：地块详细文案"></textarea>
         <div class="import-editor-actions"><span>输入内容后会自动校验，也可手动重新检查。</span><button class="btn secondary compact" id="reanalyzeImportBtn">重新检查</button></div>
       </section>
       <section class="import-pane import-review-pane">
         <div class="import-pane-head"><div><span class="eyebrow">VALIDATION</span><h2>识别与校验</h2></div><span id="importValidationState" class="validation-state">尚未分析</span></div>
-        <div id="importSummary" class="import-summary"><div><strong>0</strong><span>识别对象</span></div><div class="ok"><strong>0</strong><span>可导入</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div></div>
-        <div class="import-review-body"><div class="import-object-results"><div class="subhead"><span>对象清单</span><small>点击查看具体字段</small></div><div id="importObjectList" class="import-object-list"><div class="import-empty">载入文件后，这里会列出识别到的对象。</div></div></div><div class="import-inspector"><div class="subhead"><span>字段检查</span><small id="importInspectorMeta">未选择对象</small></div><div id="importInspector" class="import-inspector-body"><div class="import-empty">正确字段、格式错误、缺失项和重复对象会在这里逐条标示。</div></div></div></div>
+        <div id="importSummary" class="import-summary"><div><strong>0</strong><span>识别条目</span></div><div class="ok"><strong>0</strong><span>可导入</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div></div>
+        <div class="import-review-body"><div class="import-object-results"><div class="subhead"><span>对象与地块档案</span><small>点击查看具体字段</small></div><div id="importObjectList" class="import-object-list"><div class="import-empty">载入文件后，这里会列出对象和地块档案。</div></div></div><div class="import-inspector"><div class="subhead"><span>字段检查</span><small id="importInspectorMeta">未选择对象</small></div><div id="importInspector" class="import-inspector-body"><div class="import-empty">正确字段、格式错误、缺失项和更新目标会在这里逐条标示。</div></div></div></div>
       </section>
       <aside class="import-pane import-example-pane">
         <div class="import-pane-head"><div><span class="eyebrow">FORMAT REFERENCE</span><h2>格式示例</h2></div></div>
