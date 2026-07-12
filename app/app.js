@@ -138,7 +138,9 @@
     changeArchives: saved?.changeArchives || [],
     appliedRemotePatches: saved?.appliedRemotePatches || [],
     remotePatchHistory: saved?.remotePatchHistory || [],
+    viewedRemotePatches: saved?.viewedRemotePatches || [],
     githubPendingFiles: [],
+    githubPendingView: "new",
     githubPendingCache: {},
     githubCurrent: null,
     dataVersion: saved?.dataVersion || INITIAL.metadata?.dataVersion || "v031-r0001",
@@ -181,7 +183,7 @@
 
   function loadSaved(){try{const current=localStorage.getItem(STORAGE_KEY);if(current)return JSON.parse(current);for(const key of LEGACY_STORAGE_KEYS){const legacy=localStorage.getItem(key);if(legacy)return JSON.parse(legacy)}return null}catch{return null}}
   function persist(){
-    try{localStorage.setItem(STORAGE_KEY, JSON.stringify({objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter,dossierMode:state.dossierMode})); els.saveState.textContent="已保存到本地"; setTimeout(()=>els.saveState.textContent="本地工作区",900)}catch(e){console.warn(e)}
+    try{localStorage.setItem(STORAGE_KEY, JSON.stringify({objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,viewedRemotePatches:state.viewedRemotePatches,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter,dossierMode:state.dossierMode})); els.saveState.textContent="已保存到本地"; setTimeout(()=>els.saveState.textContent="本地工作区",900)}catch(e){console.warn(e)}
   }
   function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
   function fmt(v,d=1){const n=Number(v)||0; return Math.abs(n-Math.round(n))<1e-8?String(Math.round(n)):n.toFixed(d).replace(/\.0+$/,"")}
@@ -684,8 +686,21 @@
     return pkg;
   }
   function remotePatchKey(entry){return String(entry?.sha||entry?.path||entry?.name||"")}
-  function appliedRemoteRecord(entry){const key=remotePatchKey(entry);return state.appliedRemotePatches.find(x=>x.key===key||x.sha&&x.sha===entry?.sha||x.path&&x.path===entry?.path)}
+  function appliedRemoteRecord(entry){
+    if(entry?.sha)return state.appliedRemotePatches.find(x=>x.sha===entry.sha||x.key===entry.sha);
+    const key=remotePatchKey(entry);return state.appliedRemotePatches.find(x=>x.key===key||x.path&&x.path===entry?.path)
+  }
   function isRemotePatchApplied(entry){return !!appliedRemoteRecord(entry)}
+  function viewedRemoteRecord(entry){
+    if(entry?.sha)return state.viewedRemotePatches.find(x=>x.sha===entry.sha||x.key===entry.sha);
+    const key=remotePatchKey(entry);return state.viewedRemotePatches.find(x=>x.key===key||x.path&&x.path===entry?.path)
+  }
+  function isRemotePatchViewed(entry){return !!viewedRemoteRecord(entry)}
+  function markRemotePatchViewed(entry){
+    if(!entry||isRemotePatchViewed(entry)||isRemotePatchApplied(entry))return;
+    state.viewedRemotePatches.unshift({key:remotePatchKey(entry),sha:entry.sha||"",path:entry.path||"",name:entry.name||"",viewedAt:new Date().toISOString()});
+    state.viewedRemotePatches=state.viewedRemotePatches.slice(0,200);persist()
+  }
   function normalizedComparable(value){
     if(Array.isArray(value))return value.map(normalizedComparable);
     if(value&&typeof value==="object"){const out={};Object.keys(value).sort().forEach(k=>{if(k==="coordinateText"||k==="distance"||k==="originalLink")return;out[k]=normalizedComparable(value[k])});return out}
@@ -785,25 +800,33 @@
     const actionLabel=simulation.netNoop?"标记为本机已同步":"下载并应用到本地地图";
     return `<div class="github-update-actions"><button class="btn secondary compact" id="pendingBackBtn">← 返回更新列表</button>${entry?.download_url?`<a class="btn secondary compact" href="${esc(entry.download_url)}" download>另存原始包</a>`:""}</div><div class="pending-preview-head"><div><span class="pending-file-icon">PATCH</span><div><h3>${esc(entry?.name||"更改包")}</h3><p>${esc(pkg?.summary||"未提供更改简述")}</p></div></div><span class="pending-package-state ${applied?'applied':''}">${applied?'本机已应用':'等待处理'}</span></div><div class="patch-meta-grid"><span>基础版本<b>${esc(pkg?.base_data_version||"未标注")}</b></span><span>生成时间<b>${esc(pkg?.created_at||"未标注")}</b></span><span>记录数量<b>${Number(pkg?.change_count)||pkg?.changes?.length||0}</b></span><span>本地未归档<b>${state.changes.length}</b></span></div>${warnings.length?`<div class="patch-warning">${warnings.map(x=>`<p>${esc(x)}</p>`).join("")}</div>`:""}${invalid?`<div class="patch-error-box"><strong>文件不能应用</strong>${simulation.packageErrors.map(x=>`<p>${esc(x)}</p>`).join("")}</div>`:`<div class="patch-counts"><span class="apply">将应用 ${simulation.applyCount}</span><span class="skip">已包含 ${simulation.skipCount}</span><span class="conflict">冲突 ${simulation.conflictCount}</span></div><table class="change-table patch-table"><thead><tr><th>状态</th><th>操作</th><th>对象／地块</th><th>说明</th></tr></thead><tbody>${rows}</tbody></table>`}<div class="pending-preview-footer"><p>${simulation.conflictCount?"存在冲突，程序不会写入任何内容。请先处理冲突或换一台没有本地修改的设备。":simulation.netNoop?"本机当前地图已经包含该包的最终结果，可以直接标记为已同步。":"确认后会先在内存中完整应用，再一次性保存；远程更改不会重复进入本轮 .shjpatch。"}</p><button class="btn primary" id="pendingApplyBtn" ${applied||invalid||simulation.conflictCount?'disabled':''}>${applied?'本机已应用':actionLabel}</button></div>`
   }
-  function pendingPackageListHtml(files){
-    if(!files.length)return `<div class="pending-empty"><strong>没有待处理更改包</strong><span>仓库 ${esc(GITHUB_CONFIG.pendingPath)} 中暂无 .shjpatch 文件。</span></div>`;
-    return `<div class="pending-package-list">${files.map((entry,index)=>{const applied=appliedRemoteRecord(entry);return `<article class="pending-package-card ${applied?'applied':''}"><div class="pending-file-icon">PATCH</div><div class="pending-package-copy"><strong>${esc(entry.name)}</strong><small>${Math.max(1,Math.round((Number(entry.size)||0)/1024))} KB · ${esc(entry.path||"")}</small>${applied?`<em>本机已于 ${esc(new Date(applied.appliedAt).toLocaleString("zh-CN"))} 应用</em>`:`<em>尚未在本机应用</em>`}</div><button class="btn ${applied?'secondary':'primary'} compact" data-pending-index="${index}">${applied?'查看记录':'查看并应用'}</button></article>`}).join("")}</div>`
+  function pendingPackageListHtml(files,view="new"){
+    const rows=(files||[]).map((entry,index)=>({entry,index,applied:appliedRemoteRecord(entry),viewed:viewedRemoteRecord(entry)}));
+    const shown=rows.filter(x=>view==="history"?!!x.applied:!x.applied);
+    if(!shown.length){
+      if(view==="history")return `<div class="pending-empty"><strong>没有本机已处理记录</strong><span>应用过的更改包会出现在这里。</span></div>`;
+      return `<div class="pending-empty"><strong>没有新的待应用更改包</strong><span>已处理的包已经隐藏，可切换到“已处理”查看历史。</span></div>`
+    }
+    return `<div class="pending-package-list">${shown.map(({entry,index,applied,viewed})=>{const sha=entry.sha?entry.sha.slice(0,8):"无SHA",stateLabel=applied?"已应用":viewed?"已查看，未应用":"新包",stateClass=applied?"applied":viewed?"viewed":"new";return `<article class="pending-package-card ${stateClass}"><div class="pending-file-icon">PATCH</div><div class="pending-package-copy"><strong>${esc(entry.name)}</strong><small>${Math.max(1,Math.round((Number(entry.size)||0)/1024))} KB · SHA ${esc(sha)}</small><em class="pending-card-status ${stateClass}">${stateLabel}${applied?.appliedAt?` · ${esc(new Date(applied.appliedAt).toLocaleString("zh-CN"))}`:viewed?.viewedAt?` · ${esc(new Date(viewed.viewedAt).toLocaleString("zh-CN"))}`:""}</em></div><button class="btn ${applied?'secondary':'primary'} compact" data-pending-index="${index}">${applied?'查看记录':viewed?'继续处理':'查看并应用'}</button></article>`}).join("")}</div>`
   }
   function githubStatusHtml(current,pendingFiles,currentError="",pendingError=""){
-    const remote=current?.data_version||current?.dataVersion||"未读取",cmp=current?compareDataVersion(remote,state.dataVersion):0,update=current&&cmp>0,changes=Array.isArray(current?.highlights)?current.highlights:[],releaseUrl=current?.release_url||current?.releaseUrl||GITHUB_CONFIG.repoUrl,downloadUrl=current?.download_url||current?.downloadUrl||"",newCount=(pendingFiles||[]).filter(x=>!isRemotePatchApplied(x)).length;
-    return `<div class="github-connection-strip"><span><b>● GitHub公开读取已接入</b>${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} · ${esc(GITHUB_CONFIG.branch)}</span><a href="${esc(GITHUB_CONFIG.repoUrl)}" target="_blank" rel="noopener">打开仓库 ↗</a></div><div class="github-update-grid"><section class="info-section"><h3>正式地图数据</h3>${currentError?`<div class="patch-error-box"><p>${esc(currentError)}</p></div>`:`<p>本地：<strong>${esc(state.dataVersion)}</strong><br>仓库：<strong>${esc(remote)}</strong></p><p>${update?'发现新的正式地图数据版本。':cmp===0?'当前正式数据已经是最新版本。':'本地版本高于仓库标记，请检查 current.json。'}</p>${changes.length?`<ul>${changes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}<p><a class="btn secondary compact" href="${esc(releaseUrl)}" target="_blank" rel="noopener">发布页</a>${downloadUrl?` <a class="btn primary compact" href="${esc(downloadUrl)}" target="_blank" rel="noopener">下载正式数据包</a>`:""}</p>`}</section><section class="info-section"><h3>待处理更改包</h3><p>发现 <strong>${pendingFiles?.length||0}</strong> 个包，其中 <strong>${newCount}</strong> 个尚未在本机应用。</p><p>这些文件来自 <code>${esc(GITHUB_CONFIG.pendingPath)}</code>，与正式数据版本分开处理。</p>${pendingError?`<div class="patch-error-box"><p>${esc(pendingError)}</p></div>`:""}</section></div><div class="change-section-title"><h3>GitHub待处理包</h3><span>${newCount}个未应用</span></div>${pendingPackageListHtml(pendingFiles||[])}`
+    const remote=current?.data_version||current?.dataVersion||"未读取",cmp=current?compareDataVersion(remote,state.dataVersion):0,update=current&&cmp>0,changes=Array.isArray(current?.highlights)?current.highlights:[],releaseUrl=current?.release_url||current?.releaseUrl||GITHUB_CONFIG.repoUrl,downloadUrl=current?.download_url||current?.downloadUrl||"",newCount=(pendingFiles||[]).filter(x=>!isRemotePatchApplied(x)).length,appliedCount=(pendingFiles||[]).filter(x=>isRemotePatchApplied(x)).length,view=state.githubPendingView||"new";
+    return `<div class="github-connection-strip"><span><b>● GitHub公开读取已接入</b>${esc(GITHUB_CONFIG.owner+'/'+GITHUB_CONFIG.repo)} · ${esc(GITHUB_CONFIG.branch)}</span><a href="${esc(GITHUB_CONFIG.repoUrl)}" target="_blank" rel="noopener">打开仓库 ↗</a></div><div class="github-update-grid"><section class="info-section"><h3>正式地图数据</h3>${currentError?`<div class="patch-error-box"><p>${esc(currentError)}</p></div>`:`<p>本地：<strong>${esc(state.dataVersion)}</strong><br>仓库：<strong>${esc(remote)}</strong></p><p>${update?'发现新的正式地图数据版本。':cmp===0?'当前正式数据已经是最新版本。':'本地版本高于仓库标记，请检查 current.json。'}</p>${changes.length?`<ul>${changes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}<p><a class="btn secondary compact" href="${esc(releaseUrl)}" target="_blank" rel="noopener">发布页</a>${downloadUrl?` <a class="btn primary compact" href="${esc(downloadUrl)}" target="_blank" rel="noopener">下载正式数据包</a>`:""}</p>`}</section><section class="info-section"><h3>更改包状态</h3><p>仓库共 <strong>${pendingFiles?.length||0}</strong> 个包；本机待应用 <strong>${newCount}</strong> 个，已处理 <strong>${appliedCount}</strong> 个。</p><p>程序按 GitHub 文件 SHA 识别包体。同名文件内容改变后会重新显示为新包。</p>${pendingError?`<div class="patch-error-box"><p>${esc(pendingError)}</p></div>`:""}</section></div><div class="pending-toolbar"><div class="pending-view-tabs"><button class="${view==='new'?'active':''}" data-pending-view="new">待应用 <b>${newCount}</b></button><button class="${view==='history'?'active':''}" data-pending-view="history">已处理 <b>${appliedCount}</b></button></div><span>“已查看”表示打开过预览，但尚未应用。</span></div>${pendingPackageListHtml(pendingFiles||[],view)}`
   }
-  function bindPendingListActions(){els.infoBody.querySelectorAll("[data-pending-index]").forEach(btn=>btn.addEventListener("click",()=>openPendingPatchPreview(Number(btn.dataset.pendingIndex))))}
-  function renderGithubUpdateModal(){els.infoEyebrow.textContent="GITHUB DATA & PATCHES";els.infoTitle.textContent="GitHub数据与待处理包";els.infoBody.innerHTML=githubStatusHtml(state.githubCurrent,state.githubPendingFiles,state.githubCurrentError||"",state.githubPendingError||"");bindPendingListActions()}
+  function bindPendingListActions(){
+    els.infoBody.querySelectorAll("[data-pending-index]").forEach(btn=>btn.addEventListener("click",()=>openPendingPatchPreview(Number(btn.dataset.pendingIndex))));
+    els.infoBody.querySelectorAll("[data-pending-view]").forEach(btn=>btn.addEventListener("click",()=>{state.githubPendingView=btn.dataset.pendingView||"new";renderGithubUpdateModal()}))
+  }
+  function renderGithubUpdateModal(){els.infoEyebrow.textContent="GITHUB DATA & PATCHES";els.infoTitle.textContent="GitHub数据与更改包";els.infoBody.innerHTML=githubStatusHtml(state.githubCurrent,state.githubPendingFiles,state.githubCurrentError||"",state.githubPendingError||"");bindPendingListActions()}
   async function openPendingPatchPreview(index){
     const entry=state.githubPendingFiles[index];if(!entry)return;els.infoEyebrow.textContent="GITHUB PENDING PATCH";els.infoTitle.textContent="正在下载更改包";els.infoBody.innerHTML=`<div class="info-section"><h3>${esc(entry.name)}</h3><p>正在从GitHub读取并校验内容……</p></div>`;
-    try{const pkg=await fetchGithubPatch(entry),simulation=simulatePatchPackage(pkg);els.infoTitle.textContent="待处理更改包预览";els.infoBody.innerHTML=patchPreviewHtml(entry,pkg,simulation);$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal);$("#pendingApplyBtn")?.addEventListener("click",()=>applyGithubPatch(index,pkg,simulation))}
+    try{const pkg=await fetchGithubPatch(entry),simulation=simulatePatchPackage(pkg);markRemotePatchViewed(entry);els.infoTitle.textContent="待处理更改包预览";els.infoBody.innerHTML=patchPreviewHtml(entry,pkg,simulation);$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal);$("#pendingApplyBtn")?.addEventListener("click",()=>applyGithubPatch(index,pkg,simulation))}
     catch(error){els.infoTitle.textContent="更改包读取失败";els.infoBody.innerHTML=`<div class="github-update-actions"><button class="btn secondary compact" id="pendingBackBtn">← 返回更新列表</button></div><div class="patch-error-box"><strong>无法读取 ${esc(entry.name)}</strong><p>${esc(error?.message||"未知错误")}</p></div>`;$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal)}
   }
   function applyGithubPatch(index,pkg,simulation){
     const entry=state.githubPendingFiles[index];if(!entry||isRemotePatchApplied(entry))return;if(simulation.packageErrors.length||simulation.conflictCount){toast("更改包未应用","请先处理格式错误或冲突。","error");return}
     if(!simulation.netNoop){state.objects=simulation.draft.objects;state.tileProfiles=simulation.draft.tileProfiles;state.nextIdCounter=Math.max(state.nextIdCounter,maxKnownObjectNumber())}
-    rememberRemotePatch(entry,pkg,simulation);populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();toast(simulation.netNoop?"已标记为本机同步":"GitHub更改包已应用",simulation.netNoop?"本地地图原本已经包含这些变化。":`写入${simulation.applyCount}项，跳过${simulation.skipCount}项`);renderGithubUpdateModal()
+    rememberRemotePatch(entry,pkg,simulation);state.githubPendingView="new";populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();toast(simulation.netNoop?"已标记为本机同步":"GitHub更改包已应用",simulation.netNoop?"本地地图原本已经包含这些变化。":`写入${simulation.applyCount}项，跳过${simulation.skipCount}项`);renderGithubUpdateModal()
   }
   async function checkUpdate(silent=false){
     if(!silent){els.infoEyebrow.textContent="GITHUB DATA UPDATE";els.infoTitle.textContent="正在连接GitHub";els.infoBody.innerHTML=`<div class="info-section"><h3>连接中</h3><p>正在同时检查正式数据与 ${esc(GITHUB_CONFIG.pendingPath)}……</p></div>`;openModal("infoModal")}

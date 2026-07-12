@@ -403,3 +403,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
   .dossier-workspace.brief-mode .dossier-right{padding:16px}
   .dossier-workspace.brief-mode .brief-row{grid-template-columns:1fr;gap:4px}
 }
+
+.pending-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 10px}.pending-toolbar>span{font-size:9px;color:var(--muted)}
+.pending-view-tabs{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fffdf8}.pending-view-tabs button{border:0;border-right:1px solid var(--line);background:transparent;padding:8px 12px;font-size:9px;font-weight:800;color:var(--muted)}.pending-view-tabs button:last-child{border-right:0}.pending-view-tabs button.active{background:var(--jade);color:#fff}.pending-view-tabs b{font:800 8px var(--mono)}
+.pending-package-card.viewed{border-color:#d7b36b;background:#fffaf0}.pending-package-card.new{border-color:#a9cabd}.pending-card-status{font-style:normal!important;font-weight:800}.pending-card-status.new{color:var(--jade)}.pending-card-status.viewed{color:#9b6b12}.pending-card-status.applied{color:#6b746e}
