@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v023</title>
+  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v024</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具</span><i></i><span id="saveState">本地工作区</span></div>
-          <h1>山海经原典地图研究台 <small>DEMO v023</small></h1>
+          <h1>山海经原典地图研究台 <small>DEMO v024</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -91,9 +91,9 @@
           <canvas id="worldCanvas"></canvas>
           <div id="tileLayer" class="tile-layer"></div>
           <div id="mapTooltip" class="map-tooltip hidden"></div>
-          <div id="precisionModeBadge" class="precision-mode-badge hidden"><strong>10里彩色精细地图</strong><span>真实里坐标 · 地形色块 · 路径流向</span></div>
+          <div id="precisionModeBadge" class="precision-mode-badge hidden"><strong>10里彩色精细地图</strong><span>真实里坐标 · 地貌底色 · 水系叠加 · 路径流向</span></div>
           <div id="precisionTerrainLegend" class="precision-terrain-legend hidden">
-            <span><i style="--c:#756b5b"></i>山地</span><span><i style="--c:#9a9272"></i>丘陵</span><span><i style="--c:#718b66"></i>林地</span><span><i style="--c:#c1ae7d"></i>平原</span><span><i style="--c:#5b94a8"></i>水域</span><span><i style="--c:#75a099"></i>湿地</span><span><i style="--c:#b48858"></i>荒漠</span><span><i style="--c:#b9ced2"></i>冰雪</span><span><i style="--c:#a66f5d"></i>聚落</span><span><i style="--c:#8873a3"></i>神话域</span><span><i style="--c:#cf8240"></i>事件</span>
+            <span><i style="--c:#756b5b"></i>山地</span><span><i style="--c:#9a9272"></i>丘陵</span><span><i style="--c:#718b66"></i>林地</span><span><i style="--c:#c1ae7d"></i>平原</span><span><i style="--c:#5b94a8"></i>水系叠加</span><span><i class="mixed-swatch"></i>山水叠层</span><span><i style="--c:#75a099"></i>湿地</span><span><i style="--c:#b48858"></i>荒漠</span><span><i style="--c:#b9ced2"></i>冰雪</span><span><i style="--c:#a66f5d"></i>聚落</span><span><i style="--c:#8873a3"></i>神话域</span><span><i style="--c:#cf8240"></i>事件</span>
           </div>
           <div class="map-guide" id="mapGuide">
             <span>拖动地图</span><i></i><span>滚轮缩放</span><i></i><span>单击翻转地块</span><i></i><span>双击进入10里格内视图</span>

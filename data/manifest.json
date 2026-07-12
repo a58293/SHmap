@@ -12,7 +12,7 @@
     "x_li": 0,
     "y_li": 0
   },
-  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v023 在420%以上自动进入10里彩色精细地图，并按真实里坐标显示地形、对象与明确路径水系。",
+  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v024 将基础地貌与水系拆分为独立图层，同格山水使用双色叠层，候选水路不绘制为确定路线。",
   "github_pending_path": "submissions/pending",
   "github_patch_apply": "enabled-local",
   "markdown_schema": "object-and-tile-profile-v1.1"

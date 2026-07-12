@@ -465,10 +465,49 @@
     if(/事件|战|祭祀|神迹|奇遇|地标/.test(strong)||String(o?.events||"").trim())return "event";
     return "unknown";
   }
+  function isWetlandObject(o){
+    const text=`${o?.type||""} ${o?.name||""} ${o?.terrain||""}`;
+    return /湿地|沼泽|泽地|水泽湿地/.test(text);
+  }
+  function isHydrologyObject(o){
+    if(!o||isWetlandObject(o))return false;
+    const strong=`${o?.type||""} ${o?.name||""}`,text=`${strong} ${o?.terrain||""} ${o?.water||""}`;
+    return /河|溪|江|海|湖|池|渊|泉|水系|水域|瀑|涧|潭|沟|港|渠|泊|洋|水源|入海|汇流/.test(strong)||
+      (o?.geometryType==="line"&&/水|河|溪|流|涧|泉/.test(text));
+  }
+  function baseTerrainCategory(o){
+    const strong=`${o?.type||""} ${o?.name||""}`,text=`${strong} ${o?.terrain||""}`;
+    if(/冰|雪|寒域|寒原|极地|冰原/.test(text))return "ice";
+    if(/湿地|沼泽|泽地|水泽/.test(text))return "wetland";
+    if(/山|岳|峰|岭|崖|岩|峦/.test(strong))return "mountain";
+    if(/丘|陵|坡/.test(strong))return "hill";
+    if(/林|森林|树林|木|树|植被|草木/.test(strong))return "forest";
+    if(/荒漠|沙地|沙漠|旱地|炎地|赤地/.test(text))return "desert";
+    if(/国|城|邑|都|宫|台|坛|聚落|建筑|墓|葬|冢|村/.test(strong))return "settlement";
+    if(/野|平原|原野|田|谷地|草原/.test(text))return "plain";
+    return "unknown";
+  }
   function terrainCategoryFromProfile(p){
     const text=`${p?.geoEnvironment||""} ${p?.architecture||""} ${p?.livingSpecies||""}`;
     if(!text.trim())return "unknown";
     return terrainCategory({type:text,name:"",terrain:text,geometryType:"point"});
+  }
+  function baseTerrainCategoryFromProfile(p){
+    const text=`${p?.geoEnvironment||""} ${p?.architecture||""} ${p?.livingSpecies||""}`;
+    if(!text.trim())return "unknown";
+    return baseTerrainCategory({type:text,name:"",terrain:text,geometryType:"point"});
+  }
+  function hydrologyKind(o){
+    const text=`${o?.type||""} ${o?.name||""} ${o?.water||""}`;
+    if(/泉|源|发源|水源/.test(text))return "source";
+    if(/瀑/.test(text))return "waterfall";
+    if(/海|湖|池|渊|潭|泊/.test(text))return "waterbody";
+    if(/溪|涧|沟|渠/.test(text))return "stream";
+    return "river";
+  }
+  function isCandidateGeometry(o){
+    const text=`${o?.coordinateNature||""} ${o?.lockStatus||""} ${o?.area?.evidence||""}`;
+    return /候选|推定|项目|未锁|待裁决|待确认|历史排版/.test(text)||o?.area?.evidence==="candidate"||o?.area?.evidence==="project";
   }
   function terrainRadiusLi(category){return ({mountain:22,hill:18,forest:25,plain:30,water:14,wetland:22,desert:28,ice:28,settlement:16}[category]||0)}
   function isBaseTerrainCategory(category){return ["mountain","hill","forest","plain","water","wetland","desert","ice","settlement"].includes(category)}
@@ -479,36 +518,51 @@
   }
   function terrainCellCategory(x,y,areas,points,profiles){
     let bestArea=null,bestAreaScore=-1;
-    for(const o of areas){if(!pointInSpatial(o,x,y))continue;const cat=terrainCategory(o),ev=o.area?.evidence,score=(ev==="hard"||ev==="original"?5:ev==="candidate"?3:2)+(cat==="water"?1:0);if(score>bestAreaScore){bestArea={cat,o};bestAreaScore=score}}
-    if(bestArea&&isBaseTerrainCategory(bestArea.cat))return bestArea.cat;
+    for(const o of areas){if(!pointInSpatial(o,x,y))continue;const cat=baseTerrainCategory(o),ev=o.area?.evidence,score=(ev==="hard"||ev==="original"?5:ev==="candidate"?3:2);if(cat!=="unknown"&&score>bestAreaScore){bestArea={cat,o};bestAreaScore=score}}
+    if(bestArea)return bestArea.cat;
     let best="unknown",bestScore=Infinity;
-    for(const o of points){const cat=terrainCategory(o);if(!isBaseTerrainCategory(cat))continue;const radius=terrainRadiusLi(cat);if(!radius)continue;const d=Math.hypot(x-(Number(o.x)||0),y-(Number(o.y)||0));if(d<=radius&&d/radius<bestScore){best=cat;bestScore=d/radius}}
+    for(const o of points){const cat=baseTerrainCategory(o);if(cat==="unknown")continue;const radius=terrainRadiusLi(cat);if(!radius)continue;const d=Math.hypot(x-(Number(o.x)||0),y-(Number(o.y)||0));if(d<=radius&&d/radius<bestScore){best=cat;bestScore=d/radius}}
     if(best!=="unknown")return best;
-    const key=cellKey(cellIndex(x),cellIndex(y)),profile=profiles[key],pc=terrainCategoryFromProfile(profile);return isBaseTerrainCategory(pc)?pc:"unknown";
+    const key=cellKey(cellIndex(x),cellIndex(y)),profile=profiles[key],pc=baseTerrainCategoryFromProfile(profile);return pc!=="unknown"?pc:"unknown";
   }
   function drawPrecisionTerrain(ctx,v,s){
-    const step=10,areas=state.objects.filter(o=>o.area&&(o.geometryType==="area"||o.geometryType==="field")),pad=40;
+    const step=10,allAreas=state.objects.filter(o=>o.area&&(o.geometryType==="area"||o.geometryType==="field")),pad=40;
     const points=state.objects.filter(o=>{const x=Number(o.x)||0,y=Number(o.y)||0;return x>=v.left-pad&&x<=v.right+pad&&y>=v.bottom-pad&&y<=v.top+pad&&!o.area&&o.geometryType!=="field"});
+    const terrainPoints=points.filter(o=>!isHydrologyObject(o));
+    const baseAreas=allAreas.filter(o=>!isHydrologyObject(o)&&baseTerrainCategory(o)!=="unknown");
+    const waterAreas=allAreas.filter(isHydrologyObject);
+    const waterPoints=points.filter(o=>isHydrologyObject(o)&&!(o.geometryType==="line"&&o.path?.length>=2));
     const profiles=state.tileProfiles||{},x0=Math.floor(v.left/step)*step,y0=Math.floor(v.bottom/step)*step;
     if(state.layers.terrain){
-      for(let x=x0;x<=v.right;x+=step){for(let y=y0;y<=v.top;y+=step){const cat=terrainCellCategory(x+step/2,y+step/2,areas,points,profiles);if(cat==="unknown")continue;const nw=worldToScreen(x,y+step),se=worldToScreen(x+step,y);ctx.fillStyle=TERRAIN_PALETTE[cat].cell;ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y)}}
-      drawPrecisionTerrainContours(ctx,points,s);
+      for(let x=x0;x<=v.right;x+=step){for(let y=y0;y<=v.top;y+=step){const cat=terrainCellCategory(x+step/2,y+step/2,baseAreas,terrainPoints,profiles);if(cat==="unknown")continue;const nw=worldToScreen(x,y+step),se=worldToScreen(x+step,y);ctx.fillStyle=TERRAIN_PALETTE[cat].cell;ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y)}}
+      drawPrecisionTerrainContours(ctx,terrainPoints,s);
     }
-    if(state.layers.areas)drawPrecisionAreas(ctx,v,s,areas);
+    if(state.layers.areas)drawPrecisionAreas(ctx,v,s,baseAreas);
+    if(state.layers.rivers)drawPrecisionHydrologyOverlays(ctx,v,s,waterAreas,waterPoints);
   }
   function drawPrecisionTerrainContours(ctx,points,s){
     ctx.save();
-    points.forEach(o=>{const cat=terrainCategory(o);if(!["mountain","hill","forest","wetland","desert","ice","settlement"].includes(cat))return;const p=worldToScreen(Number(o.x)||0,Number(o.y)||0),r=Math.min(230,terrainRadiusLi(cat)*s),pal=TERRAIN_PALETTE[cat];if(r<8)return;ctx.strokeStyle=pal.line;ctx.globalAlpha=(cat==="mountain"||cat==="hill") ? .28 : .16;ctx.lineWidth=1.2;
+    points.forEach(o=>{const cat=baseTerrainCategory(o);if(!["mountain","hill","forest","wetland","desert","ice","settlement"].includes(cat))return;const p=worldToScreen(Number(o.x)||0,Number(o.y)||0),r=Math.min(230,terrainRadiusLi(cat)*s),pal=TERRAIN_PALETTE[cat];if(r<8)return;ctx.strokeStyle=pal.line;ctx.globalAlpha=(cat==="mountain"||cat==="hill") ? .28 : .16;ctx.lineWidth=1.2;
       if(cat==="mountain"||cat==="hill"){for(let i=1;i<=3;i++){ctx.beginPath();ctx.ellipse(p.x,p.y,r*i/3,r*i/5,(Number(o.x)+Number(o.y))%7/18,0,Math.PI*2);ctx.stroke()}}
       else if(cat==="forest"){for(let i=0;i<5;i++){const a=i*1.256,rr=r*(.25+.09*(i%2));ctx.fillStyle=pal.color;ctx.globalAlpha=.10;ctx.beginPath();ctx.arc(p.x+Math.cos(a)*r*.38,p.y+Math.sin(a)*r*.28,rr,0,Math.PI*2);ctx.fill()}}
       else if(cat==="settlement"){ctx.globalAlpha=.16;ctx.fillStyle=pal.color;ctx.fillRect(p.x-r*.42,p.y-r*.30,r*.84,r*.60)}
     });ctx.restore();
   }
   function drawPrecisionAreas(ctx,v,s,areas){
-    areas.forEach(o=>{const b=rangeBounds(o.area);if(b.east<v.left||b.west>v.right||b.north<v.bottom||b.south>v.top)return;const cat=terrainCategory(o),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.unknown,hard=o.area?.evidence==="hard"||o.area?.evidence==="original";ctx.save();
+    areas.forEach(o=>{const b=rangeBounds(o.area);if(b.east<v.left||b.west>v.right||b.north<v.bottom||b.south>v.top)return;const cat=baseTerrainCategory(o)!=="unknown"?baseTerrainCategory(o):terrainCategory(o),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.unknown,hard=o.area?.evidence==="hard"||o.area?.evidence==="original";ctx.save();
       if(o.geometryType==="field"&&o.area?.shape==="circle"){const c=worldToScreen(o.area.cx??o.x,o.area.cy??o.y),r=Math.abs((o.area.radius||0)*s),g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,r);g.addColorStop(0,hexToRgba(pal.color,.30));g.addColorStop(.62,hexToRgba(pal.color,.14));g.addColorStop(1,hexToRgba(pal.color,0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(c.x,c.y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=hexToRgba(pal.line,.7);ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.stroke();ctx.restore();return}
       if(!traceSpatialPath(ctx,o)){ctx.restore();return}ctx.fillStyle=hexToRgba(pal.color,o.geometryType==="field"?.16:hard?.28:.18);ctx.strokeStyle=hexToRgba(pal.line,.78);ctx.lineWidth=hard?2.5:1.8;ctx.setLineDash(hard?[]:o.geometryType==="field"?[5,5]:[9,6]);ctx.fill();ctx.stroke();ctx.restore();
     })
+  }
+  function drawPrecisionHydrologyOverlays(ctx,v,s,waterAreas,waterPoints){
+    const water=TERRAIN_PALETTE.water;
+    waterAreas.forEach(o=>{const b=rangeBounds(o.area);if(b.east<v.left||b.west>v.right||b.north<v.bottom||b.south>v.top)return;const candidate=isCandidateGeometry(o);ctx.save();if(!traceSpatialPath(ctx,o)){ctx.restore();return}ctx.fillStyle=hexToRgba(water.color,candidate?.18:.42);ctx.strokeStyle=hexToRgba(water.line,candidate?.62:.94);ctx.lineWidth=candidate?1.7:2.6;ctx.setLineDash(candidate?[8,7]:[]);ctx.fill();ctx.stroke();ctx.restore()});
+    waterPoints.forEach(o=>{const x=Number(o.x)||0,y=Number(o.y)||0;if(x<v.left-20||x>v.right+20||y<v.bottom-20||y>v.top+20)return;const p=worldToScreen(x,y),kind=hydrologyKind(o),candidate=isCandidateGeometry(o),size=Math.max(12,Math.min(34,8+state.camera.zoom*3.2));ctx.save();ctx.globalAlpha=candidate?.58:.92;ctx.strokeStyle=hexToRgba(water.line,candidate?.66:.92);ctx.fillStyle=hexToRgba(water.color,candidate?.18:.46);ctx.lineWidth=candidate?1.4:2;ctx.setLineDash(candidate?[6,5]:[]);
+      if(kind==="source"){const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,size);g.addColorStop(0,"rgba(235,250,255,.95)");g.addColorStop(.28,hexToRgba(water.color,.76));g.addColorStop(1,hexToRgba(water.color,0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,size,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,size*.22),0,Math.PI*2);ctx.fillStyle=water.line;ctx.fill()}
+      else if(kind==="waterbody"){ctx.beginPath();ctx.ellipse(p.x,p.y,size*1.15,size*.65,-.12,0,Math.PI*2);ctx.fill();ctx.stroke()}
+      else if(kind==="waterfall"){ctx.beginPath();ctx.moveTo(p.x-size*.7,p.y-size*.65);ctx.bezierCurveTo(p.x-size*.15,p.y-size*.15,p.x+size*.12,p.y+size*.15,p.x+size*.55,p.y+size*.72);ctx.strokeStyle=water.line;ctx.lineWidth=Math.max(4,size*.26);ctx.stroke()}
+      else{ctx.beginPath();ctx.moveTo(p.x-size,p.y+size*.12);ctx.bezierCurveTo(p.x-size*.4,p.y-size*.55,p.x+size*.2,p.y+size*.58,p.x+size,p.y-size*.08);ctx.strokeStyle=hexToRgba(water.line,candidate?.58:.9);ctx.lineWidth=Math.max(4,size*.24);ctx.stroke();ctx.strokeStyle="rgba(232,248,251,.74)";ctx.lineWidth=Math.max(1.5,size*.08);ctx.stroke()}
+      ctx.restore()});
   }
   function hexToRgba(hex,alpha){const h=String(hex||"#777").replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`}
   function drawPrecisionGrid(ctx,v,s){
@@ -520,9 +574,9 @@
   }
   function drawFlowArrow(ctx,x,y,angle,color,size=7){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*.65,-size*.55);ctx.lineTo(-size*.25,0);ctx.lineTo(-size*.65,size*.55);ctx.closePath();ctx.fill();ctx.restore()}
   function drawPrecisionLines(ctx,v,s){
-    state.objects.filter(o=>o.geometryType==="line"&&o.path?.length>=2).forEach(o=>{const cat=terrainCategory(o),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.water,pts=o.path.map(pt=>worldToScreen(pt[0],pt[1]));ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle="rgba(244,248,246,.72)";ctx.lineWidth=Math.max(7,Math.min(18,4.2*state.camera.zoom));ctx.stroke();ctx.strokeStyle=pal.line;ctx.lineWidth=Math.max(3.5,Math.min(11,2.2*state.camera.zoom));ctx.stroke();
-      if(cat==="water"){let carry=0,spacing=82;for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(!len)continue;let d=spacing-carry;while(d<len){const t=d/len;drawFlowArrow(ctx,a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx),"rgba(237,249,252,.9)",6);d+=spacing}carry=Math.max(0,len-(d-spacing))}}
-      ctx.restore();
+    state.objects.filter(o=>o.geometryType==="line"&&o.path?.length>=2).forEach(o=>{const hydro=isHydrologyObject(o),cat=hydro?"water":terrainCategory(o),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.water,pts=o.path.map(pt=>worldToScreen(pt[0],pt[1])),candidate=isCandidateGeometry(o),first=pts[0],last=pts[pts.length-1];ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.globalAlpha=candidate?.62:1;ctx.setLineDash(candidate?[14,10]:[]);ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle="rgba(244,248,246,.78)";ctx.lineWidth=Math.max(7,Math.min(18,4.2*state.camera.zoom));ctx.stroke();const grad=ctx.createLinearGradient(first.x,first.y,last.x,last.y);if(hydro){grad.addColorStop(0,"#79bad0");grad.addColorStop(.5,pal.color);grad.addColorStop(1,pal.line)}else{grad.addColorStop(0,hexToRgba(pal.color,.72));grad.addColorStop(1,pal.line)}ctx.strokeStyle=grad;ctx.lineWidth=Math.max(3.5,Math.min(11,2.2*state.camera.zoom));ctx.stroke();ctx.setLineDash([]);
+      if(hydro){ctx.fillStyle="#dff5fa";ctx.strokeStyle=pal.line;ctx.lineWidth=2;ctx.beginPath();ctx.arc(first.x,first.y,Math.max(4,Math.min(8,state.camera.zoom*1.25)),0,Math.PI*2);ctx.fill();ctx.stroke();let carry=0,spacing=candidate?112:82;for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(!len)continue;let d=spacing-carry;while(d<len){const t=d/len;drawFlowArrow(ctx,a.x+dx*t,a.y+dy*t,Math.atan2(dy,dx),candidate?"rgba(228,244,247,.68)":"rgba(237,249,252,.94)",candidate?5:6);d+=spacing}carry=Math.max(0,len-(d-spacing))}ctx.beginPath();ctx.arc(last.x,last.y,Math.max(5,Math.min(10,state.camera.zoom*1.45)),0,Math.PI*2);ctx.strokeStyle=hexToRgba(pal.line,candidate?.55:.9);ctx.lineWidth=2;ctx.stroke()}
+      if(state.camera.zoom>=7.5){const mid=pts[Math.floor((pts.length-1)/2)];ctx.font="700 9px sans-serif";ctx.textBaseline="bottom";ctx.lineWidth=3;ctx.strokeStyle="rgba(245,247,246,.92)";ctx.strokeText(o.name,mid.x+7,mid.y-6);ctx.fillStyle=pal.line;ctx.fillText(o.name,mid.x+7,mid.y-6)}ctx.restore();
     })
   }
   function updatePrecisionMode(){
@@ -535,9 +589,9 @@
   function renderPrecisionLayer(){
     const v=visibleWorld(),pad=35,stateSearch=getSearchContext(),focus=getSpatialFocusContext(),groups=new Map();
     state.objects.forEach(o=>{const a=objectAnchor(o);if(a.x<v.left-pad||a.x>v.right+pad||a.y<v.bottom-pad||a.y>v.top+pad)return;const key=`${a.x.toFixed(1)},${a.y.toFixed(1)}`;if(!groups.has(key))groups.set(key,{key,x:a.x,y:a.y,items:[]});groups.get(key).items.push(o)});
-    const html=[];groups.forEach(g=>{const items=sortObjects(g.items),selected=items.some(o=>o.id===state.selectedId),ordered=state.filters.q?[...items].sort((a,b)=>searchRank(a,state.filters.q)-searchRank(b,state.filters.q)):items,main=ordered.find(o=>o.id===state.selectedId)||ordered[0],cat=terrainCategory(main),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.unknown,p=worldToScreen(g.x,g.y),anchorCell=cellKey(cellIndex(g.x),cellIndex(g.y)),searchClass=precisionSearchClass(items,anchorCell,stateSearch),spatialClass=!stateSearch.q&&focus.active&&!focus.memberCells.has(anchorCell)?"spatial-dim":"",hasEvents=items.some(o=>String(o.events||"").trim()||terrainCategory(o)==="event"),open=state.precisionClusterOpen===g.key;
-      const popup=open&&items.length>1?`<div class="precision-cluster-popover">${ordered.map(o=>{const oc=terrainCategory(o),op=TERRAIN_PALETTE[oc]||TERRAIN_PALETTE.unknown;return `<button data-precision-object="${esc(o.id)}" class="${o.id===state.selectedId?'selected':''}"><i style="--dot:${op.color}"></i><span><strong>${esc(o.name)}</strong><small>${esc(o.type||'未分类')} · ${coordText(o.x,o.y)}</small></span></button>`}).join("")}</div>`:"";
-      html.push(`<div class="precision-object-group ${cat} ${main.geometryType==='field'?'field':''} ${selected?'selected':''} ${hasEvents?'has-events':''} ${searchClass} ${spatialClass}" data-precision-group="${esc(g.key)}" style="left:${p.x}px;top:${p.y}px;--marker-color:${pal.color};--marker-soft:${hexToRgba(pal.color,.23)}"><button class="precision-marker" data-precision-main="${esc(main.id)}" title="${esc(main.name)} · ${coordText(g.x,g.y)}"><span class="precision-marker-core"></span>${items.length>1?`<span class="precision-marker-count">${items.length}</span>`:""}<span class="precision-marker-name">${state.filters.q?markSearchText(main.name,state.filters.q):esc(main.name)}</span><span class="precision-marker-coord">${coordText(g.x,g.y)}</span></button>${popup}</div>`)
+    const html=[];groups.forEach(g=>{const items=sortObjects(g.items),selected=items.some(o=>o.id===state.selectedId),ordered=state.filters.q?[...items].sort((a,b)=>searchRank(a,state.filters.q)-searchRank(b,state.filters.q)):items,main=ordered.find(o=>o.id===state.selectedId)||ordered[0],hasWater=items.some(isHydrologyObject),landCats=items.map(baseTerrainCategory).filter(c=>c!=="unknown"),mainLand=baseTerrainCategory(main),landCat=mainLand!=="unknown"?mainLand:(landCats[0]||"unknown"),cat=landCat!=="unknown"?landCat:terrainCategory(main),pal=TERRAIN_PALETTE[cat]||TERRAIN_PALETTE.unknown,p=worldToScreen(g.x,g.y),anchorCell=cellKey(cellIndex(g.x),cellIndex(g.y)),searchClass=precisionSearchClass(items,anchorCell,stateSearch),spatialClass=!stateSearch.q&&focus.active&&!focus.memberCells.has(anchorCell)?"spatial-dim":"",hasEvents=items.some(o=>String(o.events||"").trim()||terrainCategory(o)==="event"),open=state.precisionClusterOpen===g.key,mixedClass=`${hasWater?'has-water':''} ${landCats.length?'has-land':''}`.trim(),mixedTitle=hasWater&&landCats.length?" · 地貌与水系叠层":"";
+      const popup=open&&items.length>1?`<div class="precision-cluster-popover">${ordered.map(o=>{const oc=isHydrologyObject(o)?"water":(baseTerrainCategory(o)!=="unknown"?baseTerrainCategory(o):terrainCategory(o)),op=TERRAIN_PALETTE[oc]||TERRAIN_PALETTE.unknown;return `<button data-precision-object="${esc(o.id)}" class="${o.id===state.selectedId?'selected':''}"><i style="--dot:${op.color}"></i><span><strong>${esc(o.name)}</strong><small>${esc(o.type||'未分类')} · ${coordText(o.x,o.y)}</small></span></button>`}).join("")}</div>`:"";
+      html.push(`<div class="precision-object-group ${cat} ${mixedClass} ${main.geometryType==='field'?'field':''} ${selected?'selected':''} ${hasEvents?'has-events':''} ${searchClass} ${spatialClass}" data-precision-group="${esc(g.key)}" style="left:${p.x}px;top:${p.y}px;--marker-color:${pal.color};--marker-soft:${hexToRgba(pal.color,.23)}"><button class="precision-marker" data-precision-main="${esc(main.id)}" title="${esc(main.name)} · ${coordText(g.x,g.y)}${mixedTitle}"><span class="precision-marker-core"></span>${items.length>1?`<span class="precision-marker-count">${items.length}</span>`:""}<span class="precision-marker-name">${state.filters.q?markSearchText(main.name,state.filters.q):esc(main.name)}</span><span class="precision-marker-coord">${coordText(g.x,g.y)}</span></button>${popup}</div>`)
     });els.tileLayer.innerHTML=html.join("");bindPrecisionEvents();
   }
   function bindPrecisionEvents(){

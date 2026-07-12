@@ -409,7 +409,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .pending-package-card.viewed{border-color:#d7b36b;background:#fffaf0}.pending-package-card.new{border-color:#a9cabd}.pending-card-status{font-style:normal!important;font-weight:800}.pending-card-status.new{color:var(--jade)}.pending-card-status.viewed{color:#9b6b12}.pending-card-status.applied{color:#6b746e}
 
 
-/* v023 · 420%以上彩色精细地图 */
+/* v024 · 地貌底色与水系叠层 */
 .precision-mode-badge{position:absolute;left:18px;top:18px;z-index:24;display:flex;flex-direction:column;gap:2px;padding:9px 12px;border:1px solid rgba(26,86,70,.42);border-radius:10px;background:rgba(247,248,243,.92);box-shadow:0 8px 24px rgba(37,47,43,.16);pointer-events:none;backdrop-filter:blur(6px)}
 .precision-mode-badge strong{font-family:var(--serif);font-size:12px;color:var(--jade-dark)}.precision-mode-badge span{font-size:8px;color:var(--muted)}
 .precision-terrain-legend{position:absolute;left:18px;bottom:45px;z-index:24;display:flex;flex-wrap:wrap;gap:6px 10px;width:min(440px,calc(100% - 36px));padding:8px 10px;border:1px solid rgba(85,89,83,.3);border-radius:9px;background:rgba(244,245,241,.9);box-shadow:0 5px 18px rgba(42,48,45,.12);pointer-events:none;backdrop-filter:blur(5px)}
@@ -440,3 +440,8 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @keyframes precisionEventPulse{0%,100%{opacity:.35;transform:scale(.82)}50%{opacity:.95;transform:scale(1.15)}}
 @keyframes precisionModeFade{from{opacity:.35}to{opacity:1}}
 @media(max-width:1000px){.precision-terrain-legend{display:none!important}.precision-marker-name{font-size:9px}}
+
+/* v024 · 同位地貌与水系采用双色叠层，不混成单一青色 */
+.precision-object-group.has-water.has-land .precision-marker-core{background:linear-gradient(135deg,var(--marker-color) 0 58%,#5b94a8 58% 100%);box-shadow:0 0 0 2px rgba(40,53,47,.28),0 0 0 7px var(--marker-soft),4px 4px 0 -1px rgba(65,139,163,.35)}
+.precision-object-group.has-water:not(.has-land) .precision-marker-core{background:linear-gradient(145deg,#7db4c7,#2b7f99)}
+.precision-terrain-legend .mixed-swatch{background:linear-gradient(135deg,#9a9272 0 58%,#5b94a8 58% 100%)!important}
