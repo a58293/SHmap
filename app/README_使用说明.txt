@@ -1,9 +1,9 @@
-山海经原典地图研究台 Demo v015 · GitHub待处理包下载与应用
+山海经原典地图研究台 Demo v017 · GitHub待处理包下载与应用
 
 【打开方式】
 1. 双击“启动山海经地图Demo.bat”。
 2. 或直接打开“index.html”。
-3. 也可以打开“山海经原典地图研究台_Demo_v015_GitHub待处理包下载与应用_单文件版.html”。
+3. 也可以打开“山海经原典地图研究台_Demo_v017_GitHub待处理包下载与应用_单文件版.html”。
 
 【GitHub pending 使用】
 1. 把程序导出的 .shjpatch 放到仓库 submissions/pending。

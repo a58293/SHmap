@@ -1,22 +1,11 @@
 {
-  "project": "SHmap",
-  "app_name": "山海经原典地图研究台",
-  "app_version": "demo-v015",
+  "app_version": "v017",
+  "app_title": "山海经原典地图研究台 Demo v017",
   "data_version": "v031-r0001",
-  "research_spec": "v002",
-  "production_spec": "v004",
-  "release_date": "2026-07-11",
-  "status": "prototype",
-  "entry": "app/index.html",
-  "data_source": "source-workbooks/山海经原典地图_都广之野核心区_v031.xlsx",
-  "github_repository": "a58293/SHmap",
-  "github_read_status": "current-and-pending-enabled",
-  "github_write_status": "via-github-desktop",
-  "features_added": [
-    "扫描 GitHub submissions/pending 中的 .shjpatch",
-    "更改包下载、格式校验与逐项预览",
-    "对象、地块档案、面积与删除操作的冲突检查",
-    "无冲突时一次性应用到本地地图",
-    "本机已应用包记录与重复应用防护"
+  "build": "2026-07-12",
+  "notes": [
+    "区域聚焦时，点击聚焦范围外的地块会自动退出聚焦并切换到该地块",
+    "区域聚焦时，点击地图空白区域会退出聚焦并恢复完整地图",
+    "保留中倍率图标加地块名称显示"
   ]
 }

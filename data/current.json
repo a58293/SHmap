@@ -1,15 +1,15 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v015",
+  "app_version": "demo-v017",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.1",
-  "updated_at": "2026-07-11T13:30:00+09:00",
+  "updated_at": "2026-07-12T14:30:00+09:00",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "检查数据更新时同时扫描 submissions/pending",
-    "支持在线预览并应用 .shjpatch 更改包",
-    "应用前检查基础版本、字段冲突和重复对象 ID",
-    "已经应用的包在本机标记，不会重复写入"
+    "区域聚焦时点击灰暗地块可自动退出聚焦并切换地块",
+    "点击地图空白区域可退出聚焦并恢复完整地图",
+    "中倍率地块显示图标与当前地块名称",
+    "继续支持 GitHub pending 更改包扫描、预览与应用"
   ]
 }
