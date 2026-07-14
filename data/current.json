@@ -1,15 +1,15 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v032",
+  "app_version": "demo-v034",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.2",
-  "updated_at": "2026-07-14",
+  "updated_at": "2026-07-15",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "六类内容分类全面审计",
-    "正式类型优先，避免名称单字误判",
-    "地块摘要与悬停透镜分类一致",
-    "修复视图预设分类键"
+    "低倍率区域概览模式",
+    "隐藏100里地块与棋盘格",
+    "区域名称算法聚合与自动避让",
+    "点击区域名称放大定位"
   ]
 }

@@ -19,6 +19,8 @@
   const MAX_ZOOM = 30;
   const PRECISION_ENTER_ZOOM = 4.2;
   const PRECISION_EXIT_ZOOM = 3.8;
+  const REGION_OVERVIEW_ENTER_ZOOM = 0.42;
+  const REGION_OVERVIEW_EXIT_ZOOM = 0.52;
   const TERRAIN_PALETTE = {
     mountain:{color:"#756b5b",cell:"rgba(117,107,91,.48)",line:"#5e5548"},
     hill:{color:"#9a9272",cell:"rgba(154,146,114,.42)",line:"#777054"},
@@ -270,6 +272,7 @@
     filters:{q:"",chapter:"",type:""},
     layers:{areas:true,terrain:true,rivers:true,empty:true,changes:true},
     precisionMode:false,
+    regionOverviewMode:false,
     precisionClusterOpen:null,
     renderQueued:false,
     suppressClickUntil:0,
@@ -584,13 +587,70 @@
   function resizeCanvas(){const r=els.viewport.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);els.canvas.width=Math.max(1,Math.round(r.width*dpr));els.canvas.height=Math.max(1,Math.round(r.height*dpr));els.canvas.style.width=r.width+"px";els.canvas.style.height=r.height+"px"}
   function scheduleRender(){if(state.renderQueued)return;state.renderQueued=true;requestAnimationFrame(()=>{state.renderQueued=false;renderMap()})}
   function visibleWorld(){const r=els.viewport.getBoundingClientRect(),s=scale();return {left:state.camera.x-r.width/(2*s),right:state.camera.x+r.width/(2*s),bottom:state.camera.y-r.height/(2*s),top:state.camera.y+r.height/(2*s),width:r.width,height:r.height}}
+  function cleanRegionOverviewName(raw){
+    let name=String(raw||"").replace(/[《》]/g,"").replace(/\s+/g,"").trim();
+    name=name.replace(/^卷(?:十[一二三四五六七八九]?|十八)/,"").replace(/00/g,"");
+    name=name.replace(/（[^）]*(?:代表|候选|校注|异文|项目)[^）]*）/g,"");
+    name=name.replace(/(?:完整)?拓扑模块|连续拓扑模块|接口模块|外接模块|源模块|后续模块|模块|分流层|异文层|校注层|候选层|项目层|代表段|接口|路径$/g,"");
+    name=name.replace(/核心区西部$/,"西部").replace(/核心区东部$/,"东部").replace(/核心区南部$/,"南部").replace(/核心区北部$/,"北部");
+    name=name.replace(/—+$/g,"").replace(/^—+/g,"").replace(/[-—]{2,}/g,"—");
+    const friendly={"海内昆仑之虚":"昆仑之虚","南方":"南方关系区","西次三经":"西次三经山系","昆仑西山经四水":"昆仑四水分流","华山—青水—肇山升降":"华山—青水—肇山","昆仑河水—渤海—积石主干":"昆仑—渤海—积石水系","流沙—黑水西侧走廊":"流沙—黑水西侧","都广第一环东轴":"都广东部第一环"};
+    return friendly[name]||name||"未命名区域";
+  }
+  function regionOverviewTokens(o){
+    const raw=String(o?.region||"");
+    const tokens=raw.split(/[／/、，,；;\n]+/).map(cleanRegionOverviewName).filter(name=>name.length>=2&&!/^(顶部|内部|源点|四面结构|未分位层|核心区|区域|山系|主体|候选|项目模型)$/.test(name));
+    if(tokens.length)return tokens;
+    if(o?.geometryType==="area"&&/(区域|国|野|海|林|山系|丘群|水网)/.test(String(o.type||"")+String(o.name||"")))return [cleanRegionOverviewName(o.name)];
+    return [];
+  }
+  function regionOverviewGroups(){
+    const search=getSearchContext(),filterActive=!!(state.filters.q||state.filters.chapter||state.filters.type),source=filterActive?search.filteredObjects:state.objects,groups=new Map();
+    source.forEach(o=>{
+      const tokens=regionOverviewTokens(o);if(!tokens.length)return;
+      const token=tokens[0],key=normalizeText(token);if(!key)return;
+      if(!groups.has(key))groups.set(key,{key,name:token,items:[],sumX:0,sumY:0,weight:0,minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity,areaWeight:0});
+      const g=groups.get(key),a=objectAnchor(o),w=o.area?3:o.geometryType==="line"?1.5:1;g.items.push(o);g.sumX+=a.x*w;g.sumY+=a.y*w;g.weight+=w;if(o.area){const b=rangeBounds(o.area);g.minX=Math.min(g.minX,b.west);g.maxX=Math.max(g.maxX,b.east);g.minY=Math.min(g.minY,b.south);g.maxY=Math.max(g.maxY,b.north);g.areaWeight+=1}else if(o.path?.length){o.path.forEach(p=>{g.minX=Math.min(g.minX,Number(p[0])||0);g.maxX=Math.max(g.maxX,Number(p[0])||0);g.minY=Math.min(g.minY,Number(p[1])||0);g.maxY=Math.max(g.maxY,Number(p[1])||0)})}else{g.minX=Math.min(g.minX,a.x);g.maxX=Math.max(g.maxX,a.x);g.minY=Math.min(g.minY,a.y);g.maxY=Math.max(g.maxY,a.y)}});
+    let list=[...groups.values()].map(g=>{g.x=g.sumX/(g.weight||1);g.y=g.sumY/(g.weight||1);g.count=g.items.length;g.priority=g.count+g.areaWeight*3+(g.name.includes("都广")||g.name.includes("昆仑")||g.name.includes("北海")?2:0);return g});
+    const minCount=state.camera.zoom<=.27?3:2,maxLabels=state.camera.zoom<=.27?13:22;
+    list=list.filter(g=>g.count>=minCount||g.areaWeight>0).sort((a,b)=>b.priority-a.priority||a.name.localeCompare(b.name,"zh-CN"));
+    const accepted=[];
+    for(const g of list){
+      const duplicate=accepted.some(a=>{const near=Math.hypot(a.x-g.x,a.y-g.y)<180;const names=a.name.includes(g.name)||g.name.includes(a.name);return near&&names});
+      if(!duplicate)accepted.push(g);if(accepted.length>=maxLabels)break;
+    }
+    return accepted;
+  }
+  function updateRegionOverviewMode(){
+    const before=state.regionOverviewMode;
+    if(state.precisionMode)state.regionOverviewMode=false;
+    else if(!state.regionOverviewMode&&state.camera.zoom<=REGION_OVERVIEW_ENTER_ZOOM)state.regionOverviewMode=true;
+    else if(state.regionOverviewMode&&state.camera.zoom>=REGION_OVERVIEW_EXIT_ZOOM)state.regionOverviewMode=false;
+    els.viewport.classList.toggle("region-overview-mode",state.regionOverviewMode);
+    if(before!==state.regionOverviewMode){state.flippedCell=null;hideTooltip();els.viewport.classList.add("region-overview-transition");setTimeout(()=>els.viewport.classList.remove("region-overview-transition"),260)}
+    if(state.regionOverviewMode&&els.mapGuide)els.mapGuide.innerHTML="<span>区域概览</span><i></i><span>隐藏100里地块</span><i></i><span>点击区域名称放大</span><i></i><span>放大至52%以上恢复地块</span>";
+  }
+  function regionOverviewLabelPlacement(groups){
+    const r=els.viewport.getBoundingClientRect(),placed=[],offsets=[[0,0],[0,-34],[0,34],[-54,0],[54,0],[-46,-32],[46,-32],[-46,32],[46,32],[0,-68],[0,68]];
+    return groups.map(g=>{const p=worldToScreen(g.x,g.y),w=Math.min(260,Math.max(112,54+g.name.length*18)),h=g.priority>=7?62:52;let best={x:p.x,y:p.y,hidden:false};let found=false;
+      for(const [ox,oy] of offsets){const x=p.x+ox,y=p.y+oy,rect={l:x-w/2,r:x+w/2,t:y-h/2,b:y+h/2};if(rect.r<8||rect.l>r.width-8||rect.b<8||rect.t>r.height-8)continue;const hit=placed.some(q=>!(rect.r+8<q.l||rect.l-8>q.r||rect.b+8<q.t||rect.t-8>q.b));if(!hit){best={x,y,hidden:false};placed.push(rect);found=true;break}}
+      if(!found)best.hidden=true;return {...g,...best,width:w}
+    }).filter(g=>!g.hidden)}
+  function renderRegionOverviewLayer(){
+    const v=visibleWorld(),groups=regionOverviewGroups().filter(g=>g.maxX>=v.left-150&&g.minX<=v.right+150&&g.maxY>=v.bottom-150&&g.minY<=v.top+150),placed=regionOverviewLabelPlacement(groups);
+    els.tileLayer.innerHTML=placed.map(g=>{const cats=[...new Set(g.items.map(objectCategory))].slice(0,3).map(k=>({terrain:"地貌",plants:"草木",animals:"鸟兽",minerals:"矿物",people:"人群神祇",events:"事迹"}[k]||"")).filter(Boolean);return `<button class="region-overview-label ${g.priority>=7?'major':''}" data-region-key="${esc(g.key)}" style="left:${g.x}px;top:${g.y}px;--region-label-width:${g.width}px"><span class="region-overview-name">${esc(g.name)}</span><span class="region-overview-meta">${g.count}项${cats.length?` · ${esc(cats.join(" / "))}`:""}</span></button>`}).join("");
+    els.tileLayer.querySelectorAll(".region-overview-label").forEach(btn=>{const g=placed.find(x=>x.key===btn.dataset.regionKey);if(!g)return;btn.addEventListener("pointerdown",e=>e.stopPropagation());btn.addEventListener("click",e=>{e.stopPropagation();const w=Math.max(180,g.maxX-g.minX+160),h=Math.max(180,g.maxY-g.minY+160),r=els.viewport.getBoundingClientRect(),fit=Math.min(r.width*100/(BASE_CELL_PX*w),r.height*100/(BASE_CELL_PX*h)),target=Math.max(.62,Math.min(1.35,fit));animateCameraTo((g.minX+g.maxX)/2,(g.minY+g.maxY)/2,target)});btn.addEventListener("mouseenter",e=>{els.tooltip.className="map-tooltip lens region-overview-lens";const sample=g.items.slice(0,6).map(o=>o.name).join(" / ");els.tooltip.innerHTML=`<strong>${esc(g.name)}</strong><small>${g.count}个对象 · 点击放大到该区域</small>${sample?`<p>${esc(sample)}${g.items.length>6?"……":""}</p>`:""}`;els.tooltip.classList.remove("hidden");moveTooltip(e.clientX,e.clientY)});btn.addEventListener("mousemove",e=>moveTooltip(e.clientX,e.clientY));btn.addEventListener("mouseleave",hideTooltip)})
+  }
+  function drawRegionOverviewBackdrops(ctx,v,s){
+    const groups=regionOverviewGroups();ctx.save();groups.forEach(g=>{if(g.maxX<v.left||g.minX>v.right||g.maxY<v.bottom||g.minY>v.top)return;const cx=(g.minX+g.maxX)/2,cy=(g.minY+g.maxY)/2,rx=Math.max(80,(g.maxX-g.minX)/2+75),ry=Math.max(65,(g.maxY-g.minY)/2+65),p=worldToScreen(cx,cy);ctx.beginPath();ctx.ellipse(p.x,p.y,rx*s,ry*s,0,0,Math.PI*2);ctx.fillStyle=g.name.includes("海")?"rgba(74,130,150,.075)":g.name.includes("昆仑")?"rgba(112,100,76,.08)":"rgba(43,101,82,.065)";ctx.strokeStyle=g.name.includes("海")?"rgba(43,127,153,.28)":"rgba(31,109,90,.24)";ctx.lineWidth=1.2;ctx.setLineDash([7,7]);ctx.fill();ctx.stroke()});ctx.restore()
+  }
   function renderMap(){
     if(!els.viewport.clientWidth)return;
-    updatePrecisionMode();
+    updatePrecisionMode();updateRegionOverviewMode();
     drawCanvas(); renderTiles();
     els.zoomReadout.textContent=Math.round(state.camera.zoom*100)+"%";
-    els.cameraStatus.textContent=`${state.precisionMode?"10里彩色精细地图 · ":""}中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
-    els.closeFlipBtn.classList.toggle("hidden",state.precisionMode||!state.flippedCell);
+    els.cameraStatus.textContent=`${state.regionOverviewMode?"区域概览 · ":state.precisionMode?"10里彩色精细地图 · ":""}中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
+    els.closeFlipBtn.classList.toggle("hidden",state.regionOverviewMode||state.precisionMode||!state.flippedCell);
     const spatial=getSpatialFocusContext();
     if(els.clearSpatialFocusBtn){
       els.clearSpatialFocusBtn.classList.toggle("hidden",!spatial.active);
@@ -604,8 +664,9 @@
     ctx.fillStyle=state.precisionMode?"#aeb1af":"#cfd1d0";ctx.fillRect(0,0,r.width,r.height);
     const grad=ctx.createRadialGradient(r.width*.15,r.height*.05,0,r.width*.15,r.height*.05,r.width*.72);grad.addColorStop(0,"rgba(255,255,255,.22)");grad.addColorStop(1,"rgba(255,255,255,0)");ctx.fillStyle=grad;ctx.fillRect(0,0,r.width,r.height);
     if(state.precisionMode){drawPrecisionTerrain(ctx,v,s);drawPrecisionGrid(ctx,v,s);if(state.layers.rivers)drawPrecisionLines(ctx,v,s)}
+    else if(state.regionOverviewMode){drawRegionOverviewBackdrops(ctx,v,s);if(state.layers.rivers)drawLines(ctx,v,s)}
     else{if(state.layers.areas)drawAreas(ctx,v,s);drawGrid(ctx,v,s,cellPx);if(state.layers.rivers)drawLines(ctx,v,s)}
-    drawBrushSelection(ctx,v);drawContextDimming(ctx,v);drawSearchHighlights(ctx,v,s);drawOrigin(ctx,s);drawV029RelationOverlay(ctx,v,s);drawV029MeasureOverlay(ctx,v,s);
+    if(!state.regionOverviewMode)drawBrushSelection(ctx,v);drawContextDimming(ctx,v);drawSearchHighlights(ctx,v,s);drawOrigin(ctx,s);drawV029RelationOverlay(ctx,v,s);drawV029MeasureOverlay(ctx,v,s);
   }
   function drawGrid(ctx,v,s,cellPx){
     const startX=Math.floor((v.left-50)/100)*100+50, endX=v.right+100;const startY=Math.floor((v.bottom-50)/100)*100+50,endY=v.top+100;
@@ -639,6 +700,7 @@
   function drawOrigin(ctx,s){const p=worldToScreen(0,0),size=Math.max(6,Math.min(32,8*state.camera.zoom));ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle="#ad4d3d";ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.fillRect(-size/2,-size/2,size,size);ctx.strokeRect(-size/2,-size/2,size,size);ctx.restore();if(state.camera.zoom>.42){ctx.fillStyle="#7b3329";ctx.font="700 10px sans-serif";ctx.fillText("都广原点",p.x+10,p.y-10)}}
 
   function renderTiles(){
+    if(state.regionOverviewMode){renderRegionOverviewLayer();return}
     if(state.precisionMode){renderPrecisionLayer();return}
     const v=visibleWorld(),cellPx=BASE_CELL_PX*state.camera.zoom;const gxMin=Math.floor((v.left-50)/100)-1,gxMax=Math.ceil((v.right+50)/100)+1,gyMin=Math.floor((v.bottom-50)/100)-1,gyMax=Math.ceil((v.top+50)/100)+1;
     const search=getSearchContext(),spatialFocus=getSpatialFocusContext(),filteredIds=new Set(search.filteredObjects.map(o=>o.id)),allMap=buildCellMap(state.objects),changed=changedObjectIds(),q=!!search.q;const fragments=[];
@@ -1239,6 +1301,7 @@
     state.brushSpacePan=false;
     state.brushKeys=new Set(Array.isArray(saved?.brushKeys)?saved.brushKeys:[]);
     state.dossierCollectionMode=false;
+    state.dossierCategoryFilter="all";
     state.overlapViews={};
     state.tutorialTab="start";
     state.viewPreset=saved?.viewPreset||"all";
@@ -1433,7 +1496,8 @@
   }
   function categoryAnchorId(prefix,key){return `category-${prefix}-${key}`.replace(/[^a-zA-Z0-9_-]/g,"-")}
   function categoryOverviewHTML(items,prefix){
-    return `<section class="category-overview"><div class="category-overview-head"><div><span class="eyebrow">CONTENT OVERVIEW</span><h3>区域内容概览</h3></div><p>先看类别与代表对象，再向下阅读详细资料。</p></div><div class="category-overview-grid">${V027_CATEGORIES.map(cat=>{const list=items.filter(o=>objectCategory(o)===cat.key),names=list.map(o=>o.name),preview=names.slice(0,3).join(" / "),left=Math.max(0,names.length-3),anchor=categoryAnchorId(prefix,cat.key);return `<button class="category-overview-card ${list.length?'':'empty'}" data-category-jump="${anchor}"><span class="category-accent accent-${cat.key}"></span><span class="category-overview-icon">${cat.glyph}</span><span class="category-overview-copy"><strong>${cat.label}</strong><small>${esc(preview||"暂无明确记载")}${left?` · 另 ${left} 项`:""}</small></span><b>${list.length}</b></button>`}).join("")}</div></section>`
+    const active=state.dossierCategoryFilter||"all";
+    return `<section class="category-overview"><div class="category-overview-head"><div><span class="eyebrow">CONTENT OVERVIEW</span><h3>区域内容概览</h3></div><div class="category-overview-head-actions"><p>点击分类切换下方阅读内容。</p><button class="category-overview-all ${active==='all'?'active':''}" data-category-filter="all">全部总览</button></div></div><div class="category-overview-grid">${V027_CATEGORIES.map(cat=>{const list=items.filter(o=>objectCategory(o)===cat.key),names=list.map(o=>o.name),preview=names.slice(0,3).join(" / "),left=Math.max(0,names.length-3),anchor=categoryAnchorId(prefix,cat.key);return `<button class="category-overview-card ${list.length?'':'empty'} ${active===cat.key?'active':''}" data-category-filter="${cat.key}" data-category-jump="${anchor}" aria-pressed="${active===cat.key?'true':'false'}"><span class="category-accent accent-${cat.key}"></span><span class="category-overview-icon">${cat.glyph}</span><span class="category-overview-copy"><strong>${cat.label}</strong><small>${esc(preview||"暂无明确记载")}${left?` · 另 ${left} 项`:""}</small></span><b>${list.length}</b></button>`}).join("")}</div></section>`
   }
   function objectPreviewRows(objects){
     const relation=uniqueText(objects.map(o=>o.localRelation)),core=uniqueText(objects.map(objectCoreText)),rows=[];
@@ -1449,7 +1513,8 @@
     return `<article class="overlap-card ${view.flipped?'flipped':''}"><section class="overlap-card-face overlap-card-front"><div class="object-card-head"><div class="overlap-card-title"><i>${geometryIcon(o)}</i><div><strong>${esc(names)}</strong><small>${esc(tags.slice(0,2).join(" · ")||"地图对象")}</small></div></div>${flip}</div>${previews||`<div class="object-summary-row"><b>资料摘要</b><p>当前对象尚未形成简述，点击查看详细资料。</p></div>`}<div class="object-card-foot"><span>来自：${esc(source)}</span><button data-object-detail="${esc(o.id)}">查看详情 →</button></div></section><section class="overlap-card-face overlap-card-back">${flip}<div class="overlap-object-switch">${objects.map((x,i)=>`<button class="${i===idx?'active':''}" data-overlap-object="${esc(group.id)}" data-overlap-index="${i}">${esc(x.name)}</button>`).join("")}</div><h4 class="overlap-back-title">${esc(o.name)}</h4>${detailRows.map(([k,v])=>`<div class="overlap-back-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("")}<div class="object-card-foot"><span>来自：${esc(sourceTileLabelForObject(o))}</span><button data-object-detail="${esc(o.id)}">查看完整资料 →</button></div></section></article>`
   }
   function categoryReadingHTML(profile,items,prefix){
-    return `<section class="category-reading"><div class="category-reading-head"><div><span class="eyebrow">CATEGORY READING</span><h3>分类阅读</h3></div><p>对象卡片默认只显示摘要；需要时再展开完整资料。</p></div><div class="category-reading-grid">${V027_CATEGORIES.map(cat=>{const groups=groupObjectsForCategory(items,cat.key,prefix),summary=categoryProfileSummary(profile,cat.key),count=items.filter(o=>objectCategory(o)===cat.key).length,anchor=categoryAnchorId(prefix,cat.key);return `<article class="reading-category accent-border-${cat.key}" id="${anchor}"><header class="reading-category-head"><div><i>${cat.glyph}</i><span><strong>${cat.label}</strong><small>${count?`${count} 个对象`:'暂无明确对象'}</small></span></div>${count?`<b>${count}</b>`:""}</header>${summary?`<div class="reading-category-summary">${esc(shortText(summary,240))}</div>`:""}<div class="reading-object-list">${groups.length?groups.map(overlapCardHTML).join(""):`<div class="reading-category-empty"><i>${cat.glyph}</i><span>${summary?"已有地块汇总资料，尚无独立对象。":"本类尚无明确记载。"}</span></div>`}</div></article>`}).join("")}</div></section>`
+    const active=state.dossierCategoryFilter||"all",activeDef=V027_CATEGORIES.find(cat=>cat.key===active);
+    return `<section class="category-reading" data-category-reading><div class="category-reading-head"><div><span class="eyebrow">CATEGORY READING</span><h3>${activeDef?`${activeDef.label}阅读`:'分类阅读'}</h3></div><div class="category-reading-head-actions"><p>${activeDef?'当前仅显示所选分类；点击“全部分类”恢复。':'对象卡片默认只显示摘要；需要时再展开完整资料。'}</p>${activeDef?`<button data-category-filter="all">全部分类</button>`:""}</div></div><div class="category-reading-grid ${active!=='all'?'single-category':''}">${V027_CATEGORIES.map(cat=>{const groups=groupObjectsForCategory(items,cat.key,prefix),summary=categoryProfileSummary(profile,cat.key),count=items.filter(o=>objectCategory(o)===cat.key).length,anchor=categoryAnchorId(prefix,cat.key),hidden=active!=='all'&&active!==cat.key;return `<article class="reading-category accent-border-${cat.key} ${hidden?'category-filter-hidden':''}" id="${anchor}" data-reading-category="${cat.key}"><header class="reading-category-head"><div><i>${cat.glyph}</i><span><strong>${cat.label}</strong><small>${count?`${count} 个对象`:'暂无明确对象'}</small></span></div>${count?`<b>${count}</b>`:""}</header>${summary?`<div class="reading-category-summary">${esc(shortText(summary,240))}</div>`:""}<div class="reading-object-list">${groups.length?groups.map(overlapCardHTML).join(""):`<div class="reading-category-empty"><i>${cat.glyph}</i><span>${summary?"已有地块汇总资料，尚无独立对象。":"本类尚无明确记载。"}</span></div>`}</div></article>`}).join("")}</div></section>`
   }
   function openIdentityObjectDrawer(id){
     const o=state.objects.find(x=>x.id===id);if(!o)return;let overlay=document.getElementById("identityObjectDrawer");if(!overlay){overlay=document.createElement("section");overlay.id="identityObjectDrawer";overlay.className="identity-object-drawer hidden";overlay.innerHTML=`<div class="identity-drawer-backdrop" data-close-identity-drawer></div><aside><header><div><span class="eyebrow">OBJECT MONOGRAPH</span><h2 id="identityDrawerTitle"></h2><p id="identityDrawerMeta"></p></div><button class="icon-btn" data-close-identity-drawer>×</button></header><div id="identityDrawerBody"></div></aside>`;document.body.appendChild(overlay);overlay.querySelectorAll('[data-close-identity-drawer]').forEach(x=>x.addEventListener('click',()=>overlay.classList.add('hidden')))}
@@ -1467,7 +1532,12 @@
   }
 
   function bindIdentityBoardEvents(root=document){
-    root.querySelectorAll('[data-category-jump]').forEach(btn=>btn.addEventListener('click',()=>{const target=root.querySelector(`#${CSS.escape(btn.dataset.categoryJump)}`);target?.scrollIntoView({behavior:'smooth',block:'start'})}));
+    root.querySelectorAll('[data-category-filter]').forEach(btn=>btn.addEventListener('click',()=>{
+      const next=btn.dataset.categoryFilter||"all",changed=state.dossierCategoryFilter!==next;state.dossierCategoryFilter=next;
+      const pane=els.dossierContent?.closest(".dossier-right");rerenderActiveBoard();
+      requestAnimationFrame(()=>{const reading=els.dossierContent?.querySelector('[data-category-reading]');if(reading){const paneRect=pane?.getBoundingClientRect(),readRect=reading.getBoundingClientRect();if(pane&&paneRect)pane.scrollTo({top:pane.scrollTop+readRect.top-paneRect.top-14,behavior:changed?'smooth':'auto'});else reading.scrollIntoView({behavior:'smooth',block:'start'})}})
+    }));
+    root.querySelectorAll('[data-category-jump]').forEach(btn=>btn.addEventListener('dblclick',()=>{const target=root.querySelector(`#${CSS.escape(btn.dataset.categoryJump)}`);target?.scrollIntoView({behavior:'smooth',block:'start'})}));
     root.querySelectorAll('[data-object-detail]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();openIdentityObjectDrawer(btn.dataset.objectDetail)}));
     root.querySelectorAll('[data-overlap-flip]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const id=btn.dataset.overlapFlip,current=state.overlapViews[id]||{flipped:false,index:0};state.overlapViews[id]={...current,flipped:!current.flipped};rerenderActiveBoard()}));
     root.querySelectorAll('[data-overlap-object]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const id=btn.dataset.overlapObject,current=state.overlapViews[id]||{flipped:true,index:0};state.overlapViews[id]={...current,flipped:true,index:Number(btn.dataset.overlapIndex)||0};rerenderActiveBoard()}));
@@ -1479,7 +1549,7 @@
   function locateBoardTile(key){const [gx,gy]=key.split(',').map(Number);document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");closeDossierWorkspace();state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;animateCameraTo(cellCenter(gx),cellCenter(gy),Math.max(state.camera.zoom,.88),()=>{state.flippedCell=null;scheduleRender();renderDetails()})}
   function openFullDossierForTile(key){document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");state.dossierCollectionMode=false;state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;state.dossierMode="full";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
 
-  function openDossierWorkspace(){const tile=activeTile();if(!tile){toast("尚未选择地块","请先在地图中选择一个地块。","error");return}state.dossierCollectionMode=false;state.dossierMode="brief";state.dossierTab="overview";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
+  function openDossierWorkspace(){const tile=activeTile();if(!tile){toast("尚未选择地块","请先在地图中选择一个地块。","error");return}state.dossierCollectionMode=false;state.dossierCategoryFilter="all";state.dossierMode="brief";state.dossierTab="overview";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
   function closeDossierWorkspace(){state.dossierCollectionMode=false;els.dossierWorkspace.classList.remove("collection-mode");els.dossierWorkspace.classList.add("hidden")}
   function renderBriefDossier(profile,items,tile,main,b){return renderIdentityBoard(profile,items,tile,main,{prefix:"dossier"})}
   function resetDossierTopbarForTile(){
@@ -1535,7 +1605,7 @@
   function updateBrushUI(){const btn=document.getElementById("brushModeBtn"),collection=document.getElementById("brushCollectionBtn"),count=document.getElementById("brushCollectionCount");btn?.classList.toggle("active",state.brushMode&&!state.brushErase);btn?.classList.toggle("erase",state.brushMode&&state.brushErase);if(btn)btn.textContent=state.brushMode?(state.brushErase?"⌁ 擦除地块":"⌁ 画笔采集中"):"⌁ 画笔采集";if(count)count.textContent=state.brushKeys.size;if(collection)collection.classList.toggle("hidden",!state.brushKeys.size);els.viewport.classList.toggle("brush-mode",state.brushMode);scheduleRender()}
   function setBrushMode(on,erase=false){state.brushMode=!!on;state.brushErase=!!erase;state.brushDrawing=false;updateBrushUI();if(on)toast(erase?"擦除画笔已开启":"采集画笔已开启",erase?"划过已收录地块即可移除":"拖动划过有对象或已有档案的地块；按住空格可临时拖动地图")}
   function brushVisitAt(clientX,clientY){const w=screenToWorld(clientX,clientY),gx=cellIndex(w.x),gy=cellIndex(w.y),key=cellKey(gx,gy),has=objectsInCellKey(key).length||state.tileProfiles[key];if(!has)return;const had=state.brushKeys.has(key);if(state.brushErase){if(!had)return;state.brushKeys.delete(key)}else{if(had)return;state.brushKeys.add(key)}updateBrushUI()}
-  function openBrushCollection(){if(!state.brushKeys.size){toast("尚未采集地块","开启画笔后拖动划过有内容的地块。","error");return}setBrushMode(false);document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");state.dossierCollectionMode=true;state.dossierMode="brief";state.dossierTab="overview";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
+  function openBrushCollection(){if(!state.brushKeys.size){toast("尚未采集地块","开启画笔后拖动划过有内容的地块。","error");return}setBrushMode(false);document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");state.dossierCollectionMode=true;state.dossierCategoryFilter="all";state.dossierMode="brief";state.dossierTab="overview";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
   function closeBrushCollection(){document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");if(state.dossierCollectionMode)closeDossierWorkspace()}
   function collectionTileEntry(key){
     const [gx,gy]=key.split(',').map(Number),items=objectsInCellKey(key),profile=tileProfileFor(key,items),main=selectedTileMain(items);

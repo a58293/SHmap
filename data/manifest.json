@@ -12,7 +12,7 @@
     "x_li": 0,
     "y_li": 0
   },
-  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v032 对六类内容分类进行全面审计：正式类型优先，名称仅在类型缺失时辅助判断，并修复旧版自动摘要误归类。",
+  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v034 新增低倍率区域概览：42%以下隐藏100里地块格子，依据所属区域、面积与对象密度显示区域大致名称；52%以上恢复地块。",
   "github_pending_path": "submissions/pending",
   "github_patch_apply": "enabled-local",
   "markdown_schema": "object-and-tile-profile-v1.2-pure-map-research"
