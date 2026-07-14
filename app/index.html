@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v024</title>
+  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v032</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具</span><i></i><span id="saveState">本地工作区</span></div>
-          <h1>山海经原典地图研究台 <small>DEMO v024</small></h1>
+          <h1>山海经原典地图研究台 <small>DEMO v032</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -23,6 +23,7 @@
         <button class="nav-tab" id="openChangesTab">更改记录 <b id="topChangeCount">0</b></button>
         <button class="nav-tab" id="openTrashTab">回收站 <b id="topTrashCount">0</b></button>
         <button class="nav-tab" id="openSpecTab">地图规格</button>
+        <button class="nav-tab" id="openTutorialTab">使用教学</button>
       </div>
       <div class="top-actions">
         <button class="btn secondary" id="openImportBtn">导入 Markdown</button>
@@ -78,6 +79,7 @@
           <div class="map-heading">
             <span class="eyebrow">INFINITE 100-LI TILE MAP</span>
             <h2>无限棋盘 · 100里地块 · 420%以上彩色精细地图</h2>
+            <nav id="mapBreadcrumb" class="map-breadcrumb" aria-label="当前位置"><button data-breadcrumb="origin">都广之野</button></nav>
           </div>
           <div class="map-controls">
             <button class="icon-btn" id="zoomOutBtn" title="缩小">−</button>
@@ -85,6 +87,18 @@
             <button class="icon-btn" id="zoomInBtn" title="放大">＋</button>
             <button class="btn secondary compact" id="originBtn">回到都广</button>
             <button class="btn secondary compact" id="jumpCoordBtn">输入坐标</button>
+            <div class="research-tool-wrap">
+              <button class="btn secondary compact" id="viewPresetBtn">视图：全部</button>
+              <div id="viewPresetMenu" class="view-preset-menu hidden">
+                <button data-view-preset="all">全部资料</button><button data-view-preset="geography">地理视图</button><button data-view-preset="hydrology">水系视图</button><button data-view-preset="myth">神话视图</button><button data-view-preset="civilization">文明视图</button><button data-view-preset="evidence">证据视图</button>
+              </div>
+            </div>
+            <button class="btn secondary compact" id="relationModeBtn" title="高亮当前对象的直接与区域关系">关系高亮</button>
+            <button class="btn secondary compact" id="compareModeBtn" title="选择2—4个地块进行并排对比">对比</button>
+            <button class="btn secondary compact" id="measureModeBtn" title="测量两点之间的距离与方向">测量</button>
+            <button class="btn secondary compact" id="isolatedObjectsBtn" title="查找缺少空间关系的对象">孤立 <b id="isolatedObjectsCount">0</b></button>
+            <button class="btn secondary compact brush-toggle" id="brushModeBtn" title="拖动画笔采集经过的地块">⌁ 画笔采集</button>
+            <button class="btn secondary compact hidden" id="brushCollectionBtn">地块集合 <b id="brushCollectionCount">0</b></button>
           </div>
         </div>
         <div id="mapViewport" class="map-viewport">
@@ -102,6 +116,9 @@
           <div class="camera-status" id="cameraStatus">中心 X 0里 · Y 0里</div>
           <button id="clearSpatialFocusBtn" class="spatial-focus-clear hidden">退出区域聚焦 ×</button>
           <button id="closeFlipBtn" class="close-flip hidden">收起当前地块 ×</button>
+          <div id="compareStatusBar" class="compare-status-bar hidden"><span>对比选择：<b id="compareSelectionCount">0</b>/4</span><button id="openCompareBtn">打开对比</button><button id="clearCompareBtn">清空</button><button id="exitCompareBtn">退出</button></div>
+          <div id="measureReadout" class="measure-readout hidden"><strong>距离与方向</strong><span id="measureReadoutText">在地图上拖出一条测量线</span><button id="clearMeasureBtn">清除</button></div>
+          <div id="researchMinimap" class="research-minimap" title="单击小地图快速移动"><canvas id="researchMinimapCanvas"></canvas><div id="researchMinimapViewport" class="research-minimap-viewport"></div><span>总览</span></div>
         </div>
         <div class="legend-bar">
           <span><i class="legend-box hard"></i>原文明载面积</span>
@@ -115,6 +132,9 @@
           <span><i class="legend-search-related"></i>关联区域</span>
           <span><i class="legend-spatial-focus"></i>同面积／作用域聚焦</span>
           <span><i class="legend-precision"></i>420%以上自动进入彩色精细地图</span>
+          <span><i class="legend-evidence high"></i>原文明载／高证据</span>
+          <span><i class="legend-evidence medium"></i>古注／现代考证</span>
+          <span><i class="legend-evidence low"></i>候选／待核对</span>
         </div>
       </section>
 
@@ -122,7 +142,7 @@
         <div id="emptyDetail" class="detail-empty">
           <div class="empty-glyph">域</div>
           <h2>选择一个地块</h2>
-          <p>单击地块后，右侧会显示该地块的环境、文明部落与剧情档案。地块内可以继续容纳多个独立对象。</p>
+          <p>单击地块后，右侧会显示该地块的环境、文明、神话事件与证据档案。地块内可以继续容纳多个独立对象。</p>
           <div class="empty-flow"><span>选择地块</span><b>→</b><span>地块档案</span><b>→</b><span>编辑归档</span></div>
         </div>
         <div id="detailContent" class="detail-content hidden">
@@ -138,7 +158,7 @@
           <div class="detail-tabs tile-detail-tabs">
             <button class="active" data-tab="summary">地块简述</button>
             <button data-tab="civilization">文明部落</button>
-            <button data-tab="story">剧情</button>
+            <button data-tab="story">事件与现象</button>
           </div>
           <div class="detail-body" id="detailBody"></div>
         </div>
@@ -190,7 +210,17 @@
         </div>
         <label class="field"><span>锁定状态</span><input id="formLock" /></label>
         <label class="field"><span>原文／依据</span><textarea id="formOriginal" rows="4"></textarea></label>
-        <label class="field"><span>设定与推导</span><textarea id="formDerivation" rows="5"></textarea></label>
+        <div class="form-grid two">
+          <label class="field"><span>别名／异文名</span><input id="formAliases" /></label>
+          <label class="field"><span>证据等级</span><input id="formEvidenceLevel" placeholder="原文明载／古注支持／现代考证／候选" /></label>
+        </div>
+        <label class="field"><span>与本地关系</span><textarea id="formLocalRelation" rows="2"></textarea></label>
+        <label class="field"><span>核心特征</span><textarea id="formCoreFeatures" rows="3"></textarea></label>
+        <div class="form-grid two"><label class="field"><span>功效／作用</span><textarea id="formEfficacy" rows="2"></textarea></label><label class="field"><span>关系说明</span><textarea id="formRelationNotes" rows="2"></textarea></label></div>
+        <div class="form-grid two"><label class="field"><span>路径状态</span><input id="formPathStatus" placeholder="原文明载／部分明确／候选／待核对" /></label><label class="field"><span>水系与地貌关系</span><input id="formRiverTerrainRelation" placeholder="从此处发源／穿过此处／沿边界流动……" /></label></div>
+        <label class="field"><span>定位与地图推导</span><textarea id="formDerivation" rows="5"></textarea></label>
+        <label class="field"><span>资料来源说明</span><textarea id="formSourceNotes" rows="3"></textarea></label>
+        <label class="field"><span>待核对问题</span><textarea id="formPendingQuestions" rows="3"></textarea></label>
         <div id="geometryRangeHint" class="geometry-range-hint hidden"><strong>该对象需要空间范围</strong><span>保存后将自动进入“空间范围编辑器”，可在地图上拖拽、框选或绘制边界。</span></div>
         <div class="form-actions split"><button type="button" class="btn danger hidden" id="deleteObjectBtn">移入回收站</button><span></span><button type="button" class="btn secondary" data-close-modal="objectModal">取消</button><button type="submit" class="btn primary">保存对象</button></div>
       </form>
@@ -201,49 +231,55 @@
     <div class="modal-backdrop" data-close-modal="tileProfileModal"></div>
     <section class="modal-card tile-profile-card">
       <div class="modal-head">
-        <div><span class="eyebrow">TILE DOSSIER EDITOR</span><h2 id="tileProfileTitle">编辑地块档案</h2><p>地块档案与格内对象分开保存；剧情中的非玩家事件按《山海经》十八经篇归档。</p></div>
+        <div><span class="eyebrow">TILE DOSSIER EDITOR</span><h2 id="tileProfileTitle">编辑地块档案</h2><p>地块档案与格内对象分开保存；神话与历史事件按《山海经》十八经篇归档。</p></div>
         <button class="modal-close" data-close-modal="tileProfileModal">×</button>
       </div>
       <form id="tileProfileForm" class="tile-profile-form">
         <input type="hidden" id="tileProfileKey" />
         <section class="profile-form-section summary-layer-editor">
-          <div class="profile-section-title"><b>卷</b><div><h3>博物志三层简述</h3><p>用于“简述”阅读模式；文案可以稍后补充。</p></div></div>
+          <div class="profile-section-title"><b>卷</b><div><h3>地块三层简述</h3><p>用于地图上的宽幅简述卡牌，只记录地图调研信息。</p></div></div>
           <label class="field"><span>简要</span><textarea id="tileBriefSummary" rows="3" placeholder="一句话或极短摘要"></textarea></label>
-          <label class="field"><span>基础</span><textarea id="tileBasicSummary" rows="5" placeholder="基础设定与核心信息"></textarea></label>
-          <label class="field"><span>详细</span><textarea id="tileDetailedSummary" rows="8" placeholder="完整叙述与扩展说明"></textarea></label>
+          <label class="field"><span>基础</span><textarea id="tileBasicSummary" rows="5" placeholder="基础地理与主要对象"></textarea></label>
+          <label class="field"><span>详细</span><textarea id="tileDetailedSummary" rows="8" placeholder="完整地块说明"></textarea></label>
         </section>
         <section class="profile-form-section">
-          <div class="profile-section-title"><b>一</b><div><h3>地块简述</h3><p>描述这个地块本身，而不是单独某一个对象。</p></div></div>
-          <label class="field"><span>地理环境</span><textarea id="tileGeoEnvironment" rows="4" placeholder="山地、河谷、湿地、气候、光照、水系等"></textarea></label>
-          <label class="field"><span>建筑群</span><textarea id="tileArchitecture" rows="3" placeholder="城邑、宫殿、祭坛、聚落、墓葬群等"></textarea></label>
-          <label class="field"><span>生活物种</span><textarea id="tileLivingSpecies" rows="4" placeholder="本地日常栖息或生长的动物、植物与其他生命"></textarea></label>
+          <div class="profile-section-title"><b>一</b><div><h3>身份与空间关系</h3><p>用于卡牌左侧身份信息和顶部摘要。</p></div></div>
+          <label class="field"><span>一句话摘要</span><textarea id="tileOneLineSummary" rows="2"></textarea></label>
+          <div class="form-grid two"><label class="field"><span>地块类型</span><input id="tileType" /></label><label class="field"><span>方位范围</span><input id="tileOrientation" /></label></div>
+          <label class="field"><span>本地标签</span><input id="tileLocalTags" placeholder="山地 / 黑水发源 / 北海内部" /></label>
+          <div class="form-grid two"><label class="field"><span>父级区域</span><input id="tileParentRegion" /></label><label class="field"><span>相邻地块</span><input id="tileAdjacentTiles" /></label></div>
+          <div class="form-grid two"><label class="field"><span>关联水域</span><input id="tileRelatedWaters" /></label><label class="field"><span>关联生灵</span><input id="tileRelatedLife" /></label></div>
+          <div class="form-grid two"><label class="field"><span>来源可信度</span><select id="tileSourceReliability"><option value="">未填写</option><option>高</option><option>中</option><option>低</option><option>待核对</option></select></label><label class="field"><span>关联完整度</span><input id="tileRelationCompleteness" placeholder="例如 78%" /></label></div>
         </section>
         <section class="profile-form-section">
-          <div class="profile-section-title"><b>二</b><div><h3>文明部落</h3><p>记录当地文明结构、信仰体系与资源生态。</p></div></div>
-          <div class="form-grid two"><label class="field"><span>所属国度</span><input id="tileCountry" /></label><label class="field"><span>信仰对象</span><input id="tileFaith" /></label></div>
-          <div class="form-grid two"><label class="field"><span>统治者</span><input id="tileRuler" /></label><label class="field"><span>守护神</span><input id="tileGuardian" placeholder="无则留空" /></label></div>
-          <label class="field"><span>奇珍异兽／栖息生物</span><textarea id="tileBeasts" rows="3"></textarea></label>
+          <div class="profile-section-title"><b>二</b><div><h3>地理与生态</h3><p>记录地貌、水文、建筑遗迹和生活物种。</p></div></div>
+          <label class="field"><span>地理环境</span><textarea id="tileGeoEnvironment" rows="4"></textarea></label>
+          <label class="field"><span>水文特征</span><textarea id="tileHydrology" rows="4"></textarea></label>
+          <label class="field"><span>建筑与遗迹</span><textarea id="tileArchitecture" rows="3"></textarea></label>
+          <label class="field"><span>生活物种</span><textarea id="tileLivingSpecies" rows="4"></textarea></label>
+        </section>
+        <section class="profile-form-section">
+          <div class="profile-section-title"><b>三</b><div><h3>文明、神祇与自然资源</h3><p>只记录原典、古注和研究资料中的地理文化信息。</p></div></div>
+          <div class="form-grid two"><label class="field"><span>所属国度／部族</span><input id="tileCountry" /></label><label class="field"><span>信仰对象</span><input id="tileFaith" /></label></div>
+          <div class="form-grid two"><label class="field"><span>统治者</span><input id="tileRuler" /></label><label class="field"><span>守护神</span><input id="tileGuardian" /></label></div>
+          <label class="field"><span>奇珍异兽</span><textarea id="tileBeasts" rows="3"></textarea></label>
           <div class="form-grid two"><label class="field"><span>神木／神话植被</span><textarea id="tileDivinePlants" rows="3"></textarea></label><label class="field"><span>仙草药草</span><textarea id="tileHerbs" rows="3"></textarea></label></div>
-          <div class="form-grid two"><label class="field"><span>丰富矿产</span><textarea id="tileMinerals" rows="3"></textarea></label><label class="field"><span>特殊生命</span><textarea id="tileSpecialLife" rows="3"></textarea></label></div>
+          <div class="form-grid two"><label class="field"><span>金玉矿物</span><textarea id="tileMinerals" rows="3"></textarea></label><label class="field"><span>特殊生命</span><textarea id="tileSpecialLife" rows="3"></textarea></label></div>
           <label class="field"><span>当地风俗</span><textarea id="tileCustoms" rows="4"></textarea></label>
         </section>
         <section class="profile-form-section">
-          <div class="profile-section-title"><b>三</b><div><h3>文明与神话奇遇</h3><p>记录地方传说、神迹、祭祀奇遇、文明异象与特殊空间遭遇。</p></div></div>
-          <label class="field"><span>文明与神话奇遇</span><textarea id="tileMythicEncounters" rows="6" placeholder="例如神明降临、祭祀异象、地方传说、特殊空间入口等"></textarea></label>
+          <div class="profile-section-title"><b>四</b><div><h3>神话事件与现象</h3><p>记录神迹、祭祀、文明异象、自然异常与历史事件。</p></div></div>
+          <label class="field"><span>神话事件与现象</span><textarea id="tileMythicEncounters" rows="5"></textarea></label>
+          <label class="field"><span>已发生事件</span><textarea id="tileOccurredEvents" rows="4"></textarea></label>
+          <div class="scripture-editor-head"><div><strong>十八经篇事件归档</strong><small>把有明确经篇归属的事件分别归档。</small></div><span>18卷</span></div>
+          <div id="scriptureEventFields" class="scripture-event-fields"></div>
         </section>
         <section class="profile-form-section">
-          <div class="profile-section-title"><b>四</b><div><h3>剧情</h3><p>玩家相关内容单独记录；其余事件进入十八经篇归档。</p></div></div>
-          <label class="field"><span>已发生事件（综合简述）</span><textarea id="tileOccurredEvents" rows="4"></textarea></label>
-          <div class="form-grid two"><label class="field"><span>时间流逝是否正常</span><select id="tileTimeNormal"><option value="unknown">未判定</option><option value="yes">正常</option><option value="no">异常</option><option value="stopped">停滞</option><option value="loop">循环</option></select></label><label class="field"><span>玩家是否可以抵达</span><select id="tilePlayerReachable"><option value="unknown">未判定</option><option value="yes">可以抵达</option><option value="no">不可抵达</option><option value="conditional">满足条件后可抵达</option></select></label></div>
-          <label class="field"><span>其他剧情说明</span><textarea id="tileStoryOther" rows="3"></textarea></label>
-          <div id="playerFields" class="player-fields hidden">
-            <div class="conditional-banner">玩家可以抵达时，以下三项才会进入地块档案。</div>
-            <label class="field"><span>玩家遭遇的敌人</span><textarea id="tilePlayerEnemies" rows="3"></textarea></label>
-            <label class="field"><span>玩家触发的剧情</span><textarea id="tilePlayerPlots" rows="3"></textarea></label>
-            <label class="field"><span>玩家得到的东西</span><textarea id="tilePlayerLoot" rows="3"></textarea></label>
-          </div>
-          <div class="scripture-editor-head"><div><strong>十八经篇事件归档</strong><small>除玩家行为外，所有历史、神话与环境事件分别归入对应经篇。</small></div><span>18卷</span></div>
-          <div id="scriptureEventFields" class="scripture-event-fields"></div>
+          <div class="profile-section-title"><b>五</b><div><h3>原文与证据</h3><p>说明当前地块为何这样定位，以及还存在哪些问题。</p></div></div>
+          <label class="field"><span>地块原文摘录</span><textarea id="tileOriginalExcerpt" rows="5"></textarea></label>
+          <label class="field"><span>资料证据链</span><textarea id="tileEvidenceChain" rows="5"></textarea></label>
+          <label class="field"><span>当前定位结论</span><textarea id="tileLocationConclusion" rows="4"></textarea></label>
+          <label class="field"><span>待核对问题</span><textarea id="tilePendingQuestions" rows="4"></textarea></label>
         </section>
         <div class="form-actions"><button type="button" class="btn secondary" data-close-modal="tileProfileModal">取消</button><button type="submit" class="btn primary">保存地块档案</button></div>
       </form>
@@ -358,8 +394,8 @@
       </div>
       <div class="dossier-top-actions">
         <div class="dossier-mode-toggle" role="group" aria-label="博物志显示模式"><button id="dossierModeBrief" class="active" type="button">简述</button><button id="dossierModeFull" type="button">完整</button></div>
-        <button class="btn secondary" id="copyPromptBtn">▣ 复制绘图提示</button>
-        <button class="btn secondary" id="copyBriefBtn">▤ 复制美术简报</button>
+        <button class="btn secondary" id="copyPromptBtn">▣ 复制地块摘要</button>
+        <button class="btn secondary" id="copyBriefBtn">▤ 复制证据摘要</button>
         <button class="btn primary" id="editDossierBtn">✎ 编辑地块档案</button>
       </div>
     </header>
@@ -383,7 +419,7 @@
         <nav class="dossier-tabs">
           <button class="active" data-dossier-tab="overview">总览</button>
           <button data-dossier-tab="civilization">文明与部落</button>
-          <button data-dossier-tab="story">剧情与事件</button>
+          <button data-dossier-tab="story">事件与现象</button>
           <button data-dossier-tab="sources">原典与考据</button>
           <button data-dossier-tab="history">版本记录</button>
         </nav>
@@ -392,6 +428,24 @@
     </main>
   </div>
 
+
+  <div id="brushCollectionWorkspace" class="brush-collection-workspace hidden" aria-label="画笔采集区域博物志">
+    <header class="collection-topbar">
+      <div><button id="closeBrushCollectionBtn" class="dossier-back">← 返回地图</button><span class="eyebrow">TILE BRUSH COLLECTION</span><h1>画笔采集 · 区域博物志</h1><p id="brushCollectionMeta">尚未采集地块</p></div>
+      <div class="collection-actions"><button class="btn secondary" id="continueBrushBtn">继续追加</button><button class="btn secondary" id="eraseBrushBtn">擦除地块</button><button class="btn secondary" id="clearBrushBtn">清空集合</button></div>
+    </header>
+    <main id="brushCollectionList" class="brush-collection-list"></main>
+  </div>
+
+  <div class="modal hidden" id="tutorialModal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close-modal="tutorialModal"></div>
+    <section class="modal-card tutorial-card">
+      <div class="modal-head"><div><span class="eyebrow">USER GUIDE</span><h2>地图研究台使用教学</h2><p>按实际任务查看，不需要一次学完全部功能。</p></div><button class="modal-close" data-close-modal="tutorialModal">×</button></div>
+      <nav class="tutorial-tabs"><button class="active" data-tutorial-tab="start">快速开始</button><button data-tutorial-tab="dossier">地块简述</button><button data-tutorial-tab="brush">画笔采集</button><button data-tutorial-tab="markdown">Markdown导入</button><button data-tutorial-tab="precision">精细地图</button><button data-tutorial-tab="research">研究工具</button></nav>
+      <div id="tutorialBody" class="tutorial-body"></div>
+      <div class="form-actions"><label class="tutorial-seen"><input id="tutorialAutoCheck" type="checkbox" /> 下次打开不再自动提示</label><button class="btn primary" data-close-modal="tutorialModal">开始使用</button></div>
+    </section>
+  </div>
 
   <div id="rangeWorkspace" class="range-workspace hidden" aria-label="面积与作用域编辑器">
     <header class="range-topbar">
@@ -462,6 +516,19 @@
       </aside>
     </main>
   </div>
+
+  <section id="compareWorkspace" class="research-overlay hidden">
+    <div class="research-overlay-panel compare-panel">
+      <header><div><span class="eyebrow">TILE COMPARISON</span><h2>地块对比</h2><p>相同内容弱化，不同内容突出显示。</p></div><button id="closeCompareWorkspace" class="icon-btn">×</button></header>
+      <div id="compareWorkspaceBody" class="compare-workspace-body"></div>
+    </div>
+  </section>
+  <section id="isolatedWorkspace" class="research-overlay hidden">
+    <div class="research-overlay-panel isolated-panel">
+      <header><div><span class="eyebrow">RELATION AUDIT</span><h2>孤立对象检查</h2><p>查找缺少区域、参照或对象关系的地图条目。</p></div><button id="closeIsolatedWorkspace" class="icon-btn">×</button></header>
+      <div id="isolatedWorkspaceBody" class="isolated-workspace-body"></div>
+    </div>
+  </section>
 
   <div id="toastHost" class="toast-host"></div>
   <script src="data.js"></script>

@@ -12,8 +12,8 @@
     "x_li": 0,
     "y_li": 0
   },
-  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v024 将基础地貌与水系拆分为独立图层，同格山水使用双色叠层，候选水路不绘制为确定路线。",
+  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v032 对六类内容分类进行全面审计：正式类型优先，名称仅在类型缺失时辅助判断，并修复旧版自动摘要误归类。",
   "github_pending_path": "submissions/pending",
   "github_patch_apply": "enabled-local",
-  "markdown_schema": "object-and-tile-profile-v1.1"
+  "markdown_schema": "object-and-tile-profile-v1.2-pure-map-research"
 }
