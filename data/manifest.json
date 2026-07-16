@@ -12,7 +12,7 @@
     "x_li": 0,
     "y_li": 0
   },
-  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v035 新增高倍率悬停透镜自动关闭：800%以上隐藏，650%以下恢复，避免精细地图被弹窗遮挡。",
+  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v037 优化拖动、缩放、画笔、小地图、搜索与标签避让的刷新方式，不修改地图资料。",
   "github_pending_path": "submissions/pending",
   "github_patch_apply": "enabled-local",
   "markdown_schema": "object-and-tile-profile-v1.2-pure-map-research"
