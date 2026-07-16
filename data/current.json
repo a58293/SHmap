@@ -1,15 +1,15 @@
 {
   "project": "SHmap",
-  "app_version": "demo-v035",
+  "app_version": "demo-v036",
   "data_version": "v031-r0001",
   "schema_version": "demo-1.2",
-  "updated_at": "2026-07-15",
+  "updated_at": "2026-07-16",
   "release_url": "https://github.com/a58293/SHmap/releases",
   "download_url": "",
   "highlights": [
-    "高倍率自动关闭悬停透镜",
-    "800%以上隐藏悬停弹窗",
-    "650%以下恢复悬停透镜",
-    "避免精细地图遮挡"
+    "画笔采集显示红色自由笔迹",
+    "笔迹随地图缩放和平移保持位置",
+    "右上角小地图支持点击和拖动跳转",
+    "地图总览按钮可缩放至全部已录入范围"
   ]
 }

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v035</title>
+  <title>山海经原典地图研究台 · 无限地块与地块博物志 Demo v036</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具</span><i></i><span id="saveState">本地工作区</span></div>
-          <h1>山海经原典地图研究台 <small>DEMO v035</small></h1>
+          <h1>山海经原典地图研究台 <small>DEMO v036</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -104,6 +104,7 @@
         <div id="mapViewport" class="map-viewport">
           <canvas id="worldCanvas"></canvas>
           <div id="tileLayer" class="tile-layer"></div>
+          <canvas id="brushTraceCanvas" class="brush-trace-canvas" aria-hidden="true"></canvas>
           <div id="mapTooltip" class="map-tooltip hidden"></div>
           <div id="precisionModeBadge" class="precision-mode-badge hidden"><strong>10里彩色精细地图</strong><span>真实里坐标 · 地貌底色 · 水系叠加 · 路径流向</span></div>
           <div id="precisionTerrainLegend" class="precision-terrain-legend hidden">
@@ -118,7 +119,7 @@
           <button id="closeFlipBtn" class="close-flip hidden">收起当前地块 ×</button>
           <div id="compareStatusBar" class="compare-status-bar hidden"><span>对比选择：<b id="compareSelectionCount">0</b>/4</span><button id="openCompareBtn">打开对比</button><button id="clearCompareBtn">清空</button><button id="exitCompareBtn">退出</button></div>
           <div id="measureReadout" class="measure-readout hidden"><strong>距离与方向</strong><span id="measureReadoutText">在地图上拖出一条测量线</span><button id="clearMeasureBtn">清除</button></div>
-          <div id="researchMinimap" class="research-minimap" title="单击小地图快速移动"><canvas id="researchMinimapCanvas"></canvas><div id="researchMinimapViewport" class="research-minimap-viewport"></div><span>总览</span></div>
+          <div id="researchMinimap" class="research-minimap" title="单击小地图跳转；拖动可连续导航"><canvas id="researchMinimapCanvas"></canvas><div id="researchMinimapViewport" class="research-minimap-viewport"></div><button id="minimapOverviewBtn" type="button" title="缩放到全部已录入范围">地图总览</button></div>
         </div>
         <div class="legend-bar">
           <span><i class="legend-box hard"></i>原文明载面积</span>

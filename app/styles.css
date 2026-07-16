@@ -652,3 +652,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .map-tooltip.region-overview-lens small{display:block;color:#bcd7ce;font-size:12px;font-weight:700}
 .map-tooltip.region-overview-lens p{margin:10px 0 0;padding-top:9px;border-top:1px solid rgba(255,255,255,.13);color:#edf3ef;font-size:13px;line-height:1.7}
 @media(max-width:900px){.region-overview-name{font-size:15px}.region-overview-label.major .region-overview-name{font-size:18px}.region-overview-meta{font-size:9px}}
+
+
+/* v036 · 画笔红色笔迹与可交互地图总览 */
+.brush-trace-canvas{position:absolute;inset:0;z-index:7;width:100%;height:100%;pointer-events:none}
+.map-viewport.brush-mode .brush-trace-canvas{opacity:1}
+.research-minimap{touch-action:none;user-select:none}
+.research-minimap canvas{pointer-events:none}
+.research-minimap>button{position:absolute;left:7px;top:6px;z-index:3;border:1px solid rgba(49,91,78,.24);border-radius:6px;padding:3px 7px;background:rgba(255,253,247,.94);color:#315b4e;font:800 8px var(--mono);cursor:pointer;box-shadow:0 2px 6px rgba(40,60,52,.10)}
+.research-minimap>button:hover{background:#315b4e;color:#fff;border-color:#315b4e}
+.research-minimap.is-navigating{box-shadow:0 0 0 3px rgba(173,77,61,.20),0 8px 24px rgba(49,55,49,.22)}
