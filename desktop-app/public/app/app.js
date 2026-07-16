@@ -623,33 +623,49 @@
   function updateMapHUD(){
     els.zoomReadout.textContent=Math.round(state.camera.zoom*100)+"%";els.cameraStatus.textContent=`${state.regionOverviewMode?"区域概览 · ":state.precisionMode?"10里彩色精细地图 · ":""}中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
   }
-  function livePanLayers(){return [els.canvas,els.brushTraceCanvas,els.tileLayer].filter(Boolean)}
-  function applyLivePanTransform(dx,dy){
-    const transform=`translate3d(${dx}px,${dy}px,0)`;
-    livePanLayers().forEach(layer=>{layer.style.transformOrigin="0 0";layer.style.transform=transform});
-  }
+  function livePanLayers(){return [els.tileLayer].filter(Boolean)}
+  function applyLivePanTransform(){/* v003.1：不再整体平移地块层，地块由当前 camera 每帧定位。 */}
   function resetLivePanTransform(){
     livePanLayers().forEach(layer=>{layer.style.transform="";layer.style.transformOrigin=""});
+  }
+  function positionLiveTile(tile,left,top,size){
+    const uiScale=Math.min(2.6,Math.max(.82,size/BASE_CELL_PX));
+    tile.style.left="0px";tile.style.top="0px";tile.style.width=`${size}px`;tile.style.height=`${size}px`;
+    tile.style.setProperty("--tile-ui",uiScale);tile.style.transform=`translate3d(${left}px,${top}px,0)`;
+  }
+  function renderTilesLive(){
+    if(state.regionOverviewMode){renderRegionOverviewLayer();return}
+    if(state.precisionMode){renderPrecisionLayer();return}
+    const v=visibleWorld(),cellPx=BASE_CELL_PX*state.camera.zoom,overscanCells=2;
+    const gxMin=Math.floor((v.left-50)/100)-overscanCells,gxMax=Math.ceil((v.right+50)/100)+overscanCells,gyMin=Math.floor((v.bottom-50)/100)-overscanCells,gyMax=Math.ceil((v.top+50)/100)+overscanCells;
+    const search=getSearchContext(),spatialFocus=getSpatialFocusContext(),filteredIds=new Set(search.filteredObjects.map(o=>o.id)),allMap=ensureObjectIndexes().cellMap,changed=changedObjectIds(),q=!!search.q;
+    const existing=new Map([...els.tileLayer.querySelectorAll(":scope > .tile")].map(tile=>[tile.dataset.cell,tile])),wanted=new Set();let added=0;
+    for(let gy=gyMax;gy>=gyMin;gy--){for(let gx=gxMin;gx<=gxMax;gx++){
+      const k=cellKey(gx,gy),all=allMap.get(k)||[],visibleItems=all.filter(o=>filteredIds.has(o.id)).sort((a,b)=>searchRank(a,search.q)-searchRank(b,search.q)),occupied=all.length>0;
+      if(!occupied&&!state.layers.empty&&!search.directCells.has(k)&&!search.relatedCells.has(k))continue;
+      if(cellPx<39&&!occupied&&!search.directCells.has(k)&&!search.relatedCells.has(k))continue;
+      wanted.add(k);const center=worldToScreen(cellCenter(gx),cellCenter(gy)),left=center.x-cellPx/2,top=center.y-cellPx/2;
+      let tile=existing.get(k);
+      if(!tile){
+        const semantic=cellPx<44?"micro":cellPx<83?"compact":"",isChanged=all.some(o=>changed.has(o.id));
+        const searchClass=!q?"":search.exactNameCells.has(k)?"search-name-exact":search.nameCells.has(k)?"search-name":search.directCells.has(k)?"search-match":search.relatedCells.has(k)?"search-related":"search-dim";
+        const spatialClass=q||!spatialFocus.active?"":spatialFocus.memberCells.has(k)?"spatial-focus-member":"spatial-focus-dim",contextClass=[searchClass,spatialClass].filter(Boolean).join(" ");
+        els.tileLayer.insertAdjacentHTML("beforeend",tileHTML(gx,gy,k,all,visibleItems,0,0,cellPx,semantic,isChanged,contextClass,search));tile=els.tileLayer.lastElementChild;added++;
+      }
+      positionLiveTile(tile,left,top,cellPx);
+    }}
+    existing.forEach((tile,k)=>{if(!wanted.has(k))tile.remove()});
+    if(added){bindTileEvents();applyV029MapDOM()}
   }
   function renderCameraFrame(){
     if(!els.viewport.clientWidth)return;
     updateHoverLensSuppression();
-    if(state.pan.active&&state.pan.moved){updateMapHUD();return}
-    drawCanvas(true);drawBrushTraceCanvas();updateMapHUD();renderV029Minimap();
+    // 地形画布与全部可见地块都按当前 camera 在同一动画帧刷新，不再等待松手或分段回基准。
+    drawCanvas(true);renderTilesLive();drawBrushTraceCanvas();updateMapHUD();
+    if(!state.pan.active)renderV029Minimap();
   }
   function scheduleCameraFrame(){if(state.perf.lightRenderQueued)return;state.perf.lightRenderQueued=true;requestAnimationFrame(()=>{state.perf.lightRenderQueued=false;renderCameraFrame()})}
-  function maybeRebaseLivePan(){
-    if(!state.pan.active||!state.pan.moved||state.pan.rebaseQueued)return;
-    const dx=state.pan.latestX-state.pan.startX,dy=state.pan.latestY-state.pan.startY,r=els.viewport.getBoundingClientRect(),threshold=Math.max(140,Math.min(240,Math.min(r.width,r.height)*.24)),now=performance.now();
-    if(Math.max(Math.abs(dx),Math.abs(dy))<threshold||now-state.perf.panLastRebase<90)return;
-    state.pan.rebaseQueued=true;
-    requestAnimationFrame(()=>{
-      state.pan.rebaseQueued=false;if(!state.pan.active)return;
-      resetLivePanTransform();drawCanvas(false);renderTiles();drawBrushTraceCanvas();updateMapHUD();
-      state.pan.startX=state.pan.latestX;state.pan.startY=state.pan.latestY;state.pan.startCameraX=state.camera.x;state.pan.startCameraY=state.camera.y;
-      state.perf.panLastRebase=performance.now();state.perf.panRebaseCount++;
-    });
-  }
+  function maybeRebaseLivePan(){/* 已由 renderTilesLive 的逐帧虚拟化替代。 */}
   function resetDeferredLayerTransform(){els.tileLayer.style.transform="";els.tileLayer.style.transformOrigin="";els.viewport.classList.remove("light-camera-motion");state.perf.wheelBase=null}
   function applyDeferredLayerTransform(base){
     const r=els.viewport.getBoundingClientRect(),s0=BASE_CELL_PX*base.zoom/CELL_LI,s1=scale(),ratio=s1/Math.max(s0,.0001),tx=(base.x-state.camera.x)*s1,ty=-(base.y-state.camera.y)*s1;
@@ -778,7 +794,10 @@
   function renderTiles(){
     if(state.regionOverviewMode){renderRegionOverviewLayer();return}
     if(state.precisionMode){renderPrecisionLayer();return}
-    const v=visibleWorld(),cellPx=BASE_CELL_PX*state.camera.zoom,overscanCells=3;const gxMin=Math.floor((v.left-50)/100)-overscanCells,gxMax=Math.ceil((v.right+50)/100)+overscanCells,gyMin=Math.floor((v.bottom-50)/100)-overscanCells,gyMax=Math.ceil((v.top+50)/100)+overscanCells;
+    const v=visibleWorld(),cellPx=BASE_CELL_PX*state.camera.zoom;
+    // 预渲染至少约半个视口的地块，快速拖动时不会先露出空白再等待重建。
+    const overscanPx=Math.max(360,Math.min(620,Math.max(v.width,v.height)*.52)),overscanCells=Math.max(6,Math.ceil(overscanPx/Math.max(1,cellPx)));
+    const gxMin=Math.floor((v.left-50)/100)-overscanCells,gxMax=Math.ceil((v.right+50)/100)+overscanCells,gyMin=Math.floor((v.bottom-50)/100)-overscanCells,gyMax=Math.ceil((v.top+50)/100)+overscanCells;
     const search=getSearchContext(),spatialFocus=getSpatialFocusContext(),filteredIds=new Set(search.filteredObjects.map(o=>o.id)),allMap=ensureObjectIndexes().cellMap,changed=changedObjectIds(),q=!!search.q;const fragments=[];
     for(let gy=gyMax;gy>=gyMin;gy--){for(let gx=gxMin;gx<=gxMax;gx++){
       const k=cellKey(gx,gy),all=allMap.get(k)||[],visibleItems=all.filter(o=>filteredIds.has(o.id)).sort((a,b)=>searchRank(a,search.q)-searchRank(b,search.q));const occupied=all.length>0;
@@ -804,7 +823,8 @@
     return `<div class="tile ${brushSelected?'brush-selected':''} ${flipped?'flipped':''} ${selected?'selected':''} ${isChanged?'changed':''} ${state.previewCell===k?'search-preview':''} ${semantic} ${searchClass} ${pulse}" data-cell="${k}" data-gx="${gx}" data-gy="${gy}" style="${style}"><div class="tile-card"><div class="tile-face tile-front">${changeBadge}<div class="tile-content ${frontMode}"><div class="tile-icon-row"><i class="type-icon featured ${esc(main?.geometryType||'point')}">${geometryIcon(main||all[0])}</i></div>${frontTitle}</div></div><div class="tile-face tile-back"><div class="tile-back-head"><span>${coord}</span><strong>${all.length}项</strong></div><div class="tile-object-stack">${list}</div><div class="tile-actions"><button data-action="drill">10里格内</button><button class="add" data-action="add">＋新增</button><button class="delete" data-action="delete">⌫删除</button></div></div></div></div>`
   }
   function bindTileEvents(){
-    els.tileLayer.querySelectorAll(".tile").forEach(tile=>{
+    els.tileLayer.querySelectorAll(".tile:not([data-events-bound='1'])").forEach(tile=>{
+      tile.dataset.eventsBound="1";
       tile.addEventListener("click",e=>{if(Date.now()<state.suppressClickUntil)return;if(e.target.closest("button"))return;const items=objectsInCellKey(tile.dataset.cell);const exited=clickOutsideSpatialFocus(tile.dataset.cell);if(exited){if(state.camera.zoom<2&&items.length)openDossierWorkspace();return}state.selectedCell=tile.dataset.cell;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;if(state.camera.zoom<2&&items.length){state.flippedCell=null;renderDetails();scheduleRender();persist();openDossierWorkspace()}else{state.flippedCell=state.flippedCell===tile.dataset.cell?null:tile.dataset.cell;renderDetails();scheduleRender();persist()}});
       tile.addEventListener("dblclick",e=>{if(Date.now()<state.suppressClickUntil)return;e.preventDefault();openDrill(Number(tile.dataset.gx),Number(tile.dataset.gy))});
       tile.addEventListener("mouseenter",e=>{const items=objectsInCellKey(tile.dataset.cell),names=items.slice(0,5).map(o=>o.name).join("、"),more=items.length>5?` 等${items.length}项`:"";showTooltip(items.length?`${names}${more} · ${state.camera.zoom<2?"单击打开地块博物志":"单击翻转"} / 双击下钻`:`空白地块 · 单击后可建档`,e.clientX,e.clientY)});
@@ -1388,10 +1408,17 @@
     els.innerGrid.addEventListener("mousemove",e=>{if(!state.drillCell)return;const r=els.innerGrid.getBoundingClientRect(),b=cellBounds(state.drillCell.gx,state.drillCell.gy),x=b.west+(e.clientX-r.left)/r.width*100,y=b.north-(e.clientY-r.top)/r.height*100;els.innerCoord.textContent=coordText(Math.round(x),Math.round(y))});
     els.innerGrid.addEventListener("dblclick",e=>{if(!state.drillCell||e.target.closest(".inner-point"))return;const r=els.innerGrid.getBoundingClientRect(),b=cellBounds(state.drillCell.gx,state.drillCell.gy),x=Math.round((b.west+(e.clientX-r.left)/r.width*100)*10)/10,y=Math.round((b.north-(e.clientY-r.top)/r.height*100)*10)/10;closeModal("drillModal");openObjectForm(null,{x,y})});
     els.viewport.addEventListener("wheel",e=>{e.preventDefault();setZoom(state.camera.zoom*(e.deltaY>0?.86:1.16),{x:e.clientX,y:e.clientY},true)},{passive:false});
-    const updateLivePan=(clientX,clientY)=>{if(!state.pan.active)return;state.pan.latestX=clientX;state.pan.latestY=clientY;const dx=clientX-state.pan.startX,dy=clientY-state.pan.startY;if(Math.hypot(dx,dy)>4)state.pan.moved=true;const s=scale();state.camera.x=state.pan.startCameraX-dx/s;state.camera.y=state.pan.startCameraY+dy/s;if(state.pan.moved){applyLivePanTransform(dx,dy);els.viewport.classList.add("light-camera-motion");scheduleCameraFrame();maybeRebaseLivePan()}};
-    els.viewport.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.closest("button,input,select,textarea"))return;hideTooltip();const tile=e.target.closest(".tile");state.pan={active:true,moved:false,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,latestX:e.clientX,latestY:e.clientY,startCameraX:state.camera.x,startCameraY:state.camera.y,downTile:tile?{key:tile.dataset.cell,gx:Number(tile.dataset.gx),gy:Number(tile.dataset.gy)}:null,rebaseQueued:false};state.perf.panLastRebase=performance.now();state.perf.panRebaseCount=0;els.viewport.setPointerCapture(e.pointerId);els.viewport.classList.add("dragging")});
-    els.viewport.addEventListener("pointermove",e=>{updateLivePan(e.clientX,e.clientY);const w=screenToWorld(e.clientX,e.clientY);els.coordStatus.textContent=`鼠标 ${coordText(Math.round(w.x),Math.round(w.y))}`});
-    const endPan=e=>{if(!state.pan.active)return;updateLivePan(e.clientX,e.clientY);const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(wasMoved){state.suppressClickUntil=Date.now()+160}else if(downTile){const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;const exitedFocus=clickOutsideSpatialFocus(downTile.key);if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else if(exitedFocus){state.lastTileTap={key:null,time:0}}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails();scheduleRender()}}else if(clickOutsideSpatialFocus(null)){state.suppressClickUntil=Date.now()+160}state.pan.active=false;state.pan.rebaseQueued=false;resetLivePanTransform();els.viewport.classList.remove("dragging","light-camera-motion");if(wasMoved)scheduleRender();try{els.viewport.releasePointerCapture(e.pointerId)}catch{}persist()};els.viewport.addEventListener("pointerup",endPan);els.viewport.addEventListener("pointercancel",endPan);
+    const updateLivePan=(clientX,clientY)=>{if(!state.pan.active)return;state.pan.latestX=Number.isFinite(clientX)?clientX:state.pan.latestX;state.pan.latestY=Number.isFinite(clientY)?clientY:state.pan.latestY;const dx=state.pan.latestX-state.pan.startX,dy=state.pan.latestY-state.pan.startY;if(Math.hypot(dx,dy)>4)state.pan.moved=true;const s=scale();state.camera.x=state.pan.startCameraX-dx/s;state.camera.y=state.pan.startCameraY+dy/s;if(state.pan.moved){els.viewport.classList.add("light-camera-motion");scheduleCameraFrame()}};
+    els.viewport.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.closest("button,input,select,textarea"))return;hideTooltip();const tile=e.target.closest(".tile");state.pan={active:true,moved:false,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,latestX:e.clientX,latestY:e.clientY,startCameraX:state.camera.x,startCameraY:state.camera.y,downTile:tile?{key:tile.dataset.cell,gx:Number(tile.dataset.gx),gy:Number(tile.dataset.gy)}:null,rebaseQueued:false};state.perf.panLastRebase=performance.now();state.perf.panRebaseCount=0;try{els.viewport.setPointerCapture(e.pointerId)}catch{}els.viewport.classList.add("dragging")});
+    let finishingPan=false;
+    const endPan=(e,forced=false)=>{if(!state.pan.active||finishingPan)return;finishingPan=true;const pointerId=e?.pointerId??state.pan.pointerId,clientX=Number.isFinite(e?.clientX)?e.clientX:state.pan.latestX,clientY=Number.isFinite(e?.clientY)?e.clientY:state.pan.latestY;updateLivePan(clientX,clientY);const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(!forced&&!wasMoved&&downTile){const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;const exitedFocus=clickOutsideSpatialFocus(downTile.key);if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();persist();openDossierWorkspace()}else if(exitedFocus){state.lastTileTap={key:null,time:0}}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails()}}else if(!forced&&!wasMoved&&clickOutsideSpatialFocus(null)){state.suppressClickUntil=Date.now()+160}else if(wasMoved){state.suppressClickUntil=Date.now()+160}
+      state.pan.active=false;state.pan.rebaseQueued=false;resetLivePanTransform();els.viewport.classList.remove("dragging","light-camera-motion");try{if(pointerId!=null&&els.viewport.hasPointerCapture?.(pointerId))els.viewport.releasePointerCapture(pointerId)}catch{};
+      // 松手、丢失捕获或窗口失焦时立即完成一次全量绘制，不留下平移残影。
+      renderMap();persist();finishingPan=false;
+    };
+    els.viewport.addEventListener("pointermove",e=>{if(state.pan.active&&e.pointerId===state.pan.pointerId&&(e.buttons&1)===0){endPan(e,true);return}updateLivePan(e.clientX,e.clientY);const w=screenToWorld(e.clientX,e.clientY);els.coordStatus.textContent=`鼠标 ${coordText(Math.round(w.x),Math.round(w.y))}`});
+    els.viewport.addEventListener("pointerup",e=>endPan(e,false));els.viewport.addEventListener("pointercancel",e=>endPan(e,true));els.viewport.addEventListener("lostpointercapture",e=>endPan(e,true));
+    window.addEventListener("blur",()=>endPan(null,true));document.addEventListener("visibilitychange",()=>{if(document.hidden)endPan(null,true)});
     els.viewport.addEventListener("dblclick",e=>{if(!state.precisionMode||e.target.closest(".precision-object-group,button,input,select,textarea"))return;e.preventDefault();const w=screenToWorld(e.clientX,e.clientY),x=Math.round(w.x*10)/10,y=Math.round(w.y*10)/10;openObjectForm(null,{x,y})});
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
   }

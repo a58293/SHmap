@@ -672,11 +672,14 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .map-viewport.dragging .map-tooltip,.map-viewport.light-camera-motion .map-tooltip{display:none!important}
 .map-viewport.light-camera-motion .precision-marker-name,.map-viewport.light-camera-motion .precision-marker-coord{opacity:.92}
 
-/* v003 · 实时拖图：拖动中统一平移画布、笔迹和地块层，避免等待松开鼠标才刷新 */
-.map-viewport.dragging #worldCanvas,
-.map-viewport.dragging #brushTraceCanvas,
+/* v003 · 实时拖图空白修复：画布逐帧重绘，只对预渲染地块层做轻量平移 */
 .map-viewport.dragging #tileLayer{
   will-change:transform;
   transition:none!important;
   transform-origin:0 0;
+}
+.map-viewport.dragging #worldCanvas,
+.map-viewport.dragging #brushTraceCanvas{
+  transform:none!important;
+  will-change:auto;
 }
