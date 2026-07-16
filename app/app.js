@@ -21,6 +21,8 @@
   const PRECISION_EXIT_ZOOM = 3.8;
   const REGION_OVERVIEW_ENTER_ZOOM = 0.42;
   const REGION_OVERVIEW_EXIT_ZOOM = 0.52;
+  const HOVER_LENS_DISABLE_ZOOM = 8;
+  const HOVER_LENS_RESTORE_ZOOM = 6.5;
   const TERRAIN_PALETTE = {
     mountain:{color:"#756b5b",cell:"rgba(117,107,91,.48)",line:"#5e5548"},
     hill:{color:"#9a9272",cell:"rgba(154,146,114,.42)",line:"#777054"},
@@ -273,6 +275,7 @@
     layers:{areas:true,terrain:true,rivers:true,empty:true,changes:true},
     precisionMode:false,
     regionOverviewMode:false,
+    hoverLensSuppressed:false,
     precisionClusterOpen:null,
     renderQueued:false,
     suppressClickUntil:0,
@@ -621,6 +624,13 @@
     }
     return accepted;
   }
+  function updateHoverLensSuppression(){
+    const before=state.hoverLensSuppressed;
+    if(!state.hoverLensSuppressed&&state.camera.zoom>=HOVER_LENS_DISABLE_ZOOM)state.hoverLensSuppressed=true;
+    else if(state.hoverLensSuppressed&&state.camera.zoom<=HOVER_LENS_RESTORE_ZOOM)state.hoverLensSuppressed=false;
+    els.viewport.classList.toggle("hover-lens-suppressed",state.hoverLensSuppressed);
+    if(!before&&state.hoverLensSuppressed)hideTooltip();
+  }
   function updateRegionOverviewMode(){
     const before=state.regionOverviewMode;
     if(state.precisionMode)state.regionOverviewMode=false;
@@ -646,7 +656,7 @@
   }
   function renderMap(){
     if(!els.viewport.clientWidth)return;
-    updatePrecisionMode();updateRegionOverviewMode();
+    updatePrecisionMode();updateRegionOverviewMode();updateHoverLensSuppression();
     drawCanvas(); renderTiles();
     els.zoomReadout.textContent=Math.round(state.camera.zoom*100)+"%";
     els.cameraStatus.textContent=`${state.regionOverviewMode?"区域概览 · ":state.precisionMode?"10里彩色精细地图 · ":""}中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
@@ -741,12 +751,13 @@
   }
 
   function showTooltip(text,x,y){
+    if(state.hoverLensSuppressed){hideTooltip();return}
     const node=document.elementFromPoint(x,y)?.closest?.(".tile,.precision-object-group");
     if(node?.classList.contains("tile"))showV029TileLens(node.dataset.cell,x,y);
     else if(node?.classList.contains("precision-object-group")){const id=node.querySelector("[data-precision-main]")?.dataset.precisionMain;showV029ObjectLens(id,x,y)}
     else{els.tooltip.classList.remove("lens","lens-tile","lens-object");els.tooltip.textContent=text;els.tooltip.classList.remove("hidden");moveTooltip(x,y)}
   }
-  function moveTooltip(x,y){const r=els.tooltip.getBoundingClientRect(),pad=12;let left=x+14,top=y+14;if(left+r.width>innerWidth-pad)left=x-r.width-14;if(top+r.height>innerHeight-pad)top=y-r.height-14;els.tooltip.style.left=Math.max(pad,left)+"px";els.tooltip.style.top=Math.max(pad,top)+"px"}
+  function moveTooltip(x,y){if(state.hoverLensSuppressed){hideTooltip();return}const r=els.tooltip.getBoundingClientRect(),pad=12;let left=x+14,top=y+14;if(left+r.width>innerWidth-pad)left=x-r.width-14;if(top+r.height>innerHeight-pad)top=y-r.height-14;els.tooltip.style.left=Math.max(pad,left)+"px";els.tooltip.style.top=Math.max(pad,top)+"px"}
   function hideTooltip(){els.tooltip.classList.add("hidden")}
   function selectObject(id){state.spatialFocusArmed=true;state.selectedId=id;const o=state.objects.find(x=>x.id===id);if(o){const c=objectCell(o);state.selectedCell=cellKey(c.gx,c.gy)}renderDetails();renderSidebar();scheduleRender();persist()}
   function jumpToObject(id,flip=false,smooth=false){const o=state.objects.find(x=>x.id===id);if(!o)return;state.spatialFocusArmed=true;const pulseCell=cellKey(objectCell(o).gx,objectCell(o).gy);pulseSearchTarget(pulseCell,id);state.selectedId=id;const targetCell=objectCell(o);state.selectedCell=cellKey(targetCell.gx,targetCell.gy);renderDetails();renderSidebar();const targetZoom=Math.max(state.camera.zoom,.86);if(smooth)animateCameraTo(Number(o.x)||0,Number(o.y)||0,targetZoom,()=>{if(flip){const c=objectCell(o);state.flippedCell=cellKey(c.gx,c.gy)}scheduleRender();persist()});else{state.camera.x=Number(o.x)||0;state.camera.y=Number(o.y)||0;state.camera.zoom=targetZoom;if(flip){const c=objectCell(o);state.flippedCell=cellKey(c.gx,c.gy)}scheduleRender();persist()}}
@@ -958,7 +969,7 @@
   function saveRangeEditor(){const o=currentRangeObject(),d=state.rangeEditor.draft;if(!o||!d)return;const idx=state.objects.findIndex(x=>x.id===o.id),before=cloneJSON(state.objects[idx]),kind=els.rangeKind.value,c=rangeCenter(d),normalized=cloneJSON(d);normalized.evidence=els.rangeEvidence.value;const b=rangeBounds(normalized);normalized.west=b.west;normalized.east=b.east;normalized.south=b.south;normalized.north=b.north;state.objects[idx]={...state.objects[idx],geometryType:kind,x:c.x,y:c.y,coordinateText:coordText(c.x,c.y),area:normalized};state.selectedId=o.id;const cell=objectCell(state.objects[idx]);state.selectedCell=cellKey(cell.gx,cell.gy);recordChange({entityType:"geometry",entityId:o.id,operation:"update",operationLabel:kind==="field"?"修改作用域":"修改面积范围",before,after:state.objects[idx],summary:`${rangeShapeLabel(normalized.shape)} · ${fmt(b.east-b.west)}×${fmt(b.north-b.south)}里 · 中心${coordText(c.x,c.y)}`});persist();renderSidebar();renderDetails();scheduleRender();updateHeader();closeRangeEditor();animateCameraTo(c.x,c.y,Math.max(state.camera.zoom,.65),()=>{state.flippedCell=state.selectedCell;scheduleRender()});toast("空间范围已保存",`${o.name} · ${rangeShapeLabel(normalized.shape)}`)}
   function createSpatialObject(kind){const tile=activeTile(),x=tile?cellCenter(tile.gx):state.camera.x,y=tile?cellCenter(tile.gy):state.camera.y;closeRangeEditor();openObjectForm(null,{x,y,geometryType:kind});els.formType.value=kind==="field"?"作用域":"区域／面积";els.formName.placeholder=kind==="field"?"例如：冰夷光照作用域":"例如：昆仑主体范围"}
 
-  function setZoom(newZoom,anchorClient=null){const z=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,newZoom));if(anchorClient){const before=screenToWorld(anchorClient.x,anchorClient.y),old=state.camera.zoom;state.camera.zoom=z;const after=screenToWorld(anchorClient.x,anchorClient.y);state.camera.x+=before.x-after.x;state.camera.y+=before.y-after.y}else state.camera.zoom=z;scheduleRender();persist()}
+  function setZoom(newZoom,anchorClient=null){const z=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,newZoom));if(anchorClient){const before=screenToWorld(anchorClient.x,anchorClient.y),old=state.camera.zoom;state.camera.zoom=z;const after=screenToWorld(anchorClient.x,anchorClient.y);state.camera.x+=before.x-after.x;state.camera.y+=before.y-after.y}else state.camera.zoom=z;updateHoverLensSuppression();scheduleRender();persist()}
   function fitAll(){if(!state.objects.length)return;const xs=[],ys=[];state.objects.forEach(o=>{xs.push(Number(o.x)||0);ys.push(Number(o.y)||0);if(o.area){xs.push(o.area.west,o.area.east);ys.push(o.area.south,o.area.north)}});const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),r=els.viewport.getBoundingClientRect();state.camera.x=(minX+maxX)/2;state.camera.y=(minY+maxY)/2;const zx=(r.width-90)/((maxX-minX||100)*BASE_CELL_PX/100),zy=(r.height-90)/((maxY-minY||100)*BASE_CELL_PX/100);state.camera.zoom=Math.max(MIN_ZOOM,Math.min(.8,Math.min(zx,zy)));state.flippedCell=null;scheduleRender();persist()}
   function openModal(id){$("#"+id).classList.remove("hidden")}function closeModal(id){$("#"+id).classList.add("hidden")}
   function toast(title,body,type=""){const d=document.createElement("div");d.className=`toast ${type}`;d.innerHTML=`<strong>${esc(title)}</strong><span>${esc(body)}</span>`;els.toastHost.appendChild(d);setTimeout(()=>d.remove(),3300)}
@@ -1748,6 +1759,7 @@
     }).filter(Boolean)
   }
   function showV029TileLens(key,x,y){
+    if(state.hoverLensSuppressed){hideTooltip();return}
     const items=objectsInCellKey(key),rawProfile=state.tileProfiles?.[key];
     if(!items.length&&!v031ProfileHasContent(rawProfile)){hideTooltip();return}
     const [gx,gy]=String(key).split(",").map(Number),p=tileProfileFor(key,items),rows=v031LensCategoryRows(items,p);
@@ -1758,6 +1770,7 @@
     els.tooltip.classList.remove("hidden");moveTooltip(x,y)
   }
   function showV029ObjectLens(id,x,y){
+    if(state.hoverLensSuppressed){hideTooltip();return}
     const o=state.objects.find(v=>v.id===id);if(!o){hideTooltip();return}
     const ev=v029Evidence(o),cat=V031_LENS_CATEGORIES.find(c=>c.key===objectCategory(o)),rel=state.objects.map(b=>({b,s:v029RelationScore(o,b)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>x.b.name),summary=o.coreFeatures||o.localRelation||shortText(o.original||o.derivation,150),chapters=[...String(o.chapter||"").matchAll(/《?([^《》]+经)》?/g)].slice(0,3).map(m=>m[1]);
     els.tooltip.classList.remove("lens-tile");els.tooltip.classList.add("lens","lens-object");

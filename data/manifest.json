@@ -12,7 +12,7 @@
     "x_li": 0,
     "y_li": 0
   },
-  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v034 新增低倍率区域概览：42%以下隐藏100里地块格子，依据所属区域、面积与对象密度显示区域大致名称；52%以上恢复地块。",
+  "notes": "当前 Demo 为纯本地前端；运行数据嵌入 app/data.js。v035 新增高倍率悬停透镜自动关闭：800%以上隐藏，650%以下恢复，避免精细地图被弹窗遮挡。",
   "github_pending_path": "submissions/pending",
   "github_patch_apply": "enabled-local",
   "markdown_schema": "object-and-tile-profile-v1.2-pure-map-research"
