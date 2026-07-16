@@ -4,7 +4,8 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, path::{Path, PathBuf}, process::Command, sync::Mutex};
-use tauri::Manager;
+use tauri::{ipc::Channel, AppHandle, Manager};
+use tauri_plugin_updater::{Update, UpdaterExt};
 
 const APP_SCHEMA_VERSION: i64 = 1;
 const AUTO_BACKUP_MINUTES: i64 = 60;
@@ -14,6 +15,32 @@ struct AppState {
     database_path: PathBuf,
     backup_dir: PathBuf,
     operation_lock: Mutex<()>,
+}
+
+struct PendingUpdate(Mutex<Option<Update>>);
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppVersionInfo {
+    edition: &'static str,
+    version: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateMetadata {
+    current_version: String,
+    version: String,
+    date: Option<String>,
+    body: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(tag = "event", content = "data", rename_all = "camelCase")]
+enum UpdateDownloadEvent {
+    Started { content_length: Option<u64> },
+    Progress { chunk_length: usize },
+    Finished,
 }
 
 #[derive(Serialize)]
@@ -237,11 +264,79 @@ fn open_data_directory(state: tauri::State<'_, AppState>) -> Result<(), String> 
     Ok(())
 }
 
+
+#[tauri::command]
+fn app_version() -> AppVersionInfo {
+    AppVersionInfo {
+        edition: "v002",
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    }
+}
+
+#[tauri::command]
+async fn check_for_update(
+    app: AppHandle,
+    pending_update: tauri::State<'_, PendingUpdate>,
+) -> Result<Option<UpdateMetadata>, String> {
+    let updater = app
+        .updater_builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("无法初始化更新器：{e}"))?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| format!("检查更新失败：{e}"))?;
+    let metadata = update.as_ref().map(|item| UpdateMetadata {
+        current_version: item.current_version.clone(),
+        version: item.version.clone(),
+        date: item.date.as_ref().map(ToString::to_string),
+        body: item.body.clone(),
+    });
+    *pending_update
+        .0
+        .lock()
+        .map_err(|_| "更新状态锁异常".to_string())? = update;
+    Ok(metadata)
+}
+
+#[tauri::command]
+async fn install_update(
+    app: AppHandle,
+    pending_update: tauri::State<'_, PendingUpdate>,
+    on_event: Channel<UpdateDownloadEvent>,
+) -> Result<(), String> {
+    let update = pending_update
+        .0
+        .lock()
+        .map_err(|_| "更新状态锁异常".to_string())?
+        .take()
+        .ok_or_else(|| "没有等待安装的更新，请先检查更新".to_string())?;
+    let mut started = false;
+    update
+        .download_and_install(
+            |chunk_length, content_length| {
+                if !started {
+                    let _ = on_event.send(UpdateDownloadEvent::Started { content_length });
+                    started = true;
+                }
+                let _ = on_event.send(UpdateDownloadEvent::Progress { chunk_length });
+            },
+            || {
+                let _ = on_event.send(UpdateDownloadEvent::Finished);
+            },
+        )
+        .await
+        .map_err(|e| format!("下载或安装更新失败：{e}"))?;
+    app.restart();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| -> Result<(), Box<dyn std::error::Error>> {
             let data_dir = app.path().app_data_dir()?;
             fs::create_dir_all(&data_dir)?;
@@ -250,9 +345,10 @@ pub fn run() {
             let database_path = data_dir.join("shmap.db");
             initialize_database(&database_path).map_err(std::io::Error::other)?;
             app.manage(AppState{database_path,backup_dir,operation_lock:Mutex::new(())});
+            app.manage(PendingUpdate(Mutex::new(None)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![bootstrap_workspace,save_workspace,create_backup,list_backups,restore_backup,storage_status,check_database,open_data_directory])
+        .invoke_handler(tauri::generate_handler![bootstrap_workspace,save_workspace,create_backup,list_backups,restore_backup,storage_status,check_database,open_data_directory,app_version,check_for_update,install_update])
         .run(tauri::generate_context!())
         .expect("山海经原典地图研究台启动失败");
 }

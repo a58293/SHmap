@@ -3,3 +3,8 @@ dist/
 src-tauri/target/
 *.log
 .DS_Store
+*.key
+*.key.pub
+*updater-password*
+.env
+.env.*

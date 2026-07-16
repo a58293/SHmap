@@ -1,12 +1,14 @@
-山海经原典地图研究台 · 桌面版 v001
+山海经原典地图研究台 · 桌面版 v002 客户端更新包
 
 使用方法：
-1. 解压本更新包。
-2. 把其中 desktop-app、.github、docs、VERSION.json 全部复制到本地 SHmap 仓库根目录。
-3. 打开 GitHub Desktop，提交并 Push origin。
-4. 在 GitHub 网页打开仓库 → Actions → Build Windows Desktop。
-5. 点击 Run workflow；完成后在该次任务底部下载 Artifacts。
-6. 下载“山海经原典地图研究台-Windows-v001”，里面有安装程序和便携EXE。
+1. 解压本包。
+2. 将内部文件覆盖到本地SHmap仓库根目录。
+3. GitHub Desktop提交并Push origin。
+4. 按 docs/客户端更新与正式发布说明.md 设置两项Actions Secret。
+5. 先运行 Build Windows Desktop，手动安装v002一次。
+6. 后续版本运行 Publish Windows Desktop Update，客户端即可检查更新。
 
-桌面版已内置v075母表数据：395个地图对象、2432条原文总库记录。
-不需要再次导入R197—R403增量Markdown。
+重要：
+- 更新签名私钥不在本仓库包内。
+- 单独的密钥包只能本地保管，绝不能提交到GitHub。
+- v001没有更新器，不能直接在客户端升级到v002。

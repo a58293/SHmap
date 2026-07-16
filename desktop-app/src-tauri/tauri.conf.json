@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "山海经原典地图研究台",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "art.tiphareth.shanhaijing.mapdesk",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -43,6 +43,18 @@
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false
+      }
+    },
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY0REE0RjA4MDE4OTUzQTcKUldTblU0a0JDRS9hWkNxUG1acVBEWlNjZ1BZaWYwREZyZ3l4aHRmcXFaVTNsVnZabWlQMmVUUk0K",
+      "endpoints": [
+        "https://github.com/a58293/SHmap/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

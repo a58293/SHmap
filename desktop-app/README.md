@@ -1,44 +1,38 @@
-# 山海经原典地图研究台 · 桌面版 v001
+# 山海经原典地图研究台 · 桌面版 v002
 
-这是一个真实的 Tauri 2 桌面程序工程，不是把 HTML 改后缀。第一版以现有 v038 地图界面为基础，接入 Rust 本地后端、SQLite 主存储、自动备份和 Windows 构建流程。
+桌面版v002在v001的SQLite本地存储基础上，增加了经过签名验证的客户端更新系统。
 
-## 本版已完成
+## 本版功能
 
-- 内置 v075 母表：395个地图对象、2432条原文总库记录。
-- SQLite 主工作区：`shmap.db`。
-- 60分钟差异自动备份；支持手动备份、恢复前备份、数据库完整性检查。
-- JSON 镜像备份保存在应用数据目录的 `backups` 文件夹。
-- 保留地图、检索、Markdown导入、博物志、画笔、小地图、关系与测量等现有功能。
-- 窗口位置与大小自动记忆。
-- GitHub Actions 自动生成 Windows NSIS 安装包和便携 EXE。
+- 右上角“检查更新”：读取GitHub正式发布页中的最新稳定版本。
+- 可查看当前版本、最新版本、版本说明与实时下载进度。
+- 安装前自动保存SQLite工作区并创建“更新前备份”。
+- 每24小时自动检查一次；可在更新窗口关闭自动检查。
+- 更新包必须通过Tauri公钥签名验证，验证失败不会安装。
+- 内置v075母表：395个对象、2432条原文记录。
 
-## 最省事的生成安装包方式
+## 首次安装说明
 
-1. 把本工程放到 GitHub 仓库的 `desktop-app` 文件夹。
-2. 把 `build-desktop-windows.yml` 放到仓库 `.github/workflows/`，命名为 `build-desktop-windows.yml`。
-3. 推送后进入 GitHub 的 **Actions**。
-4. 运行 **Build Windows Desktop**。
-5. 完成后下载 Artifacts 中的 Windows 文件。
+v001本身没有更新器，因此v002仍需手动安装一次。从v002开始，后续v003及更高版本可以直接在客户端内完成更新。
 
-## 在 Windows 本地构建
+## 两个GitHub工作流
 
-需要 Node.js 22、Rust stable、Microsoft C++ Build Tools 和 WebView2。安装依赖后运行：
+- `Build Windows Desktop`：普通测试构建，不创建正式更新发布。
+- `Publish Windows Desktop Update`：手动运行，签名并发布正式版本，同时生成客户端读取的`latest.json`。
+
+正式发布前必须在GitHub仓库的Actions Secrets中配置：
+
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+私钥不可提交到仓库，也不能丢失；所有后续版本必须继续使用同一把私钥。
+
+## 本地构建
 
 ```powershell
-npm install
+npm ci
+npm run verify
 npm run desktop:build
 ```
 
-或双击 `scripts/生成Windows安装包.bat`。安装包输出到：
-
-```text
-src-tauri/target/release/bundle/nsis/
-```
-
-## 数据位置
-
-程序内点击右上角“桌面备份”可以直接打开数据目录。SQLite 是主存储；localStorage 只保留兼容缓存，不能替代数据库。
-
-## 当前边界
-
-v001 的地图渲染内核仍沿用 v038 的 Canvas＋DOM 混合实现。桌面化与数据安全已经完成，下一阶段再逐步把主地图完全迁移到 Canvas/WebGL 分层渲染。
+普通本地构建不会创建更新签名文件。正式更新发布统一交由GitHub的发布工作流完成。

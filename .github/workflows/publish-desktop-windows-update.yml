@@ -1,0 +1,43 @@
+name: Publish Windows Desktop Update
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop-app/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop-app/src-tauri -> target
+      - name: Install frontend dependencies
+        working-directory: desktop-app
+        run: npm ci --registry=https://registry.npmjs.org/
+      - name: Verify project
+        working-directory: desktop-app
+        run: npm run verify
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop-app
+          tagName: desktop-v__VERSION__
+          releaseName: 山海经原典地图研究台 v__VERSION__
+          releaseBody: |
+            山海经原典地图研究台 Windows 稳定版。
+            客户端可通过“检查更新”下载并安装此版本。
+          releaseDraft: false
+          prerelease: false
+          args: --config src-tauri/tauri.release.conf.json
