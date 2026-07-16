@@ -1,0 +1,13 @@
+﻿发布工具修复说明
+
+1. 将“发布新版本.cmd”复制到 SHmap 仓库根目录。
+2. 将 desktop-app\scripts\release.ps1 覆盖到仓库同路径。
+3. 在仓库根目录双击“发布新版本.cmd”，或在 PowerShell 运行：\.\发布新版本.cmd
+4. v003 输入版本号 0.3.0。
+5. 确认文字必须输入 RELEASE。
+
+修复内容：
+- CMD 全部使用 ASCII，避免中文编码导致命令被拆坏。
+- PowerShell 脚本使用 UTF-8 BOM，兼容 Windows PowerShell 5.1。
+- 优先调用 npm.cmd，避免 npm.ps1 执行策略问题。
+- 自动查找 GitHub Desktop 内置 Git。
