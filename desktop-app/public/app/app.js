@@ -279,7 +279,7 @@
     precisionClusterOpen:null,
     renderQueued:false,
     suppressClickUntil:0,
-    pan:{active:false,moved:false,pointerId:null,startX:0,startY:0,startCameraX:0,startCameraY:0,downTile:null},
+    pan:{active:false,moved:false,pointerId:null,startX:0,startY:0,latestX:0,latestY:0,startCameraX:0,startCameraY:0,downTile:null,rebaseQueued:false},
     lastTileTap:{key:null,time:0},
     pendingAddCoord:null,
     previewCell:null,
@@ -603,7 +603,7 @@
     const before=state.precisionMode;if(!state.precisionMode&&state.camera.zoom>=PRECISION_ENTER_ZOOM)state.precisionMode=true;else if(state.precisionMode&&state.camera.zoom<=PRECISION_EXIT_ZOOM)state.precisionMode=false;
     if(before!==state.precisionMode){state.flippedCell=null;state.precisionClusterOpen=null;els.viewport.classList.add("precision-mode-enter");setTimeout(()=>els.viewport.classList.remove("precision-mode-enter"),320)}
     els.viewport.classList.toggle("precision-mode",state.precisionMode);els.viewport.classList.toggle("precision-deep",state.precisionMode&&state.camera.zoom>=7.5);els.precisionModeBadge?.classList.toggle("hidden",!state.precisionMode);els.precisionTerrainLegend?.classList.toggle("hidden",!state.precisionMode||!state.layers.terrain);
-    if(els.mapGuide)els.mapGuide.innerHTML=state.precisionMode?"<span>10里彩色地形</span><i></i><span>拖动地图</span><i></i><span>单击彩色对象查看资料</span><i></i><span>双击空白处按精确坐标新增</span>":"<span>拖动地图</span><i></i><span>滚轮缩放</span><i></i><span>单击地块</span><i></i><span>放大至420%进入彩色精细地图</span>";
+    if(els.mapGuide)els.mapGuide.innerHTML=state.precisionMode?"<span>10里彩色地形</span><i></i><span>拖动地图</span><i></i><span>右键返回</span><i></i><span>双击空白处按精确坐标新增</span>":"<span>拖动地图</span><i></i><span>滚轮缩放</span><i></i><span>右键返回</span><i></i><span>放大至420%进入彩色精细地图</span>";
   }
   function precisionSearchClass(items,anchorKey,search){if(!search.q)return "";if(items.some(o=>nameMatchKind(o,search.q)==="exact"))return "search-exact";if(items.some(o=>nameMatchKind(o,search.q)))return "search-name";if(items.some(o=>search.objectMatches.some(h=>h.object.id===o.id)))return "search-match";if(search.relatedCells.has(anchorKey))return "search-related";return "search-dim"}
   function renderPrecisionLayer(){
@@ -623,18 +623,32 @@
   function updateMapHUD(){
     els.zoomReadout.textContent=Math.round(state.camera.zoom*100)+"%";els.cameraStatus.textContent=`${state.regionOverviewMode?"区域概览 · ":state.precisionMode?"10里彩色精细地图 · ":""}中心 ${coordText(Math.round(state.camera.x),Math.round(state.camera.y))}`;
   }
+  function livePanLayers(){return [els.canvas,els.brushTraceCanvas,els.tileLayer].filter(Boolean)}
+  function applyLivePanTransform(dx,dy){
+    const transform=`translate3d(${dx}px,${dy}px,0)`;
+    livePanLayers().forEach(layer=>{layer.style.transformOrigin="0 0";layer.style.transform=transform});
+  }
+  function resetLivePanTransform(){
+    livePanLayers().forEach(layer=>{layer.style.transform="";layer.style.transformOrigin=""});
+  }
   function renderCameraFrame(){
-    if(!els.viewport.clientWidth)return;updateHoverLensSuppression();drawCanvas(true);drawBrushTraceCanvas();updateMapHUD();renderV029Minimap();
+    if(!els.viewport.clientWidth)return;
+    updateHoverLensSuppression();
+    if(state.pan.active&&state.pan.moved){updateMapHUD();return}
+    drawCanvas(true);drawBrushTraceCanvas();updateMapHUD();renderV029Minimap();
   }
   function scheduleCameraFrame(){if(state.perf.lightRenderQueued)return;state.perf.lightRenderQueued=true;requestAnimationFrame(()=>{state.perf.lightRenderQueued=false;renderCameraFrame()})}
-  function maybeRebaseLivePan(e,dx,dy){
-    if(!state.pan.active||!state.pan.moved)return;
-    const r=els.viewport.getBoundingClientRect(),threshold=Math.max(180,Math.min(360,Math.min(r.width,r.height)*.34)),now=performance.now();
-    if(Math.max(Math.abs(dx),Math.abs(dy))<threshold||now-state.perf.panLastRebase<72)return;
-    els.tileLayer.style.transform="";
-    renderTiles();
-    state.pan.startX=e.clientX;state.pan.startY=e.clientY;state.pan.startCameraX=state.camera.x;state.pan.startCameraY=state.camera.y;
-    state.perf.panLastRebase=now;state.perf.panRebaseCount++;
+  function maybeRebaseLivePan(){
+    if(!state.pan.active||!state.pan.moved||state.pan.rebaseQueued)return;
+    const dx=state.pan.latestX-state.pan.startX,dy=state.pan.latestY-state.pan.startY,r=els.viewport.getBoundingClientRect(),threshold=Math.max(140,Math.min(240,Math.min(r.width,r.height)*.24)),now=performance.now();
+    if(Math.max(Math.abs(dx),Math.abs(dy))<threshold||now-state.perf.panLastRebase<90)return;
+    state.pan.rebaseQueued=true;
+    requestAnimationFrame(()=>{
+      state.pan.rebaseQueued=false;if(!state.pan.active)return;
+      resetLivePanTransform();drawCanvas(false);renderTiles();drawBrushTraceCanvas();updateMapHUD();
+      state.pan.startX=state.pan.latestX;state.pan.startY=state.pan.latestY;state.pan.startCameraX=state.camera.x;state.pan.startCameraY=state.camera.y;
+      state.perf.panLastRebase=performance.now();state.perf.panRebaseCount++;
+    });
   }
   function resetDeferredLayerTransform(){els.tileLayer.style.transform="";els.tileLayer.style.transformOrigin="";els.viewport.classList.remove("light-camera-motion");state.perf.wheelBase=null}
   function applyDeferredLayerTransform(base){
@@ -1342,6 +1356,25 @@
   function renderExamplePanel(){const tab=state.exampleTab;$$('.example-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.exampleTab===tab));if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML='<strong>正确案例</strong><span>一个文件可同时新增对象并更新地块档案。</span>';els.exampleCode.textContent=CORRECT_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>对象使用“### 对象：”。</li><li>地块档案使用“### 地块档案：X+000_Y+000”。</li><li>简要、基础、详细和文明／事件字段都可更新。</li><li>缩进两格可书写多行内容。</li></ul>';els.loadExampleBtn.textContent='载入正确案例到左侧'}else if(tab==='wrong'){els.exampleNotice.className='example-notice error';els.exampleNotice.innerHTML='<strong>错误案例</strong><span>包含标题、坐标、枚举值与几何参数错误。</span>';els.exampleCode.textContent=WRONG_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>“## 对象”标题层级错误。</li><li>地块档案必须提供 X、Y 整数主格坐标。</li><li>时间流逝和旧版可达性应使用示例中的标准值。</li><li>线对象至少需要两个路径节点。</li></ul>';els.loadExampleBtn.textContent='载入错误案例并查看识别'}else{els.exampleNotice.className='example-notice neutral';els.exampleNotice.innerHTML='<strong>识别规则</strong><span>对象和地块档案可混合导入。</span>';els.exampleCode.textContent=IMPORT_RULES_TEXT;els.exampleNotes.innerHTML='<ul><li>地块档案只改写 Markdown 中明确出现的字段。</li><li>明确写出空字段会清空该字段；省略字段则保留原值。</li><li>警告不会阻止导入，但会进入本轮更改记录。</li><li>错误条目不会写入本地地图。</li></ul>';els.loadExampleBtn.textContent='载入空白正确模板'} }
 
 
+  function isEditableContextTarget(target){return !!target?.closest?.("input,textarea,select,[contenteditable=true]")}
+  function visibleElement(id){const el=document.getElementById(id);return el&&!el.classList.contains("hidden")?el:null}
+  function appGoBack(){
+    const modal=[...document.querySelectorAll(".modal:not(.hidden)")].pop();if(modal){modal.classList.add("hidden");return true}
+    const compare=visibleElement("compareWorkspace");if(compare){compare.classList.add("hidden");return true}
+    const isolated=visibleElement("isolatedWorkspace");if(isolated){isolated.classList.add("hidden");return true}
+    if(visibleElement("rangeWorkspace")){closeRangeEditor();return true}
+    if(visibleElement("importWorkspace")){closeImportWorkspace();return true}
+    if(visibleElement("brushCollectionWorkspace")){closeBrushCollection();return true}
+    if(visibleElement("dossierWorkspace")){closeDossierWorkspace();return true}
+    if(state.precisionClusterOpen){state.precisionClusterOpen=null;scheduleRender();return true}
+    if(state.flippedCell){state.flippedCell=null;scheduleRender();return true}
+    if(getSpatialFocusContext().active){clearSpatialFocus();return true}
+    if(state.filters.q){state.filters.q="";els.searchInput.value="";renderSidebar();scheduleRender();return true}
+    return false
+  }
+  window.SHJ_APP_GO_BACK=appGoBack;
+  document.addEventListener("contextmenu",e=>{if(e.defaultPrevented||isEditableContextTarget(e.target))return;e.preventDefault();e.stopPropagation();appGoBack()},false);
+
   function bindEvents(){
     els.searchInput.addEventListener("input",()=>{state.filters.q=els.searchInput.value;renderSidebar();scheduleRender()});els.exitSearchBtn.addEventListener("click",()=>{state.filters.q="";els.searchInput.value="";state.previewCell=null;renderSidebar();scheduleRender();els.searchInput.focus()});els.chapterFilter.addEventListener("change",()=>{state.filters.chapter=els.chapterFilter.value;renderSidebar();scheduleRender()});els.resetFilterBtn.addEventListener("click",()=>{state.filters={q:"",chapter:"",type:""};els.searchInput.value="";els.chapterFilter.value="";renderTypeFilterTree();renderSidebar();scheduleRender()});
     $$("[data-jump-name]").forEach(b=>b.addEventListener("click",()=>jumpName(b.dataset.jumpName)));els.fitAllBtn.addEventListener("click",fitAll);els.originBtn.addEventListener("click",()=>{state.camera={...state.camera,x:0,y:0,zoom:.92};state.flippedCell=null;scheduleRender();persist()});els.zoomInBtn.addEventListener("click",()=>setZoom(state.camera.zoom*1.18));els.zoomOutBtn.addEventListener("click",()=>setZoom(state.camera.zoom/1.18));els.zoomReadout.addEventListener("click",()=>setZoom(1));
@@ -1355,9 +1388,10 @@
     els.innerGrid.addEventListener("mousemove",e=>{if(!state.drillCell)return;const r=els.innerGrid.getBoundingClientRect(),b=cellBounds(state.drillCell.gx,state.drillCell.gy),x=b.west+(e.clientX-r.left)/r.width*100,y=b.north-(e.clientY-r.top)/r.height*100;els.innerCoord.textContent=coordText(Math.round(x),Math.round(y))});
     els.innerGrid.addEventListener("dblclick",e=>{if(!state.drillCell||e.target.closest(".inner-point"))return;const r=els.innerGrid.getBoundingClientRect(),b=cellBounds(state.drillCell.gx,state.drillCell.gy),x=Math.round((b.west+(e.clientX-r.left)/r.width*100)*10)/10,y=Math.round((b.north-(e.clientY-r.top)/r.height*100)*10)/10;closeModal("drillModal");openObjectForm(null,{x,y})});
     els.viewport.addEventListener("wheel",e=>{e.preventDefault();setZoom(state.camera.zoom*(e.deltaY>0?.86:1.16),{x:e.clientX,y:e.clientY},true)},{passive:false});
-    els.viewport.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.closest("button,input,select,textarea"))return;hideTooltip();const tile=e.target.closest(".tile");state.pan={active:true,moved:false,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,startCameraX:state.camera.x,startCameraY:state.camera.y,downTile:tile?{key:tile.dataset.cell,gx:Number(tile.dataset.gx),gy:Number(tile.dataset.gy)}:null};state.perf.panLastRebase=performance.now();state.perf.panRebaseCount=0;els.viewport.setPointerCapture(e.pointerId);els.viewport.classList.add("dragging")});
-    els.viewport.addEventListener("pointermove",e=>{const w=screenToWorld(e.clientX,e.clientY);els.coordStatus.textContent=`鼠标 ${coordText(Math.round(w.x),Math.round(w.y))}`;if(!state.pan.active)return;const dx=e.clientX-state.pan.startX,dy=e.clientY-state.pan.startY;if(Math.hypot(dx,dy)>4)state.pan.moved=true;const s=scale();state.camera.x=state.pan.startCameraX-dx/s;state.camera.y=state.pan.startCameraY+dy/s;if(state.pan.moved){els.tileLayer.style.transform=`translate3d(${dx}px,${dy}px,0)`;els.viewport.classList.add("light-camera-motion");scheduleCameraFrame();maybeRebaseLivePan(e,dx,dy)}});
-    const endPan=e=>{if(!state.pan.active)return;const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(wasMoved){state.suppressClickUntil=Date.now()+160}else if(downTile){const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;const exitedFocus=clickOutsideSpatialFocus(downTile.key);if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else if(exitedFocus){state.lastTileTap={key:null,time:0}}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails();scheduleRender()}}else if(clickOutsideSpatialFocus(null)){state.suppressClickUntil=Date.now()+160}state.pan.active=false;els.tileLayer.style.transform="";els.viewport.classList.remove("dragging","light-camera-motion");if(wasMoved)scheduleRender();try{els.viewport.releasePointerCapture(e.pointerId)}catch{}persist()};els.viewport.addEventListener("pointerup",endPan);els.viewport.addEventListener("pointercancel",endPan);
+    const updateLivePan=(clientX,clientY)=>{if(!state.pan.active)return;state.pan.latestX=clientX;state.pan.latestY=clientY;const dx=clientX-state.pan.startX,dy=clientY-state.pan.startY;if(Math.hypot(dx,dy)>4)state.pan.moved=true;const s=scale();state.camera.x=state.pan.startCameraX-dx/s;state.camera.y=state.pan.startCameraY+dy/s;if(state.pan.moved){applyLivePanTransform(dx,dy);els.viewport.classList.add("light-camera-motion");scheduleCameraFrame();maybeRebaseLivePan()}};
+    els.viewport.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.closest("button,input,select,textarea"))return;hideTooltip();const tile=e.target.closest(".tile");state.pan={active:true,moved:false,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,latestX:e.clientX,latestY:e.clientY,startCameraX:state.camera.x,startCameraY:state.camera.y,downTile:tile?{key:tile.dataset.cell,gx:Number(tile.dataset.gx),gy:Number(tile.dataset.gy)}:null,rebaseQueued:false};state.perf.panLastRebase=performance.now();state.perf.panRebaseCount=0;els.viewport.setPointerCapture(e.pointerId);els.viewport.classList.add("dragging")});
+    els.viewport.addEventListener("pointermove",e=>{updateLivePan(e.clientX,e.clientY);const w=screenToWorld(e.clientX,e.clientY);els.coordStatus.textContent=`鼠标 ${coordText(Math.round(w.x),Math.round(w.y))}`});
+    const endPan=e=>{if(!state.pan.active)return;updateLivePan(e.clientX,e.clientY);const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(wasMoved){state.suppressClickUntil=Date.now()+160}else if(downTile){const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;const exitedFocus=clickOutsideSpatialFocus(downTile.key);if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else if(exitedFocus){state.lastTileTap={key:null,time:0}}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails();scheduleRender()}}else if(clickOutsideSpatialFocus(null)){state.suppressClickUntil=Date.now()+160}state.pan.active=false;state.pan.rebaseQueued=false;resetLivePanTransform();els.viewport.classList.remove("dragging","light-camera-motion");if(wasMoved)scheduleRender();try{els.viewport.releasePointerCapture(e.pointerId)}catch{}persist()};els.viewport.addEventListener("pointerup",endPan);els.viewport.addEventListener("pointercancel",endPan);
     els.viewport.addEventListener("dblclick",e=>{if(!state.precisionMode||e.target.closest(".precision-object-group,button,input,select,textarea"))return;e.preventDefault();const w=screenToWorld(e.clientX,e.clientY),x=Math.round(w.x*10)/10,y=Math.round(w.y*10)/10;openObjectForm(null,{x,y})});
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
   }

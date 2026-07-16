@@ -1,8 +1,8 @@
 {
   "product": "山海经原典地图研究台",
   "edition": "desktop",
-  "app_version": "v002",
-  "semver": "0.2.0",
+  "app_version": "v003",
+  "semver": "0.3.0",
   "frontend_base": "v038",
   "data_version": "v075-r0001",
   "object_count": 395,

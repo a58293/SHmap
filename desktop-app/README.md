@@ -1,38 +1,59 @@
-# 山海经原典地图研究台 · 桌面版 v002
+# 山海经原典地图研究台 · 桌面版 v003
 
-桌面版v002在v001的SQLite本地存储基础上，增加了经过签名验证的客户端更新系统。
+桌面版 v003 在 v002 的签名更新系统基础上，重点修复地图拖动观感，并加入本地一键发布流程。
 
 ## 本版功能
 
-- 右上角“检查更新”：读取GitHub正式发布页中的最新稳定版本。
-- 可查看当前版本、最新版本、版本说明与实时下载进度。
-- 安装前自动保存SQLite工作区并创建“更新前备份”。
-- 每24小时自动检查一次；可在更新窗口关闭自动检查。
-- 更新包必须通过Tauri公钥签名验证，验证失败不会安装。
-- 内置v075母表：395个对象、2432条原文记录。
+- 地图拖动过程中实时跟随鼠标，不再等待松开鼠标后才更新画面。
+- 拖动时统一平移地图画布、红色画笔轨迹和地块标签；松开后再执行最终重绘与保存。
+- 鼠标右键作为“返回”：依次关闭当前原生弹窗、编辑弹窗、研究工作台、地块翻面或空间聚焦。
+- 保留输入框中的系统右键菜单，便于复制、粘贴与文本编辑。
+- 根目录新增 `发布新版本.cmd`：自动同步版本、校验、构建、提交、打标签并推送 GitHub。
+- `desktop-v*` 标签推送后，GitHub Actions 自动签名并创建正式 Release、安装程序、`.sig` 与 `latest.json`。
+- 内置 v075 母表：395 个对象、2432 条原文记录。
 
-## 首次安装说明
+## 一键发布
 
-v001本身没有更新器，因此v002仍需手动安装一次。从v002开始，后续v003及更高版本可以直接在客户端内完成更新。
+在从 GitHub 克隆的仓库根目录双击：
 
-## 两个GitHub工作流
+```text
+发布新版本.cmd
+```
 
-- `Build Windows Desktop`：普通测试构建，不创建正式更新发布。
-- `Publish Windows Desktop Update`：手动运行，签名并发布正式版本，同时生成客户端读取的`latest.json`。
+按提示输入语义化版本号，例如 `0.3.0`，再填写一行更新说明并输入 `RELEASE` 确认。脚本会自动执行：
 
-正式发布前必须在GitHub仓库的Actions Secrets中配置：
+```text
+同步版本号
+→ npm ci
+→ 项目校验
+→ 前端构建
+→ Git 提交
+→ 创建 desktop-v0.3.0 标签
+→ 推送分支与标签
+→ GitHub 自动发布
+```
+
+本地无需保存 GitHub Token 或更新签名私钥。Git 推送使用电脑已有的 Git/GitHub Desktop 登录凭据；更新私钥继续只保存在 GitHub Actions Secrets 中。
+
+## GitHub 工作流
+
+- `Build Windows Desktop`：`main` 分支代码变化后自动执行普通测试构建。
+- `Publish Windows Desktop Update`：收到 `desktop-v*` 标签后自动执行正式签名发布，也保留手动运行入口。
+
+正式发布需要在 GitHub Actions Secrets 中配置：
 
 - `TAURI_SIGNING_PRIVATE_KEY`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
-私钥不可提交到仓库，也不能丢失；所有后续版本必须继续使用同一把私钥。
+所有后续版本必须继续使用与 v002 相同的签名私钥，否则已安装的旧客户端无法验证更新。
 
 ## 本地构建
 
 ```powershell
-npm ci
+npm ci --registry=https://registry.npmjs.org/
 npm run verify
+npm run build
 npm run desktop:build
 ```
 
-普通本地构建不会创建更新签名文件。正式更新发布统一交由GitHub的发布工作流完成。
+普通本地构建不会创建正式更新签名文件。正式更新由 GitHub 发布工作流生成。

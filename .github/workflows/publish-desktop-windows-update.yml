@@ -2,9 +2,16 @@ name: Publish Windows Desktop Update
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
 
 permissions:
   contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -26,6 +33,17 @@ jobs:
       - name: Verify project
         working-directory: desktop-app
         run: npm run verify
+      - name: Verify release tag and version
+        working-directory: desktop-app
+        run: node scripts/verify-release-tag.mjs
+      - name: Read release notes
+        id: release_notes
+        shell: pwsh
+        run: |
+          $body = Get-Content "desktop-app/RELEASE_NOTES.md" -Raw
+          "body<<RELEASE_BODY" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $body | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "RELEASE_BODY" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -35,9 +53,7 @@ jobs:
           projectPath: desktop-app
           tagName: desktop-v__VERSION__
           releaseName: 山海经原典地图研究台 v__VERSION__
-          releaseBody: |
-            山海经原典地图研究台 Windows 稳定版。
-            客户端可通过“检查更新”下载并安装此版本。
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: --config src-tauri/tauri.release.conf.json

@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - "**"
+      - ".github/workflows/build-windows.yml"
 
 jobs:
   build:
@@ -25,9 +28,9 @@ jobs:
         run: npm run verify
       - name: Build Windows app
         run: npm run desktop:build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: 山海经原典地图研究台-Windows-v002
+          name: 山海经原典地图研究台-Windows-build-${{ github.run_number }}
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/shj-map-desktop.exe
