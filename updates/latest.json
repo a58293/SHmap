@@ -1,0 +1,15 @@
+{
+  "version": "0.4.1",
+  "notes": "# 山海经原典地图研究台 v0.4.1\r\n\r\n- 修复部分网络环境下 GitHub `latest.json` 连接被重置、导致客户端无法检查更新的问题。\r\n- 更新检查改为“仓库直连 → CDN 备用 → GitHub Releases 备用”三线路自动切换，每条线路均带重试。\r\n- 更新包下载增加最多 3 次自动重连，并在界面显示当前重试进度。\r\n- 发布工作流会在 Release 成功后自动把签名更新清单同步到 `updates/latest.json`，后续版本无需手动替换更新文件。\r\n- 更新窗口会显示实际使用的线路，并把失败详情保留在版本说明区，方便判断网络问题。",
+  "pub_date": "2026-07-17T04:09:17.710Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWk5iYzZqZ09Vd3VMS002b2E1bXJFMGFUTDZFbG4ycnNibkk4SmJmOTZ3bmV3d1NML1hpYWpWamdkY2hsdnQ1TW1vSGloTjBtdkZZZ2tDSUF4UXZyUXdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MjYxMzU1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC4xX3g2NC1zZXR1cC5leGUKNjBWdDJxV1ZKODFSaG1NUVFQdU1wclQ5QWpGUmtTRFVaUXlNOFY5RUE1MW1WZWludkxrV0tvMUJBaG9JUzNYenUxYTZHVXEvbCt4OU1tRzBxVW1rQWc9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/479951496"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWk5iYzZqZ09Vd3VMS002b2E1bXJFMGFUTDZFbG4ycnNibkk4SmJmOTZ3bmV3d1NML1hpYWpWamdkY2hsdnQ1TW1vSGloTjBtdkZZZ2tDSUF4UXZyUXdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MjYxMzU1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC4xX3g2NC1zZXR1cC5leGUKNjBWdDJxV1ZKODFSaG1NUVFQdU1wclQ5QWpGUmtTRFVaUXlNOFY5RUE1MW1WZWludkxrV0tvMUJBaG9JUzNYenUxYTZHVXEvbCt4OU1tRzBxVW1rQWc9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/479951496"
+    }
+  }
+}
