@@ -1,15 +1,15 @@
 {
-  "version": "0.4.1",
-  "notes": "# 山海经原典地图研究台 v0.4.1\r\n\r\n- 修复部分网络环境下 GitHub `latest.json` 连接被重置、导致客户端无法检查更新的问题。\r\n- 更新检查改为“仓库直连 → CDN 备用 → GitHub Releases 备用”三线路自动切换，每条线路均带重试。\r\n- 更新包下载增加最多 3 次自动重连，并在界面显示当前重试进度。\r\n- 发布工作流会在 Release 成功后自动把签名更新清单同步到 `updates/latest.json`，后续版本无需手动替换更新文件。\r\n- 更新窗口会显示实际使用的线路，并把失败详情保留在版本说明区，方便判断网络问题。",
-  "pub_date": "2026-07-17T10:19:34.133Z",
+  "version": "0.4.2",
+  "notes": "# 山海经原典地图研究台 v0.4.2（整合版）\r\n\r\n- 简述博物志的分类栏增加独立纵向滚动区，单个分类对象过多时不再把整页无限拉长。\r\n- 420%以上精细地图中的对象点支持精确交互：悬停时为同一坐标下的每个对象分别显示预览小窗。\r\n- 单击多对象点可固定或取消固定预览组；单击具体小窗打开对应对象的精确点博物志，双击可直接编辑对象。\r\n- 精确预览靠近地图右侧或底部时自动换方向展开；同坐标对象较多时，预览区内部出现滚动条。\r\n- 修复滚轮放大、缩小停止后的视觉回弹。地图画布、地块和精确对象统一使用相机状态逐帧重绘。\r\n- 滚轮改为连续缩放曲线，缩放中心固定在鼠标指针位置；程序内定位动画使用相同的无回弹渲染。\r\n- 取消进入或退出区域概览、10里精细地图时的淡入跳动。\r\n- “完成本轮编辑”会先保存桌面数据库，再生成 `.shjpatch`、写入 `submissions/pending` 并使用本机 Git 登录自动推送 GitHub。\r\n- 自动上传失败时保留本轮更改，并提供重试或仅导出本地文件。\r\n\r\n```powershell\r\nnpm ci --registry=https://registry.npmjs.org/\r\nnpm run verify\r\nnpm run build\r\nnpm run desktop:dev\r\n```\r\n\r\n本整合版继续使用版本号 `0.4.2`，不需要再安装单独的 `0.4.3`。",
+  "pub_date": "2026-07-17T11:54:04.327Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkdEL0tNVVNWQ25EMFhYZ2hJUmowaUF3MDZqL1FEdWZ0OHB6SW9tdGFueVQ5UE9DRUthamVGREI5UVhobmZLV0duN2ZqTkNVajZwVjZnRVIzMXpXQ0FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MjgzNTcxCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC4xX3g2NC1zZXR1cC5leGUKYzRlNW44K2FJcDhMSHN4U2ZsNzZGbFhkY0MyU0ZiaCs0OVU2K3E4TUlvUlc0ektQdVU3VzZwZlJ6bThwNnFrQUc4OHN1eGdoNDgvaWdvakc3NmMvQmc9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/480250011"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWlBLem1BV0NsdG5wazJiK21rTFdCRlhjbVV2WjFLb2lxaWpYaVZPWE5OQ0N2RkNlR0Q2RWZ0VkpMdTAyMGR0ampaZVdkS042WlpPdXI4RUZpMXJsRWdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg5MjQxCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC4yX3g2NC1zZXR1cC5leGUKUHJqYzVXMGVjOGpEVVZZMXV6a2dBSmp6Y0JJVkxPWXYwWEFDdllOdC9FSkZ3ZVREVHVydTc1aW5vR1d5MnM4THI2QkErYjJ4eHdOOUVmOXIyNTBGQXc9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/480327640"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkdEL0tNVVNWQ25EMFhYZ2hJUmowaUF3MDZqL1FEdWZ0OHB6SW9tdGFueVQ5UE9DRUthamVGREI5UVhobmZLV0duN2ZqTkNVajZwVjZnRVIzMXpXQ0FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MjgzNTcxCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC4xX3g2NC1zZXR1cC5leGUKYzRlNW44K2FJcDhMSHN4U2ZsNzZGbFhkY0MyU0ZiaCs0OVU2K3E4TUlvUlc0ektQdVU3VzZwZlJ6bThwNnFrQUc4OHN1eGdoNDgvaWdvakc3NmMvQmc9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/480250011"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWlBLem1BV0NsdG5wazJiK21rTFdCRlhjbVV2WjFLb2lxaWpYaVZPWE5OQ0N2RkNlR0Q2RWZ0VkpMdTAyMGR0ampaZVdkS042WlpPdXI4RUZpMXJsRWdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mjg5MjQxCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC4yX3g2NC1zZXR1cC5leGUKUHJqYzVXMGVjOGpEVVZZMXV6a2dBSmp6Y0JJVkxPWXYwWEFDdllOdC9FSkZ3ZVREVHVydTc1aW5vR1d5MnM4THI2QkErYjJ4eHdOOUVmOXIyNTBGQXc9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/480327640"
     }
   }
 }
