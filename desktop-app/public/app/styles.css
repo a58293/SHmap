@@ -753,7 +753,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .round-publish-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media(max-height:760px){.brief-museum-category{max-height:500px}.brief-museum-list{max-height:410px}}
 
-/* v0.4.2 整合 · 精细地图对象悬停窗与无回弹缩放 */
+/* v0.4.3 整合 · 九段式博物志、智能滚轮、精细对象悬停与无回弹缩放 */
 .precision-object-group:hover,.precision-object-group:focus-within,.precision-object-group.preview-pinned,.precision-object-group.wheel-zone-active{z-index:140}
 .precision-hover-cards{
   position:absolute;

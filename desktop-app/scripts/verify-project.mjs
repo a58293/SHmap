@@ -25,6 +25,9 @@ if(!rust.includes("publish_patch_to_github")||!rust.includes("submissions/pendin
 if(!app.includes("precision-hover-cards")||!app.includes("data-precision-preview-object")||!app.includes("precisionPreviewText")){console.error("v0.4.2整合版精确对象悬停窗逻辑缺失");failed=true}
 if(!app.includes("Math.exp(-delta*.00155)")||!app.includes("scheduleCameraFrame()")){console.error("v0.4.2整合版无回弹连续缩放逻辑缺失");failed=true}
 if(!css.includes(".precision-hover-cards")||!css.includes(".preview-pinned")||!css.includes(".hover-left")||!css.includes(".hover-up")){console.error("v0.4.2整合版精确对象悬停窗样式缺失");failed=true}
+if(!app.includes("NINE_SECTION_MD_SAMPLE")||!app.includes("parseNineSectionDocument")||!app.includes('kind:"dossier_document"')||!app.includes("splitMarkdownImportDocuments")){console.error("v0.4.3九段式Markdown博物志导入逻辑缺失");failed=true}
+if(!app.includes("routeWheelToPrecisionPreview")||!app.includes("scrollPrecisionPreview")||!css.includes(".wheel-zone-active")){console.error("v0.4.3精确对象预览窗智能滚轮逻辑缺失");failed=true}
+const versionMeta=JSON.parse(fs.readFileSync(path.join(root,"VERSION.json"),"utf8"));if(versionMeta.semver!==pkg.version||versionMeta.app_version!==edition){console.error(`VERSION.json未同步：${versionMeta.app_version} / ${versionMeta.semver}`);failed=true}
 const publishWorkflow=fs.readFileSync(path.join(root,"..",".github","workflows","publish-desktop-windows-update.yml"),"utf8");if(!publishWorkflow.includes("Sync stable update feed")||!publishWorkflow.includes("updates/latest.json")){console.error("稳定更新源同步工作流缺失");failed=true}
 for(const name of fs.readdirSync(root)){if(/\.key$|PRIVATE_KEY|password/i.test(name)){console.error(`仓库根目录疑似包含密钥：${name}`);failed=true}}
 const lock=fs.readFileSync(path.join(root,"package-lock.json"),"utf8");if(lock.includes("applied-caas-gateway")||lock.includes("artifactory/api/npm")){console.error("package-lock仍包含内部依赖地址");failed=true}

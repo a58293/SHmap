@@ -633,7 +633,7 @@
     els.tileLayer.querySelectorAll(".precision-object-group").forEach(group=>{
       group.addEventListener("pointerdown",e=>e.stopPropagation());
       group.addEventListener("pointerenter",()=>setPrecisionWheelGroup(group));
-      // v0.4.2：预览窗有可滚动内容时消费滚轮；到达边界或没有溢出时，继续交给地图缩放。
+      // v0.4.3：预览窗有可滚动内容时消费滚轮；到达边界或没有溢出时，继续交给地图缩放。
       const previewScroller=group.querySelector(".precision-hover-cards");
       previewScroller?.addEventListener("wheel",e=>{scrollPrecisionPreview(previewScroller,e)},{passive:false});
       const main=group.querySelector("[data-precision-main]");main?.addEventListener("click",e=>{e.stopPropagation();const key=group.dataset.precisionGroup,items=ensureObjectIndexes().anchorGroupByKey.get(key)?.items||[];if(items.length>1){state.precisionClusterOpen=state.precisionClusterOpen===key?null:key;scheduleRender()}else if(main.dataset.precisionMain)openPrecisionDossier(main.dataset.precisionMain,key)});main?.addEventListener("dblclick",e=>{e.stopPropagation();openObjectForm(indexedObject(main.dataset.precisionMain))});group.querySelectorAll("[data-precision-preview-object]").forEach(btn=>{btn.addEventListener("click",e=>{e.stopPropagation();openPrecisionDossier(btn.dataset.precisionPreviewObject,group.dataset.precisionGroup)});btn.addEventListener("dblclick",e=>{e.stopPropagation();openObjectForm(indexedObject(btn.dataset.precisionPreviewObject))})});
@@ -1367,7 +1367,7 @@
     const status=issues.some(i=>i.level==="error")?"error":issues.some(i=>i.level==="warn")?"warn":"ok";
     return {kind:"tile_profile",headerName,name:`地块档案 ${cell.key||headerName}`,cellKey:cell.key,gx:cell.gx,gy:cell.gy,profilePatch:patch,specifiedKeys,scriptureEvents,scriptureSpecified,fields,fieldLines,issues,status,startLine,raw:block}
   }
-  function parseMarkdown(text){
+  function parseStandardMarkdown(text){
     const src=String(text||"").replace(/\r\n?/g,"\n"),lines=src.split("\n"),headerRe=/^###\s*(对象|地块档案)\s*[：:]\s*(.+?)\s*$/gm,matches=[...src.matchAll(headerRe)],fileMarkers=[...src.matchAll(/^<!--\s*SHMAP_IMPORT_FILE\s*:\s*(.+?)\s*-->\s*$/gm)],legacy=[...src.matchAll(/^###\s*坐标\s*[：:]\s*(.+?)\s*$/gm)],malformedHeaders=[];
     lines.forEach((line,i)=>{if(/^#{1,2}\s*(对象|地块档案)\s*[：:]/.test(line)||/^#{4,}\s*(对象|地块档案)\s*[：:]/.test(line))malformedHeaders.push({level:"error",message:"标题层级错误，应使用三个#：### 对象：… 或 ### 地块档案：…。",line:i+1})});
     if(!matches.length)return {format:legacy.length?"legacy":"unknown",entries:[],objects:[],profiles:[],globalIssues:legacy.length?[{level:"error",message:"识别到旧版“### 坐标：”格式。请转换为对象或地块档案格式后导入。",line:1}]:malformedHeaders.length?malformedHeaders:[{level:"error",message:"未识别到“### 对象：”或“### 地块档案：”标题。",line:1}]};
@@ -1406,6 +1406,241 @@
   function renderExamplePanel(){const tab=state.exampleTab;$$('.example-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.exampleTab===tab));if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML='<strong>正确案例</strong><span>一个文件可同时新增对象并更新地块档案。</span>';els.exampleCode.textContent=CORRECT_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>对象使用“### 对象：”。</li><li>地块档案使用“### 地块档案：X+000_Y+000”。</li><li>简要、基础、详细和文明／事件字段都可更新。</li><li>缩进两格可书写多行内容。</li></ul>';els.loadExampleBtn.textContent='载入正确案例到左侧'}else if(tab==='wrong'){els.exampleNotice.className='example-notice error';els.exampleNotice.innerHTML='<strong>错误案例</strong><span>包含标题、坐标、枚举值与几何参数错误。</span>';els.exampleCode.textContent=WRONG_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>“## 对象”标题层级错误。</li><li>地块档案必须提供 X、Y 整数主格坐标。</li><li>时间流逝和旧版可达性应使用示例中的标准值。</li><li>线对象至少需要两个路径节点。</li></ul>';els.loadExampleBtn.textContent='载入错误案例并查看识别'}else{els.exampleNotice.className='example-notice neutral';els.exampleNotice.innerHTML='<strong>识别规则</strong><span>对象和地块档案可混合导入。</span>';els.exampleCode.textContent=IMPORT_RULES_TEXT;els.exampleNotes.innerHTML='<ul><li>地块档案只改写 Markdown 中明确出现的字段。</li><li>明确写出空字段会清空该字段；省略字段则保留原值。</li><li>警告不会阻止导入，但会进入本轮更改记录。</li><li>错误条目不会写入本地地图。</li></ul>';els.loadExampleBtn.textContent='载入空白正确模板'} }
 
 
+
+  const NINE_SECTION_MD_SAMPLE=`## 01.区域定位
+
+海内南方地带
+
+## 02.一句话概要
+
+本对象位于海内南方，是本区域的重要地理标志。
+
+## 03.本地标签
+
+#海内南方 / #原文直载
+
+## 04.地块属性
+
+1，地貌类型：山地 / 水域
+2，水文特征：临近主干水系
+3，方位范围：原文所载方位范围
+4，典籍出处：《山海经·海内南经》
+
+## 05.数据关系
+
+1，父级区域：海内南方
+2，相邻地块：相邻对象甲，相邻对象乙
+3，相关水域：相关水域
+4，相关生灵：相关生灵
+
+## 06,分别整理以下六类：
+
+### 地貌
+
+示例山
+
+1，与本地关系：原文直载（有）
+2，核心特征：地貌特征
+3，证据：出自《海内南经》
+
+### 水系
+
+示例水
+
+1，与本地关系：原文直载（经）
+2，核心特征：水系特征
+3，证据：出自《海内南经》
+
+### 草木
+
+原文未载明确
+
+### 鸟兽
+
+示例兽
+
+1，与本地关系：原文直载（居）
+2，核心特征：形貌特征
+3，证据：出自《海内南经》
+4，功效：原文未载明确
+
+### 金玉矿物
+
+原文未载明确
+
+### 人群神祇
+
+示例神祇
+
+1，与本地关系：原文直载（在）
+2，核心特征：身份特征
+3，证据：出自《海内南经》
+
+### 事件与遗迹
+
+示例遗迹
+
+1，与本地关系：原文直载（发生）
+2，核心特征：事件或遗迹特征
+3，证据：出自《海内南经》
+
+## 07,原文摘录
+
+“原文摘录。”出自《山海经·海内南经》。
+
+## 08，其他典故
+
+古注或其他典籍补充。
+
+## 09，详细描述
+
+完整的地块或对象描述。`;
+
+  function normalizeDossierImportName(value){
+    return String(value||"").normalize("NFKC").replace(/\.(?:md|markdown)$/i,"").replace(/\s+/g,"").replace(/／/g,"/").replace(/[—–]/g,"-").trim()
+  }
+  function importedDossierTargetByFile(sourceFile){
+    const targetName=String(sourceFile||"").replace(/^.*[\\/]/,"").replace(/\.(?:md|markdown)$/i,"").trim(),needle=normalizeDossierImportName(targetName);
+    const exact=state.objects.filter(o=>normalizeDossierImportName(o.name)===needle);
+    return {targetName,target:exact.length===1?exact[0]:null,matches:exact}
+  }
+  function dossierAliasTargetName(name){
+    const aliases={
+      "九疑山":"九嶷山/九疑山","舜葬遗迹":"舜葬","丹朱葬":"帝丹朱葬","后稷葬":"后稷之葬",
+      "兕":"兕（舜葬东）","犀牛":"犀牛（狌狌西北）","狌狌":"狌狌/猩猩（都广东轴）",
+      "氾林（汜林）":"氾林/汜林"
+    };
+    return aliases[normalizeDossierImportName(name)]||""
+  }
+  function resolveDossierEntryLink(name,target,sourceCategory){
+    const needle=normalizeDossierImportName(name),desired=dossierCategoryKey(sourceCategory),compatible=o=>!o||objectCategory(o)===desired;if(!needle)return {object:null,reason:"empty"};
+    const exact=state.objects.filter(o=>normalizeDossierImportName(o.name)===needle);
+    if(exact.length===1&&compatible(exact[0]))return {object:exact[0],reason:"exact"};
+    const alias=dossierAliasTargetName(name);
+    if(alias){const hit=state.objects.find(o=>normalizeDossierImportName(o.name)===alias);if(hit&&compatible(hit))return {object:hit,reason:"alias"}}
+    if(target&&normalizeDossierImportName(target.name).includes(needle)&&compatible(target))return {object:target,reason:"target"};
+    const starts=state.objects.filter(o=>{
+      const n=normalizeDossierImportName(o.name),base=n.replace(/[（(].*?[）)]/g,"");
+      return (base===needle||n.startsWith(`${needle}（`)||n.startsWith(`${needle}(`))&&compatible(o)
+    });
+    if(starts.length===1)return {object:starts[0],reason:"qualified"};
+    const rawCandidates=state.objects.filter(o=>normalizeDossierImportName(o.name).includes(needle));
+    return {object:null,reason:exact.length>1||starts.length>1||rawCandidates.length?"ambiguous":"missing"}
+  }
+  function splitMarkdownImportDocuments(text){
+    const src=String(text||"").replace(/\r\n?/g,"\n"),re=/^<!--\s*SHMAP_IMPORT_FILE\s*:\s*(.+?)\s*-->\s*$/gm,matches=[...src.matchAll(re)];
+    if(!matches.length)return [{sourceFile:"",text:src,startLine:1}];
+    return matches.map((m,i)=>{
+      const bodyStart=m.index+m[0].length,end=i+1<matches.length?matches[i+1].index:src.length;
+      return {sourceFile:m[1].trim(),text:src.slice(bodyStart,end).trim(),startLine:src.slice(0,bodyStart).split("\n").length}
+    })
+  }
+  function nineSectionLooksLike(text){return /^\s*#{2,3}\s*0?1\s*[.,，、]?\s*区域定位/m.test(text)&&/^\s*#{2,3}\s*0?6\s*[.,，、]?/m.test(text)&&/^\s*#{2,3}\s*0?9\s*[.,，、]?\s*详细描述/m.test(text)}
+  function parseNineSectionDocument(doc){
+    const lines=String(doc.text||"").split("\n"),sections={},sectionLines={},sectionHeader=/^\s*#{2,3}\s*0?([1-9])\s*[.,，、]?\s*(.*?)\s*$/,categoryHeader=/^\s*(?:#{2,3}\s*)?(地貌|水系|草木|鸟兽|金玉矿物|人群神祇|事件与遗迹|事件遗迹)\s*$/,numbered=/^\s*([1-9])\s*[，,、.]\s*([^：:]+)\s*[：:]\s*(.*)\s*$/;
+    let current=0;lines.forEach((line,i)=>{const m=line.match(sectionHeader);if(m){current=Number(m[1]);sections[current]=[];sectionLines[current]=doc.startLine+i;return}if(current)sections[current].push({line:doc.startLine+i,text:line})});
+    const textOf=n=>(sections[n]||[]).map(x=>x.text).join("\n").trim();
+    const numberedFields=n=>{const out={};let key="";(sections[n]||[]).forEach(row=>{const m=row.text.match(numbered);if(m){key=m[2].trim();out[key]=m[3].trim();return}if(key&&row.text.trim()&&!row.text.trim().startsWith("#"))out[key]=`${out[key]}\n${row.text.trim()}`.trim()});return out};
+    const p4=numberedFields(4),p5=numberedFields(5),entries=[];let category="",entry=null,lastField="";
+    (sections[6]||[]).forEach(row=>{
+      const raw=row.text,trim=raw.trim(),cm=raw.match(categoryHeader);if(cm){category=cm[1]==="事件与遗迹"?"事件遗迹":cm[1];entry=null;lastField="";return}
+      if(!trim)return;const fm=raw.match(numbered);
+      if(fm&&entry){const field=fm[2].trim(),value=fm[3].trim(),map={"与本地关系":"localRelation","核心特征":"coreFeatures","证据":"evidence","功效":"efficacy"};lastField=map[field]||"";if(lastField)entry[lastField]=value;return}
+      if(entry&&lastField&&/^\s+/.test(raw)){entry[lastField]=`${entry[lastField]}\n${trim}`.trim();return}
+      if(category&&!/^#/.test(trim)&&!/^\d/.test(trim)){entry={sourceCategory:category,name:trim,localRelation:"",coreFeatures:"",evidence:"",efficacy:"",imageUrl:"",line:row.line};entries.push(entry);lastField=""}
+    });
+    const cleanEntries=entries.filter(e=>!/^(?:原文未载明确|无明确记载|原文未载)$/i.test(e.name.trim()));
+    const targetInfo=importedDossierTargetByFile(doc.sourceFile),issues=[];
+    if(!doc.sourceFile)issues.push({level:"error",message:"九段式博物志必须通过“选择单个/批量 Markdown”导入；程序使用文件名匹配客户端对象。",line:doc.startLine});
+    else if(!targetInfo.target)issues.push({level:"error",message:`客户端中没有与文件名“${targetInfo.targetName}”完全同名的对象，不会自动新建或猜测坐标。`,line:doc.startLine});
+    const museumEntries=cleanEntries.map(e=>{
+      const linked=resolveDossierEntryLink(e.name,targetInfo.target,e.sourceCategory),unsupported=/无史料支撑|原文未载/.test(`${e.name} ${e.evidence}`);
+      if(unsupported)issues.push({level:"warn",message:`“${e.name}”含“无史料支撑/原文未载”标记，将保留为博物志文字条目，但不会自动绑定地图对象。`,line:e.line});
+      else if(!linked.object)issues.push({level:"warn",message:`客户端未找到可安全绑定的独立对象“${e.name}”${linked.reason==="ambiguous"?"（存在多个可能对象）":""}；仍会显示在该页博物志中。`,line:e.line});
+      return {...e,linkedObjectId:unsupported?"":(linked.object?.id||""),linkReason:unsupported?"unsupported":linked.reason}
+    });
+    if(!cleanEntries.length)issues.push({level:"warn",message:"第06节没有可陈列条目；“原文未载明确”占位不会导入。",line:sectionLines[6]||doc.startLine});
+    const profile={
+      regionPosition:textOf(1),oneLineSummary:textOf(2),briefSummary:textOf(2),basicSummary:textOf(1),
+      localTags:textOf(3).replace(/(^|\s)#/g,"$1"),
+      tileType:p4["地貌类型"]||"",hydrology:p4["水文特征"]||"",orientation:p4["方位范围"]||"",
+      sourceCitation:p4["典籍出处"]||"",parentRegion:p5["父级区域"]||"",adjacentTiles:p5["相邻地块"]||"",
+      relatedWaters:p5["相关水域"]||"",relatedLife:p5["相关生灵"]||"",
+      tileOriginalExcerpt:textOf(7),otherAllusions:textOf(8),detailedSummary:textOf(9)
+    };
+    profile.geoEnvironment=uniqueText([profile.regionPosition,profile.tileType]);profile.evidenceChain=uniqueText([profile.sourceCitation,profile.otherAllusions]);
+    const dossier={format:"nine-section-v1",sourceFile:doc.sourceFile,profile,museumEntries};
+    const status=issues.some(i=>i.level==="error")?"error":issues.some(i=>i.level==="warn")?"warn":"ok";
+    return {kind:"dossier_document",name:targetInfo.targetName||"未命名博物志",headerName:targetInfo.targetName||"九段式博物志",sourceFile:doc.sourceFile,targetId:targetInfo.target?.id||"",targetName:targetInfo.target?.name||targetInfo.targetName,dossier,issues,status,startLine:doc.startLine,entryCount:museumEntries.length,linkedCount:museumEntries.filter(e=>e.linkedObjectId).length}
+  }
+  function parseMarkdown(text){
+    const docs=splitMarkdownImportDocuments(text),entries=[],globalIssues=[];let sawNine=false,sawStandard=false;
+    docs.forEach(doc=>{
+      if(nineSectionLooksLike(doc.text)){sawNine=true;entries.push(parseNineSectionDocument(doc));return}
+      sawStandard=true;const parsed=parseStandardMarkdown(doc.text);(parsed.globalIssues||[]).forEach(i=>globalIssues.push({...i,line:(i.line||1)+doc.startLine-1}));(parsed.entries||[]).forEach(e=>{e.sourceFile=doc.sourceFile||e.sourceFile||"";e.startLine=(e.startLine||1)+doc.startLine-1;(e.issues||[]).forEach(i=>i.line=(i.line||1)+doc.startLine-1);entries.push(e)})
+    });
+    const objectIds=new Map(),profileCells=new Map();entries.forEach(e=>{if(e.kind==="object"&&e.id){if(objectIds.has(e.id)){e.issues.push({level:"error",message:`本次导入中对象ID“${e.id}”重复。`,line:e.startLine});objectIds.get(e.id).issues.push({level:"error",message:`本次导入中对象ID“${e.id}”重复。`,line:objectIds.get(e.id).startLine})}else objectIds.set(e.id,e)}if(e.kind==="tile_profile"&&e.cellKey){if(profileCells.has(e.cellKey))e.issues.push({level:"warn",message:`本次导入中地块 ${e.cellKey} 出现多次，将按文件顺序依次更新。`,line:e.startLine});else profileCells.set(e.cellKey,e)}e.status=e.issues.some(i=>i.level==="error")?"error":e.issues.some(i=>i.level==="warn")?"warn":"ok"});
+    let format="unknown";if(sawNine&&sawStandard)format="mixed-dossier-v1";else if(sawNine)format="dossier-v1";else{const kinds=new Set(entries.map(e=>e.kind));format=kinds.size>1?"mixed-v1":kinds.has("tile_profile")?"tile-profile-v1":kinds.has("object")?"object-v1":"unknown"}
+    return {format,entries,objects:entries.filter(e=>e.kind==="object"),profiles:entries.filter(e=>e.kind==="tile_profile"),dossiers:entries.filter(e=>e.kind==="dossier_document"),globalIssues}
+  }
+  function importFormatLabel(format){return {"object-v1":"地图对象格式 v1.1","tile-profile-v1":"地块档案格式 v1.1","mixed-v1":"对象＋地块档案 v1.1","dossier-v1":"九段式对象博物志","mixed-dossier-v1":"九段式博物志＋标准对象","legacy":"旧版坐标索引","unknown":"格式未识别"}[format]||"格式未识别"}
+  function mergeImportedDossierProfile(base,main){
+    const extra=main?.dossier?.profile;if(!extra)return base;const merged={...base};
+    Object.entries(extra).forEach(([key,value])=>{if(hasText(value))merged[key]=value});return merged
+  }
+  function dossierCategoryKey(value){
+    return {"地貌":"terrain","水系":"terrain","山水地貌":"terrain","草木":"plants","鸟兽":"animals","金玉矿物":"minerals","人群神祇":"people","事件遗迹":"events","事件与遗迹":"events"}[String(value||"").trim()]||"terrain"
+  }
+  function importedMuseumObjects(items){
+    const main=selectedTileMain(items),entries=main?.dossier?.museumEntries;
+    if(!Array.isArray(entries)||!entries.length)return null;
+    return entries.map((e,index)=>({id:e.linkedObjectId||"",name:e.name,type:e.sourceCategory||"博物志条目",displayCategory:dossierCategoryKey(e.sourceCategory),localRelation:e.localRelation,coreFeatures:e.coreFeatures,efficacy:e.efficacy,evidence:e.evidence,imageUrl:e.imageUrl||"",dossierOnly:!e.linkedObjectId,dossierIndex:index}))
+  }
+  function briefMuseumObjectHTML(o,cat){
+    const src=objectImageSource(o),rows=[["与本地关系",o.localRelation],["核心特征",o.coreFeatures||objectCoreText(o)],["功效",o.efficacy],["证据",o.evidence||evidenceTextForObject(o)]].filter(([,v])=>hasText(v)&&!/原文未载明确/.test(String(v))).slice(0,4),detail=o.id?` data-object-detail="${esc(o.id)}"`:"";
+    return `<article class="brief-museum-object ${o.dossierOnly?'dossier-only':''}"${detail}><div class="brief-object-image ${src?'has-image':'is-placeholder'}">${src?`<img src="${esc(src)}" alt="${esc(o.name)}" loading="lazy" decoding="async">`:""}<div class="brief-image-placeholder"><i>${cat.glyph}</i><span>待补图</span></div></div><div class="brief-object-copy"><div class="brief-object-title"><strong>${esc(o.name)}</strong><small>${esc(o.type||cat.label)}</small></div>${rows.length?`<div class="brief-object-rows">${rows.map(([k,v])=>`<div><b>${esc(k)}</b><span>${esc(shortText(v,100))}</span></div>`).join("")}</div>`:`<p class="brief-object-empty">资料待补充</p>`}${o.dossierOnly?`<p class="brief-object-empty">博物志文字条目 · 尚未绑定独立地图对象</p>`:""}</div></article>`
+  }
+  function briefMuseumHTML(items){
+    const imported=importedMuseumObjects(items),source=imported||items,categories=V027_CATEGORIES.map(cat=>({...cat,objects:source.filter(o=>objectCategory(o)===cat.key)})).filter(cat=>cat.objects.length),total=source.length;
+    if(!categories.length)return `<section class="brief-museum empty"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div></div><div class="brief-museum-empty"><i>录</i><span>本地块尚无可陈列的独立对象。</span></div></section>`;
+    return `<section class="brief-museum"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div><p>${categories.length} 类 · ${total} 个条目；图片可后续逐项补充。</p></div><div class="brief-museum-grid count-${categories.length}" style="--museum-cols:${Math.min(categories.length,6)}">${categories.map(cat=>`<article class="brief-museum-category accent-border-${cat.key}"><header><div><i>${cat.glyph}</i><strong>${cat.label}</strong></div><b>${cat.objects.length}</b></header><div class="brief-museum-list">${cat.objects.map(o=>briefMuseumObjectHTML(o,cat)).join("")}</div></article>`).join("")}</div></section>`
+  }
+  function renderImportAnalysis(a){
+    if(!a){els.importFormatBadge.className="format-badge neutral";els.importFormatBadge.textContent="等待输入";els.importValidationState.className="validation-state";els.importValidationState.textContent="尚未分析";els.importSummary.innerHTML='<div><strong>0</strong><span>识别条目</span></div><div class="ok"><strong>0</strong><span>可导入</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div>';els.importObjectList.innerHTML='<div class="import-empty">载入文件后，这里会列出对象、地块档案或九段式博物志。</div>';els.importInspector.innerHTML='<div class="import-empty">正确字段、匹配对象、未绑定条目和格式问题会在这里逐条标示。</div>';els.importApplyBtn.disabled=true;return}
+    const entries=a.entries||[],ok=entries.filter(o=>o.status==="ok").length,warn=entries.filter(o=>o.status==="warn").length,error=entries.filter(o=>o.status==="error").length+(a.globalIssues||[]).filter(i=>i.level==="error").length,importable=entries.filter(o=>o.status!=="error").length,validFormat=["object-v1","tile-profile-v1","mixed-v1","dossier-v1","mixed-dossier-v1"].includes(a.format),cls=validFormat?(error?"error":warn?"warn":"ok"):"error";
+    els.importFormatBadge.className=`format-badge ${cls}`;els.importFormatBadge.textContent=importFormatLabel(a.format);els.importValidationState.className=`validation-state ${cls}`;els.importValidationState.textContent=error?"存在阻断错误":warn?"可导入，但有未绑定条目":"全部通过";els.importSummary.innerHTML=`<div><strong>${entries.length}</strong><span>识别条目</span></div><div class="ok"><strong>${importable}</strong><span>可导入</span></div><div class="warn"><strong>${warn}</strong><span>警告条目</span></div><div class="error"><strong>${error}</strong><span>错误</span></div>`;
+    const globalHtml=(a.globalIssues||[]).map(i=>`<div class="issue ${i.level}">第${i.line||1}行：${esc(i.message)}</div>`).join("");
+    els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{let meta;if(o.kind==="tile_profile")meta=`地块档案 · ${o.cellKey||"坐标未完成"}`;else if(o.kind==="dossier_document")meta=`九段式博物志 · ${o.entryCount}项 · 已绑定${o.linkedCount}项`;else meta=`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;return `<button class="import-result-item ${o.status} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${o.status==='ok'?'通过':o.status==='warn'?'警告':'错误'}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>${o.sourceFile?`${esc(o.sourceFile)} · `:""}第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
+    els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(entries.length)renderImportInspector(entries[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable
+  }
+  function renderImportInspector(o){
+    if(!o){els.importInspector.innerHTML='<div class="import-empty">未选择条目。</div>';return}
+    els.importInspectorMeta.textContent=o.kind==="dossier_document"?`${o.sourceFile||"未命名文件"} · 目标 ${o.targetName||"未匹配"}`:o.kind==="tile_profile"?`${o.sourceFile?`${o.sourceFile} · `:""}地块 ${o.cellKey||"坐标错误"}`:`${o.sourceFile?`${o.sourceFile} · `:""}${o.headerName} · 第${o.startLine}行`;
+    const issueHtml=o.issues.length?`<div class="issue-list">${o.issues.map(i=>`<div class="issue ${i.level}"><strong>${i.level==='error'?'格式错误':'提示'}</strong> · 第${i.line||o.startLine}行<br>${esc(i.message)}</div>`).join("")}</div>`:`<div class="issue-list"><div class="issue ok"><strong>格式正确</strong><br>${o.kind==='dossier_document'?'可更新同名客户端对象的博物志。':o.kind==='tile_profile'?'可更新指定地块档案。':'必填字段与几何参数均可识别。'}</div></div>`;
+    let rows=[];
+    if(o.kind==="dossier_document"){const p=o.dossier.profile,unlinked=o.dossier.museumEntries.filter(e=>!e.linkedObjectId);rows=[["条目类型","九段式对象博物志"],["目标对象",o.targetId?`${o.targetName}（${o.targetId}）`:"未匹配"],["区域定位",p.regionPosition],["一句话概要",p.oneLineSummary],["本地标签",p.localTags],["地貌类型",p.tileType],["水文特征",p.hydrology],["方位范围",p.orientation],["典籍出处",p.sourceCitation],["数据关系",[p.parentRegion,p.adjacentTiles,p.relatedWaters,p.relatedLife].filter(Boolean).join("\n")],["分类条目",o.dossier.museumEntries.map(e=>`${e.sourceCategory}｜${e.name}${e.linkedObjectId?` → ${e.linkedObjectId}`:"（未绑定）"}`).join("\n")],["未绑定",unlinked.map(e=>e.name).join(" / ")],["原文摘录",p.tileOriginalExcerpt],["其他典故",p.otherAllusions],["详细描述",p.detailedSummary]]}
+    else if(o.kind==="tile_profile"){const profileRows=TILE_PROFILE_FIELD_DEFS.filter(d=>o.specifiedKeys.includes(d.key)).map(d=>[d.label,o.profilePatch[d.key]??""]);rows=[["条目类型","地块档案更新"],["目标主格",o.cellKey||""],["更新方式",state.tileProfiles[o.cellKey]?"更新已有档案":"新建地块档案"],...profileRows,["经篇事件",o.scriptureSpecified.map(ch=>`${ch}：${o.scriptureEvents[ch]}`).join("\n")]]}
+    else rows=[["条目类型","地图对象"],["对象标题",o.headerName],["地名",o.name],["类型",o.type||""],["所属经篇",o.chapter||""],["几何类型",o.geometryType||""],["坐标",o.x===null?"":coordText(o.x,o.y)],["面积／作用域",o.area?JSON.stringify(o.area,null,2):""],["路径节点",o.path?.length?o.path.map(p=>p.join(", ")).join("\n"):""],["证据等级",o.evidenceLevel||""],["与本地关系",o.localRelation||""],["核心特征",o.coreFeatures||""],["图片",o.imageUrl||""],["水系与地貌关系",o.riverTerrainRelation||""],["原文",o.original||""]];
+    els.importInspector.innerHTML=issueHtml+`<div class="field-audit">${rows.map(([k,v])=>`<div class="field-audit-row"><b>${esc(k)}</b><code>${v!==""?esc(v):'—'}</code></div>`).join("")}</div>`
+  }
+  function applyMarkdownImport(){
+    const a=state.importAnalysis;if(!a)return;const valid=(a.entries||[]).filter(o=>o.status!=="error");if(!valid.length){toast("没有可导入条目","请先修正格式错误。","error");return}
+    const added=[],profiles=[],dossiers=[],unchanged=[];
+    valid.forEach(p=>{
+      if(p.kind==="object"){const obj=importedObjectFromParsed(p);if(state.objects.some(o=>o.id===obj.id))return;state.objects.push(obj);recordChange({entityId:obj.id,operation:"create",operationLabel:"Markdown导入",before:null,after:obj,summary:`从Markdown导入“${obj.name}”，${coordText(obj.x,obj.y)}`});added.push(obj);return}
+      if(p.kind==="dossier_document"){const index=state.objects.findIndex(o=>o.id===p.targetId);if(index<0)return;const before=structuredClone(state.objects[index]),nextDossier=structuredClone(p.dossier),previousDossier=structuredClone(before.dossier||{});delete previousDossier.importedAt;if(sameValue(previousDossier,nextDossier)){unchanged.push(p.targetName);return}nextDossier.importedAt=new Date().toISOString();const after={...before,dossier:nextDossier};state.objects[index]=after;recordChange({entityId:after.id,operation:"update",operationLabel:"Markdown更新对象博物志",before,after,summary:`从 ${p.sourceFile||"Markdown"} 更新“${after.name}”九段式博物志（${p.entryCount}项）`});dossiers.push(after);return}
+      const before=state.tileProfiles[p.cellKey]?structuredClone(state.tileProfiles[p.cellKey]):null,after=structuredClone(before||{});p.specifiedKeys.forEach(k=>{after[k]=p.profilePatch[k]});const scripture={...(after.scriptureEvents||{})};p.scriptureSpecified.forEach(ch=>{scripture[ch]=p.scriptureEvents[ch]});if(p.scriptureSpecified.length)after.scriptureEvents=scripture;if(sameValue(before||{},after)){unchanged.push(p.cellKey);return}state.tileProfiles[p.cellKey]=after;recordChange({entityId:`CELL-${p.cellKey}`,entityType:"tile_profile",operation:before?"update":"create",operationLabel:before?"Markdown更新地块档案":"Markdown新增地块档案",before,after:{name:`地块 ${p.cellKey}`,...after},summary:`从Markdown${before?'更新':'建立'}地块 ${p.cellKey} 档案`});profiles.push(p.cellKey)
+    });
+    invalidateObjectCaches();invalidateProfileCaches();populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();closeImportWorkspace();if(dossiers[0])jumpToObject(dossiers[0].id,true,true);else if(added[0])jumpToObject(added[0].id,true,true);else if(profiles[0])jumpToCell(profiles[0],false);toast("Markdown导入完成",`新增对象${added.length}个，更新对象博物志${dossiers.length}个，更新地块档案${profiles.length}个${unchanged.length?`，${unchanged.length}个无变化`:""}。`)
+  }
+  function renderExamplePanel(){
+    const rules=`九段式博物志：文件名必须与客户端既有对象名称完全一致。\n章节：01区域定位、02一句话概要、03本地标签、04地块属性、05数据关系、06分类条目、07原文摘录、08其他典故、09详细描述。\n分类标题可用 ##、### 或单独一行。\n“原文未载明确”只作为占位，不生成卡片。\n未找到独立地图对象的分类条目仍会显示，但标记为“未绑定”。\n九段式导入只更新同名对象的博物志，不新建对象、不修改坐标。\n原有“### 对象：”和“### 地块档案：”格式继续支持。`;
+    const tab=state.exampleTab;$$('.example-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.exampleTab===tab));
+    if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML='<strong>九段式正确案例</strong><span>按你提供的 01—09 文件结构直接导入。</span>';els.exampleCode.textContent=NINE_SECTION_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>文件名用于匹配客户端中的既有对象。</li><li>只更新对象博物志，不移动坐标，也不会新建同名对象。</li><li>第06节只显示实际有内容的分类，“原文未载明确”会被忽略。</li><li>没有图片时继续显示“待补图”。</li></ul>';els.loadExampleBtn.textContent='载入九段式案例到左侧'}
+    else if(tab==='wrong'){els.exampleNotice.className='example-notice error';els.exampleNotice.innerHTML='<strong>错误案例</strong><span>查看标题、坐标与路径错误。</span>';els.exampleCode.textContent=WRONG_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>九段式文件应通过文件选择导入，不能丢失文件名。</li><li>标准对象格式仍要求三个#和完整几何信息。</li><li>客户端没有同名目标时不会猜测坐标。</li></ul>';els.loadExampleBtn.textContent='载入错误案例并查看识别'}
+    else{els.exampleNotice.className='example-notice neutral';els.exampleNotice.innerHTML='<strong>识别规则</strong><span>九段式博物志与原标准格式均可批量导入。</span>';els.exampleCode.textContent=rules;els.exampleNotes.innerHTML='<ul><li>批量选择最多100个文件，单个不超过5MB、总量不超过25MB。</li><li>同名对象更新采用文件名精确匹配。</li><li>未绑定分类条目只进入博物志展示，不会创建地图坐标。</li><li>警告不会阻止导入，目标对象缺失会阻止该文件写入。</li></ul>';els.loadExampleBtn.textContent='载入空白正确模板'}
+  }
+
   function isEditableContextTarget(target){return !!target?.closest?.("input,textarea,select,[contenteditable=true]")}
   function visibleElement(id){const el=document.getElementById(id);return el&&!el.classList.contains("hidden")?el:null}
   function appGoBack(){
@@ -1430,7 +1665,7 @@
     $$("[data-jump-name]").forEach(b=>b.addEventListener("click",()=>jumpName(b.dataset.jumpName)));els.fitAllBtn.addEventListener("click",fitAll);els.originBtn.addEventListener("click",()=>{state.camera={...state.camera,x:0,y:0,zoom:.92};state.flippedCell=null;scheduleRender();persist()});els.zoomInBtn.addEventListener("click",()=>setZoom(state.camera.zoom*1.18));els.zoomOutBtn.addEventListener("click",()=>setZoom(state.camera.zoom/1.18));els.zoomReadout.addEventListener("click",()=>setZoom(1));
     els.jumpCoordBtn.addEventListener("click",()=>{els.jumpX.value=Math.round(state.camera.x);els.jumpY.value=Math.round(state.camera.y);openModal("jumpModal")});els.jumpForm.addEventListener("submit",e=>{e.preventDefault();state.camera.x=Number(els.jumpX.value)||0;state.camera.y=Number(els.jumpY.value)||0;state.camera.zoom=Math.max(.72,state.camera.zoom);state.flippedCell=null;closeModal("jumpModal");scheduleRender();persist()});
     [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,k])=>el.addEventListener("change",()=>{state.layers[k]=el.checked;scheduleRender()}));
-    els.openImportBtn.addEventListener("click",openImportWorkspace);els.closeImportBtn.addEventListener("click",closeImportWorkspace);els.importChooseFileBtn.addEventListener("click",()=>{els.importFileInput.value="";els.importFileInput.click()});els.importChooseBatchBtn?.addEventListener("click",()=>{els.importBatchFileInput.value="";els.importBatchFileInput.click()});els.importDropZone.addEventListener("click",()=>els.importFileInput.click());els.importFileInput.addEventListener("change",()=>readImportFiles(els.importFileInput.files,{forceBatch:false}));els.importBatchFileInput?.addEventListener("change",()=>readImportFiles(els.importBatchFileInput.files,{forceBatch:true}));["dragenter","dragover"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.add("dragover")}));["dragleave","drop"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.remove("dragover")}));els.importDropZone.addEventListener("drop",e=>readImportFiles(e.dataTransfer.files,{forceBatch:(e.dataTransfer.files?.length||0)>1}));els.importText.addEventListener("input",()=>{updateImportCharCount();debouncedImportAnalyze()});els.reanalyzeImportBtn.addEventListener("click",analyzeImportText);els.clearImportBtn.addEventListener("click",()=>{els.importText.value="";els.importFileName.textContent="尚未选择文件";resetImportFiles();state.importAnalysis=null;updateImportCharCount();renderImportAnalysis(null)});els.importApplyBtn.addEventListener("click",applyMarkdownImport);$$('.example-tabs button').forEach(b=>b.addEventListener('click',()=>{state.exampleTab=b.dataset.exampleTab;renderExamplePanel()}));els.loadExampleBtn.addEventListener("click",()=>{resetImportFiles();els.importText.value=state.exampleTab==='wrong'?WRONG_MD_SAMPLE:state.exampleTab==='rules'?BLANK_MD_TEMPLATE:CORRECT_MD_SAMPLE;els.importFileName.textContent=state.exampleTab==='wrong'?'错误案例.md':state.exampleTab==='rules'?'空白导入模板.md':'正确案例.md';analyzeImportText()});
+    els.openImportBtn.addEventListener("click",openImportWorkspace);els.closeImportBtn.addEventListener("click",closeImportWorkspace);els.importChooseFileBtn.addEventListener("click",()=>{els.importFileInput.value="";els.importFileInput.click()});els.importChooseBatchBtn?.addEventListener("click",()=>{els.importBatchFileInput.value="";els.importBatchFileInput.click()});els.importDropZone.addEventListener("click",()=>els.importFileInput.click());els.importFileInput.addEventListener("change",()=>readImportFiles(els.importFileInput.files,{forceBatch:false}));els.importBatchFileInput?.addEventListener("change",()=>readImportFiles(els.importBatchFileInput.files,{forceBatch:true}));["dragenter","dragover"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.add("dragover")}));["dragleave","drop"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.remove("dragover")}));els.importDropZone.addEventListener("drop",e=>readImportFiles(e.dataTransfer.files,{forceBatch:(e.dataTransfer.files?.length||0)>1}));els.importText.addEventListener("input",()=>{updateImportCharCount();debouncedImportAnalyze()});els.reanalyzeImportBtn.addEventListener("click",analyzeImportText);els.clearImportBtn.addEventListener("click",()=>{els.importText.value="";els.importFileName.textContent="尚未选择文件";resetImportFiles();state.importAnalysis=null;updateImportCharCount();renderImportAnalysis(null)});els.importApplyBtn.addEventListener("click",applyMarkdownImport);$$('.example-tabs button').forEach(b=>b.addEventListener('click',()=>{state.exampleTab=b.dataset.exampleTab;renderExamplePanel()}));els.loadExampleBtn.addEventListener("click",()=>{resetImportFiles();els.importText.value=state.exampleTab==='wrong'?WRONG_MD_SAMPLE:state.exampleTab==='rules'?BLANK_MD_TEMPLATE:`<!-- SHMAP_IMPORT_FILE: 示例地块.md -->\n${NINE_SECTION_MD_SAMPLE}`;els.importFileName.textContent=state.exampleTab==='wrong'?'错误案例.md':state.exampleTab==='rules'?'空白导入模板.md':'示例地块.md';analyzeImportText()});
     $$(".detail-tabs button").forEach(b=>b.addEventListener("click",()=>{state.detailTab=b.dataset.tab;renderDetails()}));els.editTileBtn.addEventListener("click",openTileProfileForm);els.deleteTileBtn.addEventListener("click",()=>openDeleteModal("tile"));els.openDossierBtn.addEventListener("click",openDossierWorkspace);els.openRangeEditorBtn.addEventListener("click",()=>openRangeEditor());els.closeDossierBtn.addEventListener("click",closeDossierWorkspace);els.dossierWorkspace.addEventListener("click",e=>{if(e.target===els.dossierWorkspace)closeDossierWorkspace()});els.editDossierBtn.addEventListener("click",()=>{if(!state.dossierCollectionMode)openTileProfileForm()});els.dossierModeBrief.addEventListener("click",()=>{if(state.dossierCollectionMode)return;state.dossierMode="brief";renderDossierWorkspace();persist()});els.dossierModeFull.addEventListener("click",()=>{if(state.dossierCollectionMode)return;state.dossierMode="full";renderDossierWorkspace();persist()});els.dossierLocateBtn.addEventListener("click",()=>{const tile=activeDossierTile();if(!tile)return;const target=tile.precision?{x:tile.precision.x,y:tile.precision.y,zoom:Math.max(state.camera.zoom,5.2)}:{x:cellCenter(tile.gx),y:cellCenter(tile.gy),zoom:Math.max(state.camera.zoom,.88)};closeDossierWorkspace();animateCameraTo(target.x,target.y,target.zoom,()=>{state.flippedCell=tile.precision?null:tile.key;scheduleRender()})});els.copyPromptBtn.addEventListener("click",()=>{if(state.dossierCollectionMode){const keys=[...state.brushKeys].filter(key=>objectsInCellKey(key).length||state.tileProfiles[key]);if(keys.length)copyText(collectionSummaryText(aggregateBrushCollection(keys)),"区域摘要已复制");return}const tile=activeDossierTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makePrompt(profile,tile,main),tile.precision?"精确点摘要已复制":"地块摘要已复制")});els.copyBriefBtn.addEventListener("click",()=>{if(state.dossierCollectionMode)return;const tile=activeDossierTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makeArtBrief(profile,tile,main),tile.precision?"精确点证据摘要已复制":"证据摘要已复制")});$$('[data-dossier-tab]').forEach(b=>b.addEventListener('click',()=>{state.dossierTab=b.dataset.dossierTab;renderDossierWorkspace()}));els.tileProfileForm.addEventListener("submit",saveTileProfileForm);els.objectForm.addEventListener("submit",saveObjectForm);els.deleteObjectBtn.addEventListener("click",()=>{const id=els.formObjectId.value;if(id){closeModal("objectModal");openDeleteModal("object",id)}});els.formGeometry.addEventListener("change",updateGeometryRangeHint);els.exportPatchBtn.addEventListener("click",()=>exportPatch(false));els.finishRoundBtn.addEventListener("click",finishRoundAndPublish);els.roundKeepBtn.addEventListener("click",()=>{state.pendingRoundExport=null;closeModal("roundModal");toast("已保留本轮更改","可继续编辑或稍后完成本轮")});els.roundRetryPublishBtn?.addEventListener("click",publishPendingRound);els.roundExportFallbackBtn?.addEventListener("click",exportPendingRoundLocally);els.roundArchiveBtn.addEventListener("click",()=>archiveCurrentRound(false));els.openChangesTab.addEventListener("click",showChanges);els.openTrashTab.addEventListener("click",openTrash);els.clearTrashBtn.addEventListener("click",clearTrash);els.trashRetentionSelect.addEventListener("change",()=>{state.trashRetentionDays=Number(els.trashRetentionSelect.value)||0;const removed=cleanupExpiredTrash(true);renderTrash();persist();updateHeader();if(!removed)toast("回收站保留规则已更新",state.trashRetentionDays?`自动清理超过${state.trashRetentionDays}天的内容`:"永久保留")});els.openSpecTab.addEventListener("click",showSpecs);els.checkUpdateBtn.addEventListener("click",()=>checkUpdate(false));els.closeFlipBtn.addEventListener("click",()=>{state.flippedCell=null;scheduleRender()});if(els.clearSpatialFocusBtn)els.clearSpatialFocusBtn.addEventListener("click",()=>clearSpatialFocus());
     els.closeRangeEditorBtn.addEventListener("click",closeRangeEditor);els.rangeSaveBtn.addEventListener("click",saveRangeEditor);els.rangeUndoBtn.addEventListener("click",undoRange);els.rangeResetBtn.addEventListener("click",resetRange);els.rangeFitBtn.addEventListener("click",fitRangeEditor);els.createAreaObjectBtn.addEventListener("click",()=>createSpatialObject("area"));els.createFieldObjectBtn.addEventListener("click",()=>createSpatialObject("field"));$$('[data-range-tool]').forEach(b=>b.addEventListener('click',()=>setRangeTool(b.dataset.rangeTool)));els.rangeSnapSelect.addEventListener("change",()=>{state.rangeEditor.snap=Number(els.rangeSnapSelect.value)||10});els.rangeShape.addEventListener("change",()=>convertRangeShape(els.rangeShape.value));els.rangeKind.addEventListener("change",()=>{const o=currentRangeObject();if(o)els.rangeObjectBadge.textContent=`${els.rangeKind.value==='field'?'作用域':'面积'} · ${o.name}`;drawRangeEditor()});els.rangeEvidence.addEventListener("change",()=>{if(state.rangeEditor.draft){state.rangeEditor.draft.evidence=els.rangeEvidence.value;renderRangeAnalysis();drawRangeEditor()}});[els.rangeCenterX,els.rangeCenterY,els.rangeWidth,els.rangeHeight,els.rangeRadius].forEach(x=>x.addEventListener("input",updateRangeFromInputs));els.rangePoints.addEventListener("change",updateRangePoints);els.rangeViewport.addEventListener("pointerdown",rangePointerDown);els.rangeViewport.addEventListener("pointermove",rangePointerMove);els.rangeViewport.addEventListener("pointerup",rangePointerUp);els.rangeViewport.addEventListener("pointercancel",rangePointerUp);els.rangeViewport.addEventListener("click",rangeCanvasClick);els.rangeViewport.addEventListener("dblclick",rangeCanvasDblClick);els.rangeViewport.addEventListener("wheel",rangeWheel,{passive:false});
     $$('[data-close-modal]').forEach(x=>x.addEventListener("click",()=>closeModal(x.dataset.closeModal)));
@@ -1608,7 +1843,7 @@
   function objectRibbon(items){if(!items.length)return `<div class="tile-dossier-intro"><strong>空白地块档案</strong><p>本格尚无地图对象，可以先建立地理和证据档案。</p></div>`;return `<div class="tile-dossier-intro"><strong>本格对象 · ${items.length}项</strong><p>${esc(items.map(o=>o.name).join(" / "))}</p></div><div class="tile-object-ribbon">${items.map(o=>`<button class="tile-object-chip ${o.id===state.selectedId?'selected':''}" data-tile-object="${esc(o.id)}">${geometryIcon(o)} ${esc(o.name)}</button>`).join("")}</div>`}
 
   function renderDetails(){
-    const tile=activeTile();if(!tile){els.emptyDetail.classList.remove("hidden");els.detailContent.classList.add("hidden");return}const {key,gx,gy,items}=tile,profile=tileProfileFor(key,items),b=cellBounds(gx,gy),main=selectedTileMain(items);
+    const tile=activeTile();if(!tile){els.emptyDetail.classList.remove("hidden");els.detailContent.classList.add("hidden");return}const {key,gx,gy,items}=tile,main=selectedTileMain(items),profile=mergeImportedDossierProfile(tileProfileFor(key,items),main),b=cellBounds(gx,gy);
     els.emptyDetail.classList.add("hidden");els.detailContent.classList.remove("hidden");els.detailRef.textContent=`TILE ${signed(gx)}, ${signed(gy)} · 100里主格`;els.detailName.textContent=main?`${main.name}所在地区`:`空白地块（${signed(gx)}, ${signed(gy)}）`;const populated=Object.values(profile.scriptureEvents||{}).filter(Boolean).length,spatialCount=items.filter(o=>o.geometryType==="area"||o.geometryType==="field").length;els.detailMeta.textContent=`${items.length}个对象 · ${populated}个经篇已有事件归档`;els.detailLocation.innerHTML=`<strong>主格中心 ${coordText(b.cx,b.cy)}</strong><br>范围 X ${signed(b.west)}～${signed(b.east)}里 · Y ${signed(b.south)}～${signed(b.north)}里<br>${esc(profile.oneLineSummary||profile.briefSummary||"地块档案与对象资料分别保存")}`;els.openRangeEditorBtn.textContent=spatialCount?`▱ 编辑面积／作用域（${spatialCount}）`:`＋ 新建面积／作用域`;els.openRangeEditorBtn.classList.toggle("has-range",spatialCount>0);$$('.detail-tabs button').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.detailTab));renderDetailBody(profile,items)
   }
 
@@ -1760,7 +1995,7 @@
     if(state.dossierCollectionMode){renderBrushCollectionInDossier();return}
     resetDossierTopbarForTile();
     const tile=activeDossierTile();if(!tile){closeDossierWorkspace();return}
-    const {key,gx,gy,items,precision}=tile,profile=tileProfileFor(key,items),main=selectedTileMain(items),b=cellBounds(gx,gy),complete=profileCompleteness(profile),chapters=CHAPTERS_18.filter(ch=>items.some(o=>String(o.chapter||"").includes(ch))),precisionLabel=precision?coordText(precision.x,precision.y):"";
+    const {key,gx,gy,items,precision}=tile,main=selectedTileMain(items),profile=mergeImportedDossierProfile(tileProfileFor(key,items),main),b=cellBounds(gx,gy),complete=profileCompleteness(profile),chapters=CHAPTERS_18.filter(ch=>items.some(o=>String(o.chapter||"").includes(ch))),precisionLabel=precision?coordText(precision.x,precision.y):"";
     els.dossierWorkspace.classList.toggle("precision-focus-mode",!!precision);els.dossierWorkspace.classList.toggle("brief-mode",state.dossierMode==="brief");els.dossierWorkspace.classList.toggle("full-mode",state.dossierMode==="full");els.dossierModeBrief.classList.toggle("active",state.dossierMode==="brief");els.dossierModeFull.classList.toggle("active",state.dossierMode==="full");
     els.dossierPageTitle.textContent=main?`${main.name} · ${precision?"精确点":"地块"}博物志`:`空白地块 · 地块博物志`;
     els.dossierPageMeta.textContent=precision?`地图数据 ${state.dataVersion} · 精确坐标 ${precisionLabel} · ${items.length}个同坐标对象`:`地图数据 ${state.dataVersion} · 主格（${signed(gx)}, ${signed(gy)}） · ${items.length}个对象`;
@@ -1769,7 +2004,7 @@
 
   function renderDossierContent(profile,items,tile,main,b){
     let html="";
-    if(state.dossierTab==="overview")html=`<section class="book-section"><div class="book-section-title"><b>I. 地块身份与位置</b><span>主格、范围和空间关系</span></div><div class="icon-card-grid">${iconCard("主格中心",coordText(b.cx,b.cy))}${iconCard("X范围",`${signed(b.west)}～${signed(b.east)}里`)}${iconCard("Y范围",`${signed(b.south)}～${signed(b.north)}里`)}${iconCard("父级区域",profile.parentRegion)}${iconCard("相邻地块",profile.adjacentTiles)}${iconCard("来源可信度",profile.sourceReliability)}</div></section><section class="book-section"><div class="book-section-title"><b>II. 地理与生态环境</b><span>地貌、水文、建筑和生物</span></div><div class="icon-card-grid">${iconCard("地理环境",profile.geoEnvironment)}${iconCard("水文特征",profile.hydrology)}${iconCard("建筑与遗迹",profile.architecture)}${iconCard("生活物种",profile.livingSpecies)}${iconCard("关联水域",profile.relatedWaters)}${iconCard("关联生灵",profile.relatedLife)}</div></section>${profile.locationConclusion?`<section class="book-section">${wideCard("当前定位结论",profile.locationConclusion)}</section>`:""}`;
+    if(state.dossierTab==="overview")html=`<section class="book-section"><div class="book-section-title"><b>I. 地块身份与位置</b><span>主格、范围和空间关系</span></div><div class="icon-card-grid">${iconCard("主格中心",coordText(b.cx,b.cy))}${iconCard("X范围",`${signed(b.west)}～${signed(b.east)}里`)}${iconCard("Y范围",`${signed(b.south)}～${signed(b.north)}里`)}${iconCard("父级区域",profile.parentRegion)}${iconCard("相邻地块",profile.adjacentTiles)}${iconCard("来源可信度",profile.sourceReliability)}</div></section><section class="book-section"><div class="book-section-title"><b>II. 地理与生态环境</b><span>地貌、水文、建筑和生物</span></div><div class="icon-card-grid">${iconCard("地理环境",profile.geoEnvironment)}${iconCard("水文特征",profile.hydrology)}${iconCard("建筑与遗迹",profile.architecture)}${iconCard("生活物种",profile.livingSpecies)}${iconCard("关联水域",profile.relatedWaters)}${iconCard("关联生灵",profile.relatedLife)}</div></section>${profile.detailedSummary?`<section class="book-section">${wideCard("详细描述",profile.detailedSummary)}</section>`:""}${profile.locationConclusion?`<section class="book-section">${wideCard("当前定位结论",profile.locationConclusion)}</section>`:""}`;
     if(state.dossierTab==="civilization")html=`<section class="book-section"><div class="book-section-title"><b>I. 文明与神祇</b><span>国度、部族、信仰和风俗</span></div><div class="icon-card-grid">${iconCard("所属国度／部族",profile.country)}${iconCard("信仰对象",profile.faith)}${iconCard("统治者",profile.ruler)}${iconCard("守护神",profile.guardian)}${iconCard("当地风俗",profile.customs)}${iconCard("特殊生命",profile.specialLife)}</div></section><section class="book-section"><div class="book-section-title"><b>II. 生灵、植被与矿物</b><span>原典中的自然对象</span></div><div class="icon-card-grid">${iconCard("奇珍异兽",profile.beasts)}${iconCard("神木植被",profile.divinePlants)}${iconCard("仙草药草",profile.herbs)}${iconCard("金玉矿物",profile.minerals)}${iconCard("生活物种",profile.livingSpecies)}</div></section>`;
     if(state.dossierTab==="story")html=`<section class="book-section"><div class="book-section-title"><b>I. 神话事件与现象</b><span>神迹、祭祀、自然异常和历史事件</span></div>${profile.mythicEncounters?wideCard("神话事件与现象",profile.mythicEncounters):""}${profile.occurredEvents?wideCard("已发生事件",profile.occurredEvents):""}</section><section class="book-section"><div class="book-section-title"><b>II. 十八经篇事件归档</b><span>按原典经篇分别记录</span></div>${scriptureGroupsHTML(profile)}</section>`;
     if(state.dossierTab==="sources")html=`${profile.tileOriginalExcerpt||profile.evidenceChain||profile.pendingQuestions?`<section class="book-section"><div class="book-section-title"><b>I. 地块证据总览</b><span>原文、证据链和待核对问题</span></div>${profile.tileOriginalExcerpt?wideCard("地块原文摘录",profile.tileOriginalExcerpt):""}${profile.evidenceChain?wideCard("资料证据链",profile.evidenceChain):""}${profile.pendingQuestions?wideCard("待核对问题",profile.pendingQuestions):""}</section>`:""}${items.length?items.map(o=>`<section class="source-object-block"><h3>${esc(o.name)} <small>${esc(o.rowRef||'')}</small></h3>${[["原文",o.original],["古注",o.annotations],["其他古籍",o.otherTexts],["异文",o.variants],["现代考证",o.modernResearch],["常见定位说",o.commonLocation],["误传辨析",o.misconceptions],["定位与地图推导",o.derivation],["资料来源说明",o.sourceNotes],["待核对问题",o.pendingQuestions],["来源 URL",o.sourceUrl]].map(([k,v])=>`<details ${v?'':'class="empty"'}><summary>${k}</summary><div>${v?esc(v):'尚未录入'}</div></details>`).join("")}</section>`).join(""):`<div class="dossier-empty">本格暂无对象来源资料。</div>`}`;
