@@ -57,3 +57,41 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: --config src-tauri/tauri.release.conf.json
+
+      - name: Sync stable update feed
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content "desktop-app/package.json" -Raw | ConvertFrom-Json).version
+          $tag = "desktop-v$version"
+          $downloadDir = Join-Path $env:RUNNER_TEMP "shmap-update-feed"
+          New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
+
+          $downloaded = $false
+          for ($attempt = 1; $attempt -le 6; $attempt++) {
+            gh release download $tag --pattern latest.json --dir $downloadDir --clobber
+            if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $downloadDir "latest.json"))) {
+              $downloaded = $true
+              break
+            }
+            Start-Sleep -Seconds (3 * $attempt)
+          }
+          if (-not $downloaded) {
+            throw "无法从 Release 下载 latest.json，稳定更新源未同步。"
+          }
+
+          git fetch origin main
+          git checkout -B main origin/main
+          New-Item -ItemType Directory -Force -Path "updates" | Out-Null
+          Copy-Item (Join-Path $downloadDir "latest.json") "updates/latest.json" -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add updates/latest.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "chore: sync desktop update feed v$version"
+            git push origin HEAD:main
+          } else {
+            Write-Host "updates/latest.json 已是最新，无需提交。"
+          }

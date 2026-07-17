@@ -54,3 +54,7 @@ npm run desktop:dev
 ```
 
 正式更新包由 GitHub Actions 使用既有签名密钥生成。后续版本必须继续使用与 v002 相同的签名私钥，否则旧客户端无法验证更新。
+
+## v0.4.1 更新通道
+
+客户端依次尝试仓库静态更新源、jsDelivr CDN 和 GitHub Releases；正式发布后工作流会自动同步 `updates/latest.json`。

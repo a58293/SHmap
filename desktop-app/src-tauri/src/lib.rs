@@ -3,13 +3,37 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::{fs, path::{Path, PathBuf}, process::Command, sync::Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::Mutex,
+    time::Duration,
+};
 use tauri::{ipc::Channel, AppHandle, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
+use tokio::time::sleep;
+use url::Url;
 
 const APP_SCHEMA_VERSION: i64 = 1;
 const AUTO_BACKUP_MINUTES: i64 = 60;
 const MAX_AUTO_BACKUPS: usize = 48;
+const UPDATE_CHECK_ATTEMPTS_PER_SOURCE: usize = 2;
+const UPDATE_DOWNLOAD_ATTEMPTS: usize = 3;
+const UPDATE_ENDPOINTS: [(&str, &str); 3] = [
+    (
+        "仓库直连",
+        "https://raw.githubusercontent.com/a58293/SHmap/main/updates/latest.json",
+    ),
+    (
+        "CDN备用",
+        "https://cdn.jsdelivr.net/gh/a58293/SHmap@main/updates/latest.json",
+    ),
+    (
+        "GitHub Releases备用",
+        "https://github.com/a58293/SHmap/releases/latest/download/latest.json",
+    ),
+];
 
 struct AppState {
     database_path: PathBuf,
@@ -33,6 +57,7 @@ struct UpdateMetadata {
     version: String,
     date: Option<String>,
     body: Option<String>,
+    source: String,
 }
 
 #[derive(Clone, Serialize)]
@@ -40,6 +65,11 @@ struct UpdateMetadata {
 enum UpdateDownloadEvent {
     Started { content_length: Option<u64> },
     Progress { chunk_length: usize },
+    Retrying {
+        attempt: usize,
+        max_attempts: usize,
+        message: String,
+    },
     Finished,
 }
 
@@ -273,31 +303,63 @@ fn app_version() -> AppVersionInfo {
     }
 }
 
+async fn check_update_from_source(app: &AppHandle, endpoint: &str) -> Result<Option<Update>, String> {
+    let endpoint = Url::parse(endpoint).map_err(|e| format!("更新地址无效：{e}"))?;
+    let updater = app
+        .updater_builder()
+        .endpoints(vec![endpoint])
+        .map_err(|e| format!("无法设置更新地址：{e}"))?
+        .timeout(Duration::from_secs(45))
+        .build()
+        .map_err(|e| format!("无法初始化更新器：{e}"))?;
+    updater
+        .check()
+        .await
+        .map_err(|e| format!("请求失败：{e}"))
+}
+
 #[tauri::command]
 async fn check_for_update(
     app: AppHandle,
     pending_update: tauri::State<'_, PendingUpdate>,
 ) -> Result<Option<UpdateMetadata>, String> {
-    let updater = app
-        .updater_builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| format!("无法初始化更新器：{e}"))?;
-    let update = updater
-        .check()
-        .await
-        .map_err(|e| format!("检查更新失败：{e}"))?;
-    let metadata = update.as_ref().map(|item| UpdateMetadata {
-        current_version: item.current_version.clone(),
-        version: item.version.clone(),
-        date: item.date.as_ref().map(ToString::to_string),
-        body: item.body.clone(),
-    });
     *pending_update
         .0
         .lock()
-        .map_err(|_| "更新状态锁异常".to_string())? = update;
-    Ok(metadata)
+        .map_err(|_| "更新状态锁异常".to_string())? = None;
+
+    let mut failures = Vec::new();
+    for (source_name, endpoint) in UPDATE_ENDPOINTS {
+        for attempt in 1..=UPDATE_CHECK_ATTEMPTS_PER_SOURCE {
+            match check_update_from_source(&app, endpoint).await {
+                Ok(update) => {
+                    let metadata = update.as_ref().map(|item| UpdateMetadata {
+                        current_version: item.current_version.clone(),
+                        version: item.version.clone(),
+                        date: item.date.as_ref().map(ToString::to_string),
+                        body: item.body.clone(),
+                        source: source_name.to_string(),
+                    });
+                    *pending_update
+                        .0
+                        .lock()
+                        .map_err(|_| "更新状态锁异常".to_string())? = update;
+                    return Ok(metadata);
+                }
+                Err(error) => {
+                    failures.push(format!("{source_name} 第{attempt}次：{error}"));
+                    if attempt < UPDATE_CHECK_ATTEMPTS_PER_SOURCE {
+                        sleep(Duration::from_millis(900 * attempt as u64)).await;
+                    }
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "所有更新线路均不可用，程序已自动重试。请稍后再试。详细信息：{}",
+        failures.join("；")
+    ))
 }
 
 #[tauri::command]
@@ -310,25 +372,58 @@ async fn install_update(
         .0
         .lock()
         .map_err(|_| "更新状态锁异常".to_string())?
-        .take()
+        .as_ref()
+        .cloned()
         .ok_or_else(|| "没有等待安装的更新，请先检查更新".to_string())?;
-    let mut started = false;
-    update
-        .download_and_install(
-            |chunk_length, content_length| {
-                if !started {
-                    let _ = on_event.send(UpdateDownloadEvent::Started { content_length });
-                    started = true;
-                }
-                let _ = on_event.send(UpdateDownloadEvent::Progress { chunk_length });
-            },
-            || {
-                let _ = on_event.send(UpdateDownloadEvent::Finished);
-            },
-        )
-        .await
-        .map_err(|e| format!("下载或安装更新失败：{e}"))?;
-    app.restart();
+
+    let mut failures = Vec::new();
+    for attempt in 1..=UPDATE_DOWNLOAD_ATTEMPTS {
+        if attempt > 1 {
+            let _ = on_event.send(UpdateDownloadEvent::Retrying {
+                attempt,
+                max_attempts: UPDATE_DOWNLOAD_ATTEMPTS,
+                message: "下载连接中断，正在重新连接".to_string(),
+            });
+            sleep(Duration::from_millis(1200 * (attempt - 1) as u64)).await;
+        }
+
+        let mut started = false;
+        match update
+            .download(
+                |chunk_length, content_length| {
+                    if !started {
+                        let _ = on_event.send(UpdateDownloadEvent::Started { content_length });
+                        started = true;
+                    }
+                    let _ = on_event.send(UpdateDownloadEvent::Progress { chunk_length });
+                },
+                || {
+                    let _ = on_event.send(UpdateDownloadEvent::Finished);
+                },
+            )
+            .await
+        {
+            Ok(bytes) => {
+                update
+                    .install(bytes)
+                    .map_err(|e| format!("更新包已下载，但安装失败：{e}"))?;
+                *pending_update
+                    .0
+                    .lock()
+                    .map_err(|_| "更新状态锁异常".to_string())? = None;
+                app.restart();
+                #[allow(unreachable_code)]
+                return Ok(());
+            }
+            Err(error) => failures.push(format!("第{attempt}次下载失败：{error}")),
+        }
+    }
+
+    Err(format!(
+        "更新包下载失败，已自动重试{}次。请检查网络后重新点击下载。详细信息：{}",
+        UPDATE_DOWNLOAD_ATTEMPTS,
+        failures.join("；")
+    ))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

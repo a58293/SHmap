@@ -2,13 +2,13 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v004",
-  "semver": "0.4.0",
+  "semver": "0.4.1",
   "frontend_base": "v039",
   "data_version": "v075-r0001",
   "object_count": 395,
   "original_library_records": 2432,
   "storage": "SQLite",
   "build_target": "Windows x64 NSIS",
-  "updater": "Signed GitHub Releases",
-  "update_endpoint": "GitHub Releases latest.json"
+  "updater": "Signed multi-source updater",
+  "update_endpoint": "Repository feed + CDN + GitHub Releases"
 }
