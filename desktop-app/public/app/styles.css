@@ -683,3 +683,55 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
   transform:none!important;
   will-change:auto;
 }
+
+
+/* v004 · 简述博物志拼图陈列与批量 Markdown 导入 */
+.import-file-choice{display:flex;align-items:center;gap:6px}
+.import-file-choice .btn{white-space:nowrap}
+.import-batch-list{margin:0 0 10px;border:1px solid #d6d0c4;border-radius:9px;background:#fbfaf5;padding:10px 12px}
+.import-batch-list.hidden{display:none}
+.import-batch-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.import-batch-head strong{font-size:12px;color:var(--jade-dark)}
+.import-batch-head span{font-size:10px;color:var(--muted)}
+.import-batch-files{display:flex;gap:6px;flex-wrap:wrap;max-height:82px;overflow:auto}
+.import-batch-files span{display:flex;align-items:center;gap:5px;max-width:240px;border:1px solid #d7ded9;border-radius:999px;background:#fffdf8;padding:5px 8px;font-size:10px;color:#4b5d55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.import-batch-files i{display:grid;place-items:center;flex:none;width:17px;height:17px;border-radius:50%;background:#e6f0eb;color:var(--jade-dark);font:800 9px var(--mono)}
+
+.brief-museum{border:1px solid #cdd8d2;border-radius:12px;background:rgba(255,254,249,.82);padding:18px;overflow:hidden}
+.brief-museum-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:15px}
+.brief-museum-head h3{font-family:var(--serif);font-size:26px;color:var(--jade-dark);margin:3px 0 0}
+.brief-museum-head p{font-size:12px;color:var(--muted);margin:0;text-align:right}
+.brief-museum-grid{display:grid;grid-template-columns:repeat(var(--museum-cols,3),minmax(190px,1fr));gap:12px;align-items:start}
+.brief-museum-grid.count-1{grid-template-columns:minmax(280px,560px)}
+.brief-museum-grid.count-2{grid-template-columns:repeat(2,minmax(280px,1fr))}
+.brief-museum-category{min-width:0;border:1px solid #d8d4ca;border-top:4px solid #6f887f;border-radius:10px;background:#f8f6ef;overflow:hidden}
+.brief-museum-category>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;border-bottom:1px solid #ddd7cc;background:#f2efe6}
+.brief-museum-category>header>div{display:flex;align-items:center;gap:9px;min-width:0}
+.brief-museum-category>header i{display:grid;place-items:center;width:34px;height:34px;flex:none;border:1px solid #a9beb4;border-radius:50%;background:#fffdf8;color:var(--jade-dark);font:800 16px var(--serif);font-style:normal}
+.brief-museum-category>header strong{font-family:var(--serif);font-size:18px;color:var(--jade-dark)}
+.brief-museum-category>header>b{display:grid;place-items:center;min-width:25px;height:25px;border-radius:50%;background:var(--jade);color:#fff;font:800 10px var(--mono)}
+.brief-museum-list{display:flex;flex-direction:column;gap:9px;padding:10px}
+.brief-museum-object{display:grid;grid-template-columns:92px minmax(0,1fr);gap:11px;min-height:116px;border:1px solid #cfd9d4;border-radius:8px;background:#fffef9;padding:9px;cursor:pointer;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+.brief-museum-object:hover{transform:translateY(-1px);border-color:#7fa596;box-shadow:0 7px 16px rgba(36,65,54,.09)}
+.brief-object-image{position:relative;min-height:96px;border:1px solid #d3dbd7;border-radius:7px;background:linear-gradient(145deg,#f5f4ed,#ebece6);overflow:hidden;display:grid;place-items:center}
+.brief-object-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.brief-image-placeholder{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:5px;color:#91a39b;background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.9),rgba(235,238,232,.86))}
+.brief-image-placeholder i{font:800 28px var(--serif);font-style:normal;opacity:.34}
+.brief-image-placeholder span{font-size:10px;font-weight:800;letter-spacing:.08em}
+.brief-object-image.has-image .brief-image-placeholder{opacity:0;pointer-events:none}
+.brief-object-image.image-error .brief-image-placeholder{opacity:1}
+.brief-object-copy{min-width:0}
+.brief-object-title{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:1px 0 7px;border-bottom:1px solid #ebe6dc}
+.brief-object-title strong{min-width:0;font-family:var(--serif);font-size:17px;color:var(--jade-dark);overflow-wrap:anywhere}
+.brief-object-title small{flex:none;font-size:9px;color:#7a817d;max-width:45%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brief-object-rows{padding-top:5px}
+.brief-object-rows>div{display:grid;grid-template-columns:68px minmax(0,1fr);gap:7px;padding:3px 0;font-size:10px;line-height:1.45}
+.brief-object-rows b{color:#7b817c;font-weight:800}
+.brief-object-rows span{color:#394b43;overflow-wrap:anywhere}
+.brief-object-empty{font-size:11px;color:#97958e;margin:10px 0 0}
+.brief-museum-empty{min-height:180px;display:grid;place-content:center;justify-items:center;gap:8px;color:#99978f}
+.brief-museum-empty i{font:800 34px var(--serif);font-style:normal;opacity:.25}
+.brief-museum-empty span{font-size:12px}
+@media(max-width:1500px){.brief-museum-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}}
+@media(max-width:980px){.brief-museum-grid,.brief-museum-grid.count-2{grid-template-columns:1fr}.brief-museum-head{align-items:flex-start;flex-direction:column}.brief-museum-head p{text-align:left}.import-file-choice{flex-wrap:wrap}}
+@media(max-width:620px){.brief-museum-object{grid-template-columns:78px minmax(0,1fr)}.brief-object-image{min-height:88px}.brief-object-rows>div{grid-template-columns:60px minmax(0,1fr)}}

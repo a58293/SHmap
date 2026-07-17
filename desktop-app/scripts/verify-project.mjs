@@ -10,6 +10,9 @@ if(new Set([pkg.version,conf.version,cargoVersion]).size!==1){console.error(`版
 const [,minor="0"]=pkg.version.split(".");const edition=`v${String(Number(minor)).padStart(3,"0")}`;const rust=fs.readFileSync(path.join(root,"src-tauri/src/lib.rs"),"utf8");if(!rust.includes(`edition: "${edition}"`)){console.error(`桌面版本名称未同步：应为${edition}`);failed=true}
 if(!conf.plugins?.updater?.pubkey||!conf.plugins.updater.endpoints?.[0]?.includes("a58293/SHmap/releases/latest/download/latest.json")){console.error("更新器配置缺失");failed=true}if(releaseConf.bundle?.createUpdaterArtifacts!==true){console.error("正式发布配置未启用更新签名产物");failed=true}if(!cargo.includes('tauri-plugin-updater = "2"')){console.error("Rust更新插件缺失");failed=true}
 const app=fs.readFileSync(path.join(root,"public/app/app.js"),"utf8");if(!app.includes("applyLivePanTransform")||!app.includes("resetLivePanTransform")){console.error("实时拖图逻辑缺失");failed=true}if(!app.includes("window.SHJ_APP_GO_BACK=appGoBack")){console.error("鼠标右键返回逻辑缺失");failed=true}
+if(!app.includes("briefMuseumHTML")||!app.includes("brief-image-placeholder")){console.error("v004简述博物志图鉴逻辑缺失");failed=true}
+if(!app.includes("importChooseBatchBtn")||!app.includes("importBatchFileInput")){console.error("v004批量Markdown选择逻辑缺失");failed=true}
+if(!app.includes("imageUrl")||!fs.readFileSync(path.join(root,"index.html"),"utf8").includes("formImageUrl")){console.error("v004对象图片区字段缺失");failed=true}
 for(const name of fs.readdirSync(root)){if(/\.key$|PRIVATE_KEY|password/i.test(name)){console.error(`仓库根目录疑似包含密钥：${name}`);failed=true}}
 const lock=fs.readFileSync(path.join(root,"package-lock.json"),"utf8");if(lock.includes("applied-caas-gateway")||lock.includes("artifactory/api/npm")){console.error("package-lock仍包含内部依赖地址");failed=true}
 console.log(`校验：${initial.objects.length}个对象，程序${edition} / ${pkg.version}，数据版本${initial.metadata.dataVersion}`);if(failed)process.exit(1);

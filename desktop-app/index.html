@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v003</title>
+  <title>山海经原典地图研究台 · 桌面版 v004</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v003</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v004</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -217,6 +217,7 @@
         </div>
         <label class="field"><span>与本地关系</span><textarea id="formLocalRelation" rows="2"></textarea></label>
         <label class="field"><span>核心特征</span><textarea id="formCoreFeatures" rows="3"></textarea></label>
+        <label class="field"><span>对象图片地址（可选）</span><input id="formImageUrl" placeholder="当前可留空；后续通过对象图片导入功能绑定" /></label>
         <div class="form-grid two"><label class="field"><span>功效／作用</span><textarea id="formEfficacy" rows="2"></textarea></label><label class="field"><span>关系说明</span><textarea id="formRelationNotes" rows="2"></textarea></label></div>
         <div class="form-grid two"><label class="field"><span>路径状态</span><input id="formPathStatus" placeholder="原文明载／部分明确／候选／待核对" /></label><label class="field"><span>水系与地貌关系</span><input id="formRiverTerrainRelation" placeholder="从此处发源／穿过此处／沿边界流动……" /></label></div>
         <label class="field"><span>定位与地图推导</span><textarea id="formDerivation" rows="5"></textarea></label>
@@ -347,14 +348,15 @@
 
   <div id="importWorkspace" class="import-workspace hidden" aria-label="Markdown 导入工作台">
     <header class="import-topbar">
-      <div class="import-title-block"><button class="import-back" id="closeImportBtn">← 返回地图</button><div><span class="eyebrow">MARKDOWN IMPORT WORKSPACE</span><h1>地图对象与地块档案 Markdown 导入</h1><p>对象新增、地块档案更新、格式校验和导入预览在同一界面完成。</p></div></div>
-      <div class="import-top-actions"><span id="importFormatBadge" class="format-badge neutral">等待输入</span><button class="btn secondary" id="importChooseFileBtn">选择 .md 文件</button><button class="btn primary" id="importApplyBtn" disabled>添加到本地地图</button></div>
+      <div class="import-title-block"><button class="import-back" id="closeImportBtn">← 返回地图</button><div><span class="eyebrow">MARKDOWN IMPORT WORKSPACE</span><h1>地图对象与地块档案 Markdown 导入</h1><p>支持单个或批量选择 Markdown；对象新增、地块档案更新、格式校验和导入预览在同一界面完成。</p></div></div>
+      <div class="import-top-actions"><span id="importFormatBadge" class="format-badge neutral">等待输入</span><div class="import-file-choice" role="group" aria-label="选择 Markdown 导入方式"><button class="btn secondary" id="importChooseFileBtn">选择单个 .md</button><button class="btn secondary" id="importChooseBatchBtn">批量选择 .md</button></div><button class="btn primary" id="importApplyBtn" disabled>添加到本地地图</button></div>
     </header>
     <main class="import-layout">
       <section class="import-pane import-editor-pane">
         <div class="import-pane-head"><div><span class="eyebrow">SOURCE</span><h2>输入文件</h2></div><button class="mini-action" id="clearImportBtn">清空</button></div>
-        <div id="importDropZone" class="import-drop-zone"><strong>拖入 Markdown 文件</strong><span>或点击“选择 .md 文件”</span><small>支持“### 对象：”与“### 地块档案：”格式，并提示旧版坐标格式</small></div>
+        <div id="importDropZone" class="import-drop-zone"><strong>拖入一个或多个 Markdown 文件</strong><span>单个文件直接载入；多个文件按批次合并校验</span><small>支持“### 对象：”与“### 地块档案：”格式，并提示重复对象与旧版坐标格式</small></div>
         <div class="import-file-line"><span id="importFileName">尚未选择文件</span><b id="importCharCount">0 字</b></div>
+        <div id="importBatchList" class="import-batch-list hidden" aria-live="polite"></div>
         <textarea id="importText" class="import-textarea" spellcheck="false" placeholder="# 山海经地图对象导入
 
 ### 对象：冰夷
@@ -385,6 +387,7 @@
       </aside>
     </main>
     <input id="importFileInput" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden />
+    <input id="importBatchFileInput" type="file" accept=".md,.markdown,text/markdown,text/plain" multiple hidden />
   </div>
 
   <div id="dossierWorkspace" class="dossier-workspace hidden" aria-label="地块博物志">
