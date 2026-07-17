@@ -58,3 +58,10 @@ npm run desktop:dev
 ## v0.4.1 更新通道
 
 客户端依次尝试仓库静态更新源、jsDelivr CDN 和 GitHub Releases；正式发布后工作流会自动同步 `updates/latest.json`。
+
+## v0.4.2 精确点与数据发布
+
+- 简述博物志分类列表超过可视高度后在分类内部滚动。
+- 精细地图中的单对象点直接打开精确点博物志；同坐标多对象先展开列表，再选择对象。
+- “完成本轮编辑”通过本地 Git 仓库写入 `submissions/pending/*.shjpatch` 并推送 `main`。程序不会保存 GitHub Token；需本机已安装并登录 GitHub Desktop，或已配置可用的 Git。
+- 首次自动上传若未找到仓库，填写仓库根目录，例如 `F:\SHmap\SHmap`。上传失败不会清空本轮编辑。

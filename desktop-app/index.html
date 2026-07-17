@@ -312,14 +312,14 @@
   <div class="modal hidden" id="roundModal" role="dialog" aria-modal="true">
     <div class="modal-backdrop" data-close-modal="roundModal"></div>
     <section class="modal-card round-card">
-      <div class="modal-head"><div><span class="eyebrow">FINISH EDITING ROUND</span><h2>完成本轮编辑</h2><p>更改包已经下载。你可以继续保留本轮记录，或归档后开始下一轮。</p></div><button class="modal-close" data-close-modal="roundModal">×</button></div>
+      <div class="modal-head"><div><span class="eyebrow">FINISH EDITING ROUND</span><h2>完成本轮编辑</h2><p id="roundModalLead">程序会把本轮更改包上传到 GitHub，其他设备随后可在“检查数据更新”中下载并应用。</p></div><button class="modal-close" data-close-modal="roundModal">×</button></div>
       <div id="roundSummary" class="round-summary"></div>
       <div class="round-choice-grid">
         <button id="roundKeepBtn" class="round-choice"><i>留</i><span><strong>继续保留本轮更改</strong><small>更改记录和地图标记保持不变，稍后仍可继续编辑或再次导出。</small></span></button>
         <button id="roundArchiveBtn" class="round-choice primary"><i>归</i><span><strong>归档并开始新一轮</strong><small>本轮记录进入历史提交，顶部未提交计数归零；地图数据与回收站不受影响。</small></span></button>
       </div>
-      <div class="round-note">归档不会删除更改历史。后续可在“更改记录”中查看，并手动标记为“已上传 GitHub”。</div>
-      <div class="form-actions"><button class="btn secondary" data-close-modal="roundModal">稍后决定</button></div>
+      <div class="round-note" id="roundNote">上传成功后再归档，本轮记录会自动标记为“已上传 GitHub”。</div>
+      <div class="form-actions round-publish-actions"><button class="btn primary hidden" id="roundRetryPublishBtn">重试上传</button><button class="btn secondary hidden" id="roundExportFallbackBtn">仅导出本地</button><button class="btn secondary" data-close-modal="roundModal">稍后决定</button></div>
     </section>
   </div>
 

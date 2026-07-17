@@ -28,6 +28,11 @@ async function pumpSave(){
   saveBusy=true;const payload=savePending;savePending=null;
   try{await invoke("save_workspace",{payload})}catch(err){console.error(err);toast(`桌面数据库保存失败：${err}`,true)}finally{saveBusy=false;if(savePending)pumpSave()}
 }
+async function flushWorkspace(){
+  clearTimeout(saveTimer);saveTimer=null;
+  if(savePending&&!saveBusy)await pumpSave();
+  while(saveBusy||savePending){await new Promise(resolve=>setTimeout(resolve,35));if(savePending&&!saveBusy)await pumpSave()}
+}
 function queueSave(payload){
   savePending=payload;clearTimeout(saveTimer);saveTimer=setTimeout(pumpSave,80)
 }
@@ -186,7 +191,7 @@ async function start(){
     bootInfo=await invoke("bootstrap_workspace",{legacySnapshot:legacy,seedSnapshot:JSON.stringify(seedSnapshot())});
     if(bootInfo.snapshot)localStorage.setItem(STORAGE_KEY,bootInfo.snapshot);
   }
-  window.SHJ_DESKTOP={active:isTauri,saveWorkspace:queueSave,flush:pumpSave,bootInfo};
+  window.SHJ_DESKTOP={active:isTauri,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
   await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="/app/app.js";script.onload=resolve;script.onerror=()=>reject(new Error("无法加载地图主程序"));document.body.appendChild(script)});
   setupNativeUi();
   scheduleAutomaticUpdateCheck();

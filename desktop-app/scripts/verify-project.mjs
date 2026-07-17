@@ -15,6 +15,16 @@ if(!app.includes("briefMuseumHTML")||!app.includes("brief-image-placeholder")){c
 if(!app.includes("importChooseBatchBtn")||!app.includes("importBatchFileInput")){console.error("v004批量Markdown选择逻辑缺失");failed=true}
 if(!app.includes("imageUrl")||!fs.readFileSync(path.join(root,"index.html"),"utf8").includes("formImageUrl")){console.error("v004对象图片区字段缺失");failed=true}
 if(!rust.includes("UPDATE_ENDPOINTS")||!rust.includes("UPDATE_CHECK_ATTEMPTS_PER_SOURCE")||!rust.includes("UPDATE_DOWNLOAD_ATTEMPTS")){console.error("v0.4.1更新重试与备用线路逻辑缺失");failed=true}
+const css=fs.readFileSync(path.join(root,"public/app/styles.css"),"utf8");
+if(!css.includes(".brief-museum-list")||!css.includes("overflow-y:auto")){console.error("v0.4.2简述博物志分类滚动逻辑缺失");failed=true}
+if(!app.includes("openPrecisionDossier")||!app.includes("activeDossierTile")||!app.includes("precision-focus-mode")){console.error("v0.4.2精确点博物志逻辑缺失");failed=true}
+if(!app.includes("finishRoundAndPublish")||!app.includes("publishPendingRound")||!app.includes("PUBLISH_REPO_KEY")){console.error("v0.4.2完成本轮自动发布逻辑缺失");failed=true}
+const bootstrap=fs.readFileSync(path.join(root,"src/desktop-bootstrap.js"),"utf8");
+if(!bootstrap.includes('publishPatch:args=>invoke("publish_patch_to_github",args)')||!bootstrap.includes("flushWorkspace")){console.error("v0.4.2桌面发布桥接缺失");failed=true}
+if(!rust.includes("publish_patch_to_github")||!rust.includes("submissions/pending")||!rust.includes("run_git_network")||!rust.includes("GitHubDesktop")){console.error("v0.4.2 GitHub数据发布后端缺失");failed=true}
+if(!app.includes("precision-hover-cards")||!app.includes("data-precision-preview-object")||!app.includes("precisionPreviewText")){console.error("v0.4.2整合版精确对象悬停窗逻辑缺失");failed=true}
+if(!app.includes("Math.exp(-delta*.00155)")||!app.includes("scheduleCameraFrame()")){console.error("v0.4.2整合版无回弹连续缩放逻辑缺失");failed=true}
+if(!css.includes(".precision-hover-cards")||!css.includes(".preview-pinned")||!css.includes(".hover-left")||!css.includes(".hover-up")){console.error("v0.4.2整合版精确对象悬停窗样式缺失");failed=true}
 const publishWorkflow=fs.readFileSync(path.join(root,"..",".github","workflows","publish-desktop-windows-update.yml"),"utf8");if(!publishWorkflow.includes("Sync stable update feed")||!publishWorkflow.includes("updates/latest.json")){console.error("稳定更新源同步工作流缺失");failed=true}
 for(const name of fs.readdirSync(root)){if(/\.key$|PRIVATE_KEY|password/i.test(name)){console.error(`仓库根目录疑似包含密钥：${name}`);failed=true}}
 const lock=fs.readFileSync(path.join(root,"package-lock.json"),"utf8");if(lock.includes("applied-caas-gateway")||lock.includes("artifactory/api/npm")){console.error("package-lock仍包含内部依赖地址");failed=true}
