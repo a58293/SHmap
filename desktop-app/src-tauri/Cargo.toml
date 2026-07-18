@@ -1,6 +1,6 @@
 [package]
 name = "shj-map-desktop"
-version = "0.4.3"
+version = "0.4.4"
 description = "山海经原典地图研究台桌面版"
 authors = ["Lumen Auralis"]
 edition = "2021"

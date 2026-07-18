@@ -66,7 +66,7 @@
           <label><input type="checkbox" id="layerAreas" checked /> 面积与作用域</label>
           <label><input type="checkbox" id="layerTerrain" checked /> 高倍率彩色地形</label>
           <label><input type="checkbox" id="layerRivers" checked /> 河流与线型对象</label>
-          <label><input type="checkbox" id="layerEmpty" checked /> 空白地块</label>
+          <label><input type="checkbox" id="layerEmpty" /> 空白地块</label>
           <label><input type="checkbox" id="layerChanges" checked /> 本轮更改标记</label>
         </div>
         <div class="map-stats" id="mapStats"></div>
@@ -93,11 +93,12 @@
                 <button data-view-preset="all">全部资料</button><button data-view-preset="geography">地理视图</button><button data-view-preset="hydrology">水系视图</button><button data-view-preset="myth">神话视图</button><button data-view-preset="civilization">文明视图</button><button data-view-preset="evidence">证据视图</button>
               </div>
             </div>
-            <button class="btn secondary compact" id="relationModeBtn" title="高亮当前对象的直接与区域关系">关系高亮</button>
+            <button class="btn secondary compact" id="relationModeBtn" title="高亮当前对象关系；关系线按当前视图自动筛选">关系高亮</button>
             <button class="btn secondary compact" id="compareModeBtn" title="选择2—4个地块进行并排对比">对比</button>
             <button class="btn secondary compact" id="measureModeBtn" title="测量两点之间的距离与方向">测量</button>
             <button class="btn secondary compact" id="isolatedObjectsBtn" title="查找缺少空间关系的对象">孤立 <b id="isolatedObjectsCount">0</b></button>
             <button class="btn secondary compact brush-toggle" id="brushModeBtn" title="拖动画笔采集经过的地块">⌁ 画笔采集</button>
+            <button class="btn secondary compact brush-cancel hidden" id="cancelBrushBtn" title="退出画笔模式并清除画笔线，保留已采集地块">取消画笔状态</button>
             <button class="btn secondary compact hidden" id="brushCollectionBtn">地块集合 <b id="brushCollectionCount">0</b></button>
           </div>
         </div>
@@ -120,6 +121,7 @@
           <div id="compareStatusBar" class="compare-status-bar hidden"><span>对比选择：<b id="compareSelectionCount">0</b>/4</span><button id="openCompareBtn">打开对比</button><button id="clearCompareBtn">清空</button><button id="exitCompareBtn">退出</button></div>
           <div id="measureReadout" class="measure-readout hidden"><strong>距离与方向</strong><span id="measureReadoutText">在地图上拖出一条测量线</span><button id="clearMeasureBtn">清除</button></div>
           <div id="researchMinimap" class="research-minimap" title="单击小地图跳转；拖动可连续导航"><canvas id="researchMinimapCanvas"></canvas><div id="researchMinimapViewport" class="research-minimap-viewport"></div><button id="minimapOverviewBtn" type="button" title="缩放到全部已录入范围">地图总览</button></div>
+          <div id="relationLegend" class="relation-legend hidden"><div><strong>关系线</strong><small id="relationLegendMeta">请先选择一个对象</small></div><span><i class="solid"></i>明确／直接关系</span><span><i class="dashed"></i>同地块／同区域／同篇关联</span><em id="relationLegendHint">当前视图筛选关系；悬停查看，单击跳转</em></div>
         </div>
         <div class="legend-bar">
           <span><i class="legend-box hard"></i>原文明载面积</span>
