@@ -71,6 +71,20 @@
         </div>
         <div class="map-stats" id="mapStats"></div>
         <div class="result-head"><span>对象索引</span><strong id="resultCount">0</strong></div>
+        <div class="object-sort-bar" aria-label="对象索引排序">
+          <select id="objectSortSelect" title="对象索引排序方式">
+            <option value="default">默认顺序</option>
+            <option value="updated">最近更新</option>
+            <option value="updatedOldest">最早更新</option>
+            <option value="round">本轮修改优先</option>
+            <option value="name">名称顺序</option>
+            <option value="chapter">经篇顺序</option>
+            <option value="type">类型顺序</option>
+            <option value="distance">距离当前位置</option>
+          </select>
+          <button id="objectSortDirectionBtn" type="button" title="切换升序或降序">↑</button>
+          <label class="object-sort-round"><input id="objectRoundOnly" type="checkbox" /> 仅本轮</label>
+        </div>
         <div class="object-list" id="objectList"></div>
       </aside>
 
@@ -89,8 +103,24 @@
             <button class="btn secondary compact" id="jumpCoordBtn">输入坐标</button>
             <div class="research-tool-wrap">
               <button class="btn secondary compact" id="viewPresetBtn">视图：全部</button>
-              <div id="viewPresetMenu" class="view-preset-menu hidden">
-                <button data-view-preset="all">全部资料</button><button data-view-preset="geography">地理视图</button><button data-view-preset="hydrology">水系视图</button><button data-view-preset="myth">神话视图</button><button data-view-preset="civilization">文明视图</button><button data-view-preset="evidence">证据视图</button>
+              <div id="viewPresetMenu" class="view-preset-menu relation-filter-menu hidden">
+                <div class="relation-theme-list">
+                  <button data-view-preset="all"><span>全部关系</span><b data-relation-count="all">0</b></button>
+                  <button data-view-preset="geography"><span>地理空间</span><b data-relation-count="geography">0</b></button>
+                  <button data-view-preset="hydrology"><span>水系流向</span><b data-relation-count="hydrology">0</b></button>
+                  <button data-view-preset="civilization"><span>文明人群</span><b data-relation-count="civilization">0</b></button>
+                  <button data-view-preset="myth"><span>神话生物</span><b data-relation-count="myth">0</b></button>
+                  <button data-view-preset="events"><span>事件遗迹</span><b data-relation-count="events">0</b></button>
+                  <button data-view-preset="aliases"><span>异名同体</span><b data-relation-count="aliases">0</b></button>
+                  <button data-view-preset="other"><span>其他关系</span><b data-relation-count="other">0</b></button>
+                </div>
+                <div class="relation-evidence-filter">
+                  <small>证据层级</small>
+                  <button data-relation-evidence="all">全部</button>
+                  <button data-relation-evidence="explicit">明确原文</button>
+                  <button data-relation-evidence="inferred">空间推定</button>
+                  <button data-relation-evidence="context">同篇关联</button>
+                </div>
               </div>
             </div>
             <button class="btn secondary compact" id="relationModeBtn" title="高亮当前对象关系；关系线按当前视图自动筛选">关系高亮</button>
@@ -127,7 +157,7 @@
           <div id="compareStatusBar" class="compare-status-bar hidden"><span>对比选择：<b id="compareSelectionCount">0</b>/4</span><button id="openCompareBtn">打开对比</button><button id="clearCompareBtn">清空</button><button id="exitCompareBtn">退出</button></div>
           <div id="measureReadout" class="measure-readout hidden"><strong>距离与方向</strong><span id="measureReadoutText">在地图上拖出一条测量线</span><button id="clearMeasureBtn">清除</button></div>
           <div id="researchMinimap" class="research-minimap" title="单击小地图跳转；拖动可连续导航"><canvas id="researchMinimapCanvas"></canvas><div id="researchMinimapViewport" class="research-minimap-viewport"></div><button id="minimapOverviewBtn" type="button" title="缩放到全部已录入范围">地图总览</button></div>
-          <div id="relationLegend" class="relation-legend hidden"><div><strong>关系线</strong><small id="relationLegendMeta">请先选择一个对象</small></div><span><i class="solid"></i>明确／直接关系</span><span><i class="dashed"></i>同地块／同区域／同篇关联</span><em id="relationLegendHint">当前视图筛选关系；悬停查看，单击跳转</em></div>
+          <div id="relationLegend" class="relation-legend hidden"><div><strong>关系线</strong><small id="relationLegendMeta">请先选择一个对象</small></div><span><i class="solid"></i>明确／直接关系</span><span><i class="dashed"></i>空间推定／同篇关联</span><em id="relationLegendHint">主题与证据双层筛选；悬停查看，单击跳转</em></div>
         </div>
         <div class="legend-bar">
           <span><i class="legend-box hard"></i>原文明载面积</span>
