@@ -1,15 +1,15 @@
 {
-  "version": "0.4.5",
-  "notes": "# 山海经原典地图研究台 v0.4.5\r\n\r\n本版从关系筛选缺失问题开始，集中更新关系分类、博物志标签检索和对象索引排序。\r\n\r\n## 关系分类重构\r\n\r\n- 每条关系根据关系类型和两端对象类型进行多标签归类，可同时属于多个主题。\r\n- 主题包括：地理空间、水系流向、文明人群、神话生物、事件遗迹、异名同体、其他关系。\r\n- “其他关系”作为兜底，保证全部关系中的内容不会在主题视图中无故消失。\r\n- 明确原文、空间推定和同篇关联改为独立的第二层证据筛选。\r\n- 每个主题按钮显示当前关系数量；切换主题或证据层级后立即重绘。\r\n- 关系线悬停卡片显示关系名称、目标对象、主题和证据层级，点击跳转功能保持不变。\r\n\r\n## 可点击博物志标签\r\n\r\n- 本地标签、父级区域、相邻地块、关联水域和关联生灵均可点击。\r\n- 点击后打开同标签索引，分别显示相关地块和对象。\r\n- 点击结果可直接定位；“只看地图”会将标签写入地图检索。\r\n- 右键、Esc、遮罩或关闭按钮均可退出标签索引。\r\n\r\n## 对象索引排序\r\n\r\n- 增加默认顺序、最近更新、最早更新、本轮修改优先、名称、经篇、类型和距离当前位置。\r\n- 支持升序／降序切换和“仅本轮”筛选。\r\n- 排序状态保存到工作区；排序后当前选中对象保持高亮并自动滚动到可见位置。\r\n- 对象编辑、Markdown 导入和批量更新会写入真实更新时间。旧对象没有更新时间时不会生成虚构日期。\r\n\r\n本版继续保留 v0.4.4 的关系线置顶与点击跳转、高倍定位、空白地块默认关闭、画笔右键撤回／清空和博物志卡片滚动。\r\n\r\n本地校验：\r\n\r\n```powershell\r\nnpm ci --registry=https://registry.npmjs.org/\r\nnpm run verify\r\nnpm run build\r\nnpm run desktop:dev\r\n```\r\n\r\n正确校验结果：\r\n\r\n```text\r\n校验：395个对象，程序v004 / 0.4.5，数据版本v075-r0001\r\n```\r\n\r\n正式发布标签：`desktop-v0.4.5`。",
-  "pub_date": "2026-07-18T06:27:23.211Z",
+  "version": "0.5.0",
+  "notes": "# 山海经原典地图研究台 v0.5.0\r\n\r\nv0.5.0 将原有地图功能整合为更明确的研究工作台。\r\n\r\n## 主要更新\r\n\r\n- 新增统一模式状态条和互斥模式管理。\r\n- 新增左右侧栏折叠与专注地图。\r\n- 新增地图浏览历史、前进后退与研究书签。\r\n- 新增 `Ctrl+K` 全局检索。\r\n- 新增本轮操作历史、撤销与重做。\r\n- 关系系统增加直接、空间推定、同篇关联三层显示。\r\n- 对象详情增加证据等级、来源类型和更新时间摘要。\r\n- 重组地图工具和系统操作层级。\r\n- 关系绘制在拖动期间自动降载。\r\n\r\n## 兼容性\r\n\r\n- 保留 v0.4.5 的 395 个对象。\r\n- 保留数据版本 v075-r0001。\r\n- 保留九段式 Markdown 导入、关系线导航、标签检索、对象排序、画笔采集和桌面更新功能。\r\n\r\n## 校验\r\n\r\n```text\r\n校验：395个对象，程序v005 / 0.5.0，数据版本v075-r0001\r\n```\r\n\r\n正式发布标签：`desktop-v0.5.0`。",
+  "pub_date": "2026-07-18T14:45:21.286Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkR2KzhDYXp2NnJDYjZtcm41M1FyNmJaUTNIdW80MnpKYld2VWpMeU1RVlUzak1xVm85RVhxVDRNelVENjVVdDVhRk9UWlpBQ0hCVk1udUJpVWNhdlFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MzU2MDQwCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC41X3g2NC1zZXR1cC5leGUKSFp5QnRLUGNTVWRmTVcwdVVZdHNHNXNKM2cxV09IL2w1TjFOZ2dLL1VId0ZNSHhibndFQWVLTm1abUhWY2JjRTlpckdsNGNEbmJRQzcvS0d0bkc5Q0E9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/481228072"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkpUYzlUbkNxMnNMSFZHOTdjTTR2NUExT3h0RnFGNzdtTnZIbHVPUEg4VDZPWTRhcWhpUTNGR2pHdDQySitndEMwUWtZNS9Xb3h3Q2dRVC9yUWczN1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mzg1OTE5CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4wX3g2NC1zZXR1cC5leGUKNXZnVGRGZlQ2UFF5cTNlbWhBQytUS3VyVzl3Z28rcE9oSy80RE8wdXdoVkwvZmVWNHBiNXFUUzl3Vnl2dm51WWMrYkwzTHgzNDA1a0RMbitBSjUxQkE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/481547986"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkR2KzhDYXp2NnJDYjZtcm41M1FyNmJaUTNIdW80MnpKYld2VWpMeU1RVlUzak1xVm85RVhxVDRNelVENjVVdDVhRk9UWlpBQ0hCVk1udUJpVWNhdlFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MzU2MDQwCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNC41X3g2NC1zZXR1cC5leGUKSFp5QnRLUGNTVWRmTVcwdVVZdHNHNXNKM2cxV09IL2w1TjFOZ2dLL1VId0ZNSHhibndFQWVLTm1abUhWY2JjRTlpckdsNGNEbmJRQzcvS0d0bkc5Q0E9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/481228072"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkpUYzlUbkNxMnNMSFZHOTdjTTR2NUExT3h0RnFGNzdtTnZIbHVPUEg4VDZPWTRhcWhpUTNGR2pHdDQySitndEMwUWtZNS9Xb3h3Q2dRVC9yUWczN1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mzg1OTE5CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4wX3g2NC1zZXR1cC5leGUKNXZnVGRGZlQ2UFF5cTNlbWhBQytUS3VyVzl3Z28rcE9oSy80RE8wdXdoVkwvZmVWNHBiNXFUUzl3Vnl2dm51WWMrYkwzTHgzNDA1a0RMbitBSjUxQkE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/481547986"
     }
   }
 }
