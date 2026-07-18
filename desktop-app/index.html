@@ -98,7 +98,8 @@
             <button class="btn secondary compact" id="measureModeBtn" title="测量两点之间的距离与方向">测量</button>
             <button class="btn secondary compact" id="isolatedObjectsBtn" title="查找缺少空间关系的对象">孤立 <b id="isolatedObjectsCount">0</b></button>
             <button class="btn secondary compact brush-toggle" id="brushModeBtn" title="拖动画笔采集经过的地块">⌁ 画笔采集</button>
-            <button class="btn secondary compact brush-cancel hidden" id="cancelBrushBtn" title="退出画笔模式并清除画笔线，保留已采集地块">取消画笔状态</button>
+            <button class="btn secondary compact brush-cancel hidden" id="cancelBrushModeBtn" title="退出画笔模式并清除画笔轨迹；已采集地块保留">取消画笔状态</button>
+
             <button class="btn secondary compact hidden" id="brushCollectionBtn">地块集合 <b id="brushCollectionCount">0</b></button>
           </div>
         </div>
@@ -116,6 +117,11 @@
           </div>
           <div class="coord-status" id="coordStatus">鼠标 X 0里 · Y 0里</div>
           <div class="camera-status" id="cameraStatus">中心 X 0里 · Y 0里</div>
+          <section id="highZoomLocator" class="high-zoom-locator hidden" aria-label="高倍缩放位置导航">
+            <header><div><strong id="highZoomLocationTitle">当前位置</strong><span id="highZoomLocationMeta">等待定位</span></div><button id="highZoomOverviewBtn" type="button">地图总览</button></header>
+            <div id="highZoomNearest" class="high-zoom-nearest"></div>
+            <small>箭头表示方向；单击附近地标可直接跳转。</small>
+          </section>
           <button id="clearSpatialFocusBtn" class="spatial-focus-clear hidden">退出区域聚焦 ×</button>
           <button id="closeFlipBtn" class="close-flip hidden">收起当前地块 ×</button>
           <div id="compareStatusBar" class="compare-status-bar hidden"><span>对比选择：<b id="compareSelectionCount">0</b>/4</span><button id="openCompareBtn">打开对比</button><button id="clearCompareBtn">清空</button><button id="exitCompareBtn">退出</button></div>

@@ -872,6 +872,25 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .map-tooltip.relation-line-tooltip em{display:block;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.12);color:#d7e5df;font-size:9px;line-height:1.45;font-style:normal}
 @media(max-width:1050px){.relation-legend{left:9px;top:74px;width:210px}.relation-legend small{display:none}}
 
+/* v0.4.4 · 高倍定位、画笔撤回与集合陈列 */
+.brush-cancel{border-color:#b56d62!important;color:#8f4439!important;background:#fff8f5!important}
+.brush-cancel:hover{background:#8f4439!important;color:#fff!important;border-color:#8f4439!important}
+.high-zoom-locator{position:absolute;right:12px;bottom:78px;z-index:19;width:min(360px,calc(100% - 24px));padding:10px;border:1px solid rgba(50,103,85,.48);border-radius:11px;background:rgba(249,248,242,.96);box-shadow:0 9px 24px rgba(33,52,44,.18);backdrop-filter:blur(7px);color:#34483f}
+.high-zoom-locator header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:8px;border-bottom:1px solid #d8ded9}
+.high-zoom-locator header>div{min-width:0}.high-zoom-locator strong{display:block;font:800 15px/1.25 var(--serif);color:var(--jade-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.high-zoom-locator header span{display:block;margin-top:3px;font:700 8px/1.45 var(--mono);color:#67756f;white-space:normal}
+.high-zoom-locator header button{flex:none;border:1px solid #b9c9c1;border-radius:7px;background:#fffdf8;color:var(--jade-dark);padding:5px 7px;font-size:8px;font-weight:800;cursor:pointer}
+.high-zoom-locator header button:hover{background:var(--jade);color:#fff;border-color:var(--jade)}
+.high-zoom-nearest{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+.high-zoom-nearest button{min-width:0;display:grid;grid-template-columns:24px minmax(0,1fr);gap:6px;align-items:center;border:1px solid #d2dbd6;border-radius:8px;background:#fffef9;padding:6px;text-align:left;cursor:pointer}
+.high-zoom-nearest button:hover{border-color:#6c9a88;background:#eef5f1}.high-zoom-nearest button>b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#e5efea;color:var(--jade-dark);font-size:14px}
+.high-zoom-nearest button span{min-width:0}.high-zoom-nearest button strong{font-size:10px;line-height:1.25}.high-zoom-nearest button small{display:block;margin-top:2px;color:#718078;font-size:7px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.high-zoom-locator>small{display:block;margin-top:7px;color:#758079;font-size:7px;line-height:1.4}
+.high-zoom-no-landmark{grid-column:1/-1;padding:7px 8px;border:1px dashed #c9d2cd;border-radius:7px;color:#77827c;font-size:8px;line-height:1.45}
+.collection-museum-board .brief-museum{margin-top:2px}.collection-museum-board .brief-museum-grid{align-items:start}.collection-museum-board .brief-museum-category{max-height:min(62vh,650px)}
+@media(max-width:1180px){.high-zoom-locator{width:300px}.high-zoom-nearest{grid-template-columns:1fr}}
+@media(max-width:760px){.high-zoom-locator{left:10px;right:10px;bottom:72px;width:auto}.high-zoom-nearest{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 
 /* v0.4.4 revision 2 · 关系线置顶、画笔右键手势、博物志卡片完整滚动 */
 .brush-cancel{border-color:#b76b5c;color:#8f3f34;background:#fff8f4;padding:7px 8px;font-size:10px}
@@ -906,3 +925,4 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .brief-museum-list{gap:12px;padding:12px}
 @media(max-width:820px){.brief-museum-object{grid-template-columns:96px minmax(0,1fr);min-height:150px}.brief-object-image{min-height:126px}}
 @media(max-width:520px){.brief-museum-object{grid-template-columns:1fr}.brief-object-image{min-height:170px}.brief-object-copy{max-height:280px}.brief-object-rows>div{grid-template-columns:1fr;gap:3px}}
+
