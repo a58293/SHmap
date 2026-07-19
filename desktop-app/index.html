@@ -70,8 +70,9 @@
           <label><input type="checkbox" id="layerChanges" checked /> 本轮更改标记</label>
         </div>
         <div class="map-stats" id="mapStats"></div>
-        <div class="result-head"><span>对象索引</span><strong id="resultCount">0</strong></div>
-        <div class="object-sort-bar" aria-label="对象索引排序">
+        <div class="index-mode-tabs" role="tablist" aria-label="地图索引层级"><button id="objectIndexModeBtn" class="active" type="button" role="tab" aria-selected="true">对象</button><button id="regionIndexModeBtn" type="button" role="tab" aria-selected="false">世界／区域</button></div>
+        <div class="result-head"><span id="indexResultTitle">对象索引</span><strong id="resultCount">0</strong></div>
+        <div id="objectSortBar" class="object-sort-bar" aria-label="对象索引排序">
           <select id="objectSortSelect" title="对象索引排序方式">
             <option value="default">默认顺序</option>
             <option value="updated">最近更新</option>
@@ -191,10 +192,10 @@
               <h2 id="detailName"></h2>
               <p id="detailMeta"></p>
             </div>
-            <div class="detail-head-actions"><button class="btn secondary compact" id="openDossierBtn">▤ 地块博物志</button><button class="btn secondary compact range-entry" id="openRangeEditorBtn">▱ 编辑面积／作用域</button><button class="btn primary compact" id="editTileBtn">✎ 编辑地块</button><button class="btn danger compact" id="deleteTileBtn">⌫ 删除</button></div>
+            <div id="detailHeadActions" class="detail-head-actions"><button class="btn secondary compact" id="openDossierBtn">▤ 地块博物志</button><button class="btn secondary compact range-entry" id="openRangeEditorBtn">▱ 编辑面积／作用域</button><button class="btn primary compact" id="editTileBtn">✎ 编辑地块</button><button class="btn danger compact" id="deleteTileBtn">⌫ 删除</button></div>
           </div>
           <div class="detail-location-card" id="detailLocation"></div>
-          <div class="detail-tabs tile-detail-tabs">
+          <div id="detailTabs" class="detail-tabs tile-detail-tabs">
             <button class="active" data-tab="summary">地块简述</button>
             <button data-tab="civilization">文明部落</button>
             <button data-tab="story">事件与现象</button>

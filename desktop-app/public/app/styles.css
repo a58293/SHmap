@@ -1251,3 +1251,64 @@ html[data-ui-text-scale="large"] .water-path-card header b,
 html[data-ui-text-scale="large"] .water-path-card p,
 html[data-ui-text-scale="large"] .water-path-card footer button,
 html[data-ui-text-scale="large"] .map-tooltip.water-path-tooltip{font-size:var(--ui-font-small)}
+
+/* v0.5.2 · 世界／区域／地点层级 */
+.index-mode-tabs{display:grid;grid-template-columns:1fr 1.35fr;gap:5px;padding:2px;border:1px solid #d5cfc2;border-radius:10px;background:#ece8de}
+.index-mode-tabs button{min-width:0;border:0;border-radius:7px;background:transparent;padding:7px 8px;color:#6a746e;font-size:9px;font-weight:850;transition:.15s ease}
+.index-mode-tabs button:hover{color:var(--jade-dark);background:rgba(255,255,255,.55)}
+.index-mode-tabs button.active{background:#fffdf8;color:var(--jade-dark);box-shadow:0 2px 7px rgba(31,62,52,.12)}
+.region-tree{display:flex;flex-direction:column;gap:7px;padding:1px 1px 14px}
+.region-tree button{text-align:left}
+.region-tree-world{width:100%;display:grid;grid-template-columns:31px 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;border:1px solid rgba(31,109,90,.30);border-radius:10px;background:linear-gradient(145deg,#edf5f0,#fffdf8);padding:9px}
+.region-tree-world>span{grid-row:1/3;width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:var(--jade-dark);color:#fff;font-family:var(--serif);font-size:16px}
+.region-tree-world strong{font-family:var(--serif);font-size:13px;color:var(--jade-dark)}
+.region-tree-world small,.region-tree-macro small,.region-tree-child small{font-size:8px;color:var(--muted)}
+.region-tree-world:hover,.region-tree-world.selected{border-color:var(--jade);box-shadow:0 0 0 2px rgba(31,109,90,.09)}
+.region-tree-group{border:1px solid #ded7c9;border-radius:10px;background:#fbf8f0;overflow:hidden}
+.region-tree-group.open{border-color:#c4d3cc}
+.region-tree-macro-row{display:grid;grid-template-columns:30px 1fr;align-items:stretch}
+.region-tree-toggle{border:0;border-right:1px solid #e4ded2;background:#f0ece2;color:#597067;font-weight:900;font-size:13px}
+.region-tree-toggle:hover{background:#e5eee9;color:var(--jade-dark)}
+.region-tree-macro{border:0;background:transparent;padding:8px 9px;display:flex;flex-direction:column;gap:3px}
+.region-tree-macro strong{font-size:10px;color:#34483f}
+.region-tree-macro:hover,.region-tree-macro.selected{background:var(--jade-soft)}
+.region-tree-children{border-top:1px solid #e5dfd3;padding:4px;background:#fffdf8}
+.region-tree-child{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;border:0;border-radius:7px;background:transparent;padding:7px 8px 7px 13px;color:#43534c;font-size:9px}
+.region-tree-child>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.region-tree-child small{min-width:24px;text-align:right;font-family:var(--mono)}
+.region-tree-child:hover,.region-tree-child.selected{background:#e5f0ea;color:var(--jade-dark)}
+.region-tree-child.selected{box-shadow:inset 3px 0 0 var(--jade)}
+.region-tree-empty{padding:10px;text-align:center;color:var(--muted);font-size:8px;line-height:1.5}
+.hierarchy-detail-card{margin:0 0 12px;border:1px solid #ddd5c6;border-radius:12px;background:#fffdf8;padding:12px;box-shadow:0 5px 14px rgba(43,54,48,.04)}
+.hierarchy-detail-card.muted{background:#f4f0e7;color:#69736d}
+.hierarchy-detail-card h3{margin:0 0 7px;font-family:var(--serif);font-size:14px}
+.hierarchy-detail-card p{margin:0;font-size:9px;line-height:1.7}
+.hierarchy-macro-grid,.hierarchy-child-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.hierarchy-macro-grid button,.hierarchy-child-grid button{border:1px solid #d5dcd7;border-radius:9px;background:#f3f8f5;padding:9px;text-align:left}
+.hierarchy-macro-grid button:hover,.hierarchy-child-grid button:hover{border-color:var(--jade);background:#e9f3ee}
+.hierarchy-macro-grid strong,.hierarchy-child-grid strong{display:block;font-size:10px;color:var(--jade-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hierarchy-macro-grid small,.hierarchy-child-grid small{display:block;margin-top:4px;font-size:8px;color:var(--muted)}
+.hierarchy-region-summary{display:grid;grid-template-columns:auto 1fr;align-items:start;gap:9px}
+.hierarchy-region-summary>span{border:1px solid #b8cec3;border-radius:999px;background:#edf5f0;padding:4px 7px;color:var(--jade-dark);font-size:8px;font-weight:850}
+.hierarchy-region-summary>strong{font-size:10px;line-height:1.65;color:#425049}
+.hierarchy-chapter-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.hierarchy-chapter-tags span{border:1px solid #ddd6c9;border-radius:999px;background:#f8f4eb;padding:4px 7px;color:#6b6d68;font-size:8px}
+.hierarchy-object-list{display:flex;flex-direction:column;gap:5px;max-height:410px;overflow:auto;padding-right:2px}
+.hierarchy-object-list button{width:100%;display:grid;grid-template-columns:29px minmax(0,1fr);gap:8px;align-items:center;border:1px solid #e1dbcf;border-radius:8px;background:#fff;padding:7px;text-align:left}
+.hierarchy-object-list button:hover{border-color:#9db9ad;background:#edf5f0}
+.hierarchy-object-list i{width:27px;height:27px;display:grid;place-items:center;border-radius:7px;background:#e5eee9;color:var(--jade-dark);font-style:normal;font-family:var(--serif)}
+.hierarchy-object-list strong{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hierarchy-object-list small{display:block;margin-top:2px;font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.region-overview-label.selected{border-color:var(--cinnabar);box-shadow:0 0 0 3px rgba(173,77,61,.16),0 12px 28px rgba(31,75,62,.20);z-index:10}
+.region-overview-label.selected:before{background:var(--cinnabar)}
+.tile.hierarchy-region-dim{opacity:.22;filter:grayscale(1) saturate(0) brightness(.72);transition:opacity .2s ease,filter .2s ease}
+.tile.hierarchy-region-dim:hover{opacity:.42;filter:grayscale(.85) saturate(.12) brightness(.84)}
+.tile.hierarchy-region-member .tile-card{box-shadow:inset 0 0 0 2px rgba(31,109,90,.30),0 4px 14px rgba(25,52,44,.09)}
+.precision-object-group.hierarchy-region-dim{opacity:.18;filter:grayscale(1) saturate(0)}
+.precision-object-group.hierarchy-region-member .precision-marker{filter:drop-shadow(0 0 7px rgba(31,109,90,.42))}
+html[data-ui-text-scale="large"] .index-mode-tabs button,
+html[data-ui-text-scale="large"] .region-tree-child,
+html[data-ui-text-scale="large"] .region-tree-macro strong,
+html[data-ui-text-scale="large"] .hierarchy-detail-card p,
+html[data-ui-text-scale="large"] .hierarchy-object-list strong{font-size:var(--ui-font-small)}
+@media(max-width:900px){.hierarchy-macro-grid,.hierarchy-child-grid{grid-template-columns:1fr}}
