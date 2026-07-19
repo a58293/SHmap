@@ -1,15 +1,15 @@
 {
-  "version": "0.5.1",
-  "notes": "# 山海经原典地图研究台 v0.5.1\r\n\r\nv0.5.1 以“特大字号与非阻挡通知修复版”0.5.0为唯一开发基线，完成 v125 母表同步和线型水系重构。\r\n\r\n## 数据升级\r\n\r\n- 地图对象：395 → 617。\r\n- 数据版本：v075-r0001 → v125-r0001。\r\n- 原文总库：2432 → 4120条记录。\r\n- 从坐标棋盘图读取118个河流箭头格，生成79段可交互线型水系。\r\n- 同步保存G1—G4证据等级、原文硬距离和地图几何距离。\r\n- 旧工作区升级时保留本地新增对象与本轮已编辑对象。\r\n\r\n## 线型水系\r\n\r\n- 普通河流不再用整块蓝色地块表示。\r\n- 海、泽、湖、渊、池等面积水体继续使用浅蓝面积。\r\n- 河流显示源点、路径、流向箭头、汇入端和证据线型。\r\n- G1、G2使用实线；G3使用点划线；G4使用虚线。\r\n- 鼠标悬停可查看河名、经篇、区域、流向和证据等级。\r\n- 单击河流可高亮整段、缩放到完整路径，并在右侧显示水系档案。\r\n- 水系视图提高河流可见度，其他视图降低密度，避免遮挡对象。\r\n\r\n## 继承的界面修复\r\n\r\n- “特大”字号继续明显放大正文、按钮、关系标签、地图标注、悬停卡片和详情标题。\r\n- 特大字号同步增加顶部栏和工具栏高度，避免文字裁切。\r\n- 操作提示继续位于底部中央，并保持点击穿透。\r\n- 普通提示约2.4秒、错误提示约4.8秒；同时最多保留3条。\r\n\r\n## 母表导入命令\r\n\r\n```powershell\r\nnpm run import:master -- \"新版母表.xlsx\"\r\n```\r\n\r\n导入脚本会生成对象数据、水系路径和 `water-path-validation.json` 校验报告。\r\n\r\n## 校验结果\r\n\r\n```text\r\n校验：617个对象，程序v005 / 0.5.1，数据版本v125-r0001\r\n水系路径校验：通过（79段，118个箭头格，孤立箭头0）\r\n```\r\n\r\n正式发布标签：`desktop-v0.5.1`。",
-  "pub_date": "2026-07-19T04:47:27.784Z",
+  "version": "0.5.2",
+  "notes": "# 山海经原典地图研究台 v0.5.2\r\n\r\nv0.5.2 在 v0.5.1 线型水系版基础上，增加世界／区域／地点层级。当前目标是让内部成员快速理解全图结构，不实装游戏任务、区域等级、敌人、资源或气候生态内容。\r\n\r\n## 世界与区域层级\r\n\r\n- 建立固定世界根节点“山海经世界”。\r\n- 根据现有区域文字与坐标方位生成5个世界大区、266个地图区域。\r\n- 世界大区和地图区域均支持父子关系、中心、范围、成员对象和涉及经篇统计。\r\n- 区域环境字段 `environmentProfile` 与边界字段 `boundary` 已预留为空。\r\n- 区域分类不替代原有经篇分类。\r\n\r\n## 对象归属\r\n\r\n- 每个对象新增 `primaryRegionId`，用于默认区域、检索和层级路径。\r\n- 每个对象新增 `regionIds`，允许河流、山系和跨区对象关联多个区域。\r\n- 未分区对象会进入待归区结构，不会丢失或隐藏。\r\n- 母表导入时会重新生成区域归属、世界层级和区域统计。\r\n\r\n## 界面与导航\r\n\r\n- 左侧索引新增“对象／世界·区域”切换。\r\n- 世界大区支持折叠，地图区域支持关键词检索。\r\n- 点击世界、大区或区域会自动缩放到对应范围。\r\n- 区域聚焦会保留本区域对象并降低其他区域干扰。\r\n- 右侧新增世界详情与区域详情，显示上级区域、成员数量、涉及经篇和成员地点。\r\n- 地点详情增加“世界 > 大区 > 区域 > 地块 > 地点”可点击路径。\r\n- 低倍缩放优先显示区域名称，高倍缩放恢复具体地点。\r\n\r\n## 数据与水系\r\n\r\n- 地图对象：617。\r\n- 原文记录：4120。\r\n- 世界大区：5。\r\n- 地图区域：266。\r\n- 未归区对象：0。\r\n- 线型水系：79段。\r\n- 河流箭头格：118。\r\n- 数据版本：v125-r0001。\r\n\r\n## 校验结果\r\n\r\n```text\r\n校验：617个对象，程序v005 / 0.5.2，数据版本v125-r0001\r\n水系路径校验：通过（79段，118个箭头格，孤立箭头0）\r\n世界层级校验：通过（5个世界大区，266个地图区域，未归区0）\r\n```\r\n\r\n正式发布标签：`desktop-v0.5.2`。",
+  "pub_date": "2026-07-19T08:05:07.769Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkhzQjl1MlczeURtanBMNVlhM2ZuSjdUZzJ2L2lVUG1HdDA3MUZqeFBtOG5iZHpaSGFxMGxSWFhzbmVwSjRhR1E0eTVoZjdwRUdwNzhCckdWMjlJTFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDM2NDQ0CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4xX3g2NC1zZXR1cC5leGUKR1lBZkhLYXp4RXRHUnJSZXpwSEJBWTQzTTk5TGl1ZjRJMHJXNGNISDhHd293Q3pNd28ycnRyamJtTitvSHRTRU5WK0JmVUNuUWdBMXZhN2hOWHNURGc9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482094350"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkNxQTN0M2NINGFBbFRhVlNMa2pBZXJBQ3o1TkhHZkY3VmxNM3QrUmdkRVFUbTliL3dodHZFQzQySGJGQk93THpQYUttc2dUMW10T2VGeVRUNGJ6TVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDQ4MzA1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4yX3g2NC1zZXR1cC5leGUKWjdnY1IyMWFnYmpZVnFlaUUzdmFmRGRLdjhBNUh0Uit0ZERnc0UrQ3k5QmxRVzhpQ0ZvNGRLUlVIS0t0WXRpZmljeU1pOVRadWdUbDUycEpmdnZUQ0E9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482213935"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkhzQjl1MlczeURtanBMNVlhM2ZuSjdUZzJ2L2lVUG1HdDA3MUZqeFBtOG5iZHpaSGFxMGxSWFhzbmVwSjRhR1E0eTVoZjdwRUdwNzhCckdWMjlJTFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDM2NDQ0CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4xX3g2NC1zZXR1cC5leGUKR1lBZkhLYXp4RXRHUnJSZXpwSEJBWTQzTTk5TGl1ZjRJMHJXNGNISDhHd293Q3pNd28ycnRyamJtTitvSHRTRU5WK0JmVUNuUWdBMXZhN2hOWHNURGc9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482094350"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkNxQTN0M2NINGFBbFRhVlNMa2pBZXJBQ3o1TkhHZkY3VmxNM3QrUmdkRVFUbTliL3dodHZFQzQySGJGQk93THpQYUttc2dUMW10T2VGeVRUNGJ6TVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDQ4MzA1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4yX3g2NC1zZXR1cC5leGUKWjdnY1IyMWFnYmpZVnFlaUUzdmFmRGRLdjhBNUh0Uit0ZERnc0UrQ3k5QmxRVzhpQ0ZvNGRLUlVIS0t0WXRpZmljeU1pOVRadWdUbDUycEpmdnZUQ0E9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482213935"
     }
   }
 }
