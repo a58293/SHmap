@@ -1,15 +1,15 @@
 {
-  "version": "0.5.0",
-  "notes": "# 山海经原典地图研究台 v0.5.0\r\n\r\nv0.5.0 将原有地图功能整合为更明确的研究工作台。\r\n\r\n## 主要更新\r\n\r\n- 新增统一模式状态条和互斥模式管理。\r\n- 新增左右侧栏折叠与专注地图。\r\n- 新增地图浏览历史、前进后退与研究书签。\r\n- 新增 `Ctrl+K` 全局检索。\r\n- 新增本轮操作历史、撤销与重做。\r\n- 关系系统增加直接、空间推定、同篇关联三层显示。\r\n- 对象详情增加证据等级、来源类型和更新时间摘要。\r\n- 重组地图工具和系统操作层级。\r\n- 关系绘制在拖动期间自动降载。\r\n\r\n## 兼容性\r\n\r\n- 保留 v0.4.5 的 395 个对象。\r\n- 保留数据版本 v075-r0001。\r\n- 保留九段式 Markdown 导入、关系线导航、标签检索、对象排序、画笔采集和桌面更新功能。\r\n\r\n## 校验\r\n\r\n```text\r\n校验：395个对象，程序v005 / 0.5.0，数据版本v075-r0001\r\n```\r\n\r\n正式发布标签：`desktop-v0.5.0`。",
-  "pub_date": "2026-07-18T14:45:21.286Z",
+  "version": "0.5.1",
+  "notes": "# 山海经原典地图研究台 v0.5.1\r\n\r\nv0.5.1 以“特大字号与非阻挡通知修复版”0.5.0为唯一开发基线，完成 v125 母表同步和线型水系重构。\r\n\r\n## 数据升级\r\n\r\n- 地图对象：395 → 617。\r\n- 数据版本：v075-r0001 → v125-r0001。\r\n- 原文总库：2432 → 4120条记录。\r\n- 从坐标棋盘图读取118个河流箭头格，生成79段可交互线型水系。\r\n- 同步保存G1—G4证据等级、原文硬距离和地图几何距离。\r\n- 旧工作区升级时保留本地新增对象与本轮已编辑对象。\r\n\r\n## 线型水系\r\n\r\n- 普通河流不再用整块蓝色地块表示。\r\n- 海、泽、湖、渊、池等面积水体继续使用浅蓝面积。\r\n- 河流显示源点、路径、流向箭头、汇入端和证据线型。\r\n- G1、G2使用实线；G3使用点划线；G4使用虚线。\r\n- 鼠标悬停可查看河名、经篇、区域、流向和证据等级。\r\n- 单击河流可高亮整段、缩放到完整路径，并在右侧显示水系档案。\r\n- 水系视图提高河流可见度，其他视图降低密度，避免遮挡对象。\r\n\r\n## 继承的界面修复\r\n\r\n- “特大”字号继续明显放大正文、按钮、关系标签、地图标注、悬停卡片和详情标题。\r\n- 特大字号同步增加顶部栏和工具栏高度，避免文字裁切。\r\n- 操作提示继续位于底部中央，并保持点击穿透。\r\n- 普通提示约2.4秒、错误提示约4.8秒；同时最多保留3条。\r\n\r\n## 母表导入命令\r\n\r\n```powershell\r\nnpm run import:master -- \"新版母表.xlsx\"\r\n```\r\n\r\n导入脚本会生成对象数据、水系路径和 `water-path-validation.json` 校验报告。\r\n\r\n## 校验结果\r\n\r\n```text\r\n校验：617个对象，程序v005 / 0.5.1，数据版本v125-r0001\r\n水系路径校验：通过（79段，118个箭头格，孤立箭头0）\r\n```\r\n\r\n正式发布标签：`desktop-v0.5.1`。",
+  "pub_date": "2026-07-19T04:47:27.784Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkpUYzlUbkNxMnNMSFZHOTdjTTR2NUExT3h0RnFGNzdtTnZIbHVPUEg4VDZPWTRhcWhpUTNGR2pHdDQySitndEMwUWtZNS9Xb3h3Q2dRVC9yUWczN1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mzg1OTE5CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4wX3g2NC1zZXR1cC5leGUKNXZnVGRGZlQ2UFF5cTNlbWhBQytUS3VyVzl3Z28rcE9oSy80RE8wdXdoVkwvZmVWNHBiNXFUUzl3Vnl2dm51WWMrYkwzTHgzNDA1a0RMbitBSjUxQkE9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/481547986"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkhzQjl1MlczeURtanBMNVlhM2ZuSjdUZzJ2L2lVUG1HdDA3MUZqeFBtOG5iZHpaSGFxMGxSWFhzbmVwSjRhR1E0eTVoZjdwRUdwNzhCckdWMjlJTFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDM2NDQ0CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4xX3g2NC1zZXR1cC5leGUKR1lBZkhLYXp4RXRHUnJSZXpwSEJBWTQzTTk5TGl1ZjRJMHJXNGNISDhHd293Q3pNd28ycnRyamJtTitvSHRTRU5WK0JmVUNuUWdBMXZhN2hOWHNURGc9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482094350"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkpUYzlUbkNxMnNMSFZHOTdjTTR2NUExT3h0RnFGNzdtTnZIbHVPUEg4VDZPWTRhcWhpUTNGR2pHdDQySitndEMwUWtZNS9Xb3h3Q2dRVC9yUWczN1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Mzg1OTE5CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4wX3g2NC1zZXR1cC5leGUKNXZnVGRGZlQ2UFF5cTNlbWhBQytUS3VyVzl3Z28rcE9oSy80RE8wdXdoVkwvZmVWNHBiNXFUUzl3Vnl2dm51WWMrYkwzTHgzNDA1a0RMbitBSjUxQkE9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/481547986"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkhzQjl1MlczeURtanBMNVlhM2ZuSjdUZzJ2L2lVUG1HdDA3MUZqeFBtOG5iZHpaSGFxMGxSWFhzbmVwSjRhR1E0eTVoZjdwRUdwNzhCckdWMjlJTFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDM2NDQ0CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4xX3g2NC1zZXR1cC5leGUKR1lBZkhLYXp4RXRHUnJSZXpwSEJBWTQzTTk5TGl1ZjRJMHJXNGNISDhHd293Q3pNd28ycnRyamJtTitvSHRTRU5WK0JmVUNuUWdBMXZhN2hOWHNURGc9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482094350"
     }
   }
 }
