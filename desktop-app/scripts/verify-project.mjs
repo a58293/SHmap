@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 const root=process.cwd();
-const required=["index.html","src/desktop-bootstrap.js","public/app/app.js","public/app/data.js","src-tauri/src/lib.rs","src-tauri/tauri.conf.json","src-tauri/tauri.release.conf.json","scripts/set-version.mjs","scripts/verify-release-tag.mjs","scripts/release.ps1",".npmrc"];
+const required=["index.html","src/desktop-bootstrap.js","public/app/app.js","public/app/data.js","src-tauri/src/lib.rs","src-tauri/tauri.conf.json","src-tauri/tauri.release.conf.json","scripts/set-version.mjs","scripts/verify-release-tag.mjs","scripts/release.ps1","scripts/import-master.mjs",".npmrc"];
 let failed=false;
 for(const file of required){if(!fs.existsSync(path.join(root,file))){console.error(`缺少：${file}`);failed=true}}
-const data=fs.readFileSync(path.join(root,"public/app/data.js"),"utf8");const marker="window.SHJ_INITIAL_DATA=";const start=data.indexOf(marker)+marker.length;let depth=0,inString=false,escape=false,end=-1;for(let i=start;i<data.length;i++){const c=data[i];if(inString){if(escape)escape=false;else if(c==="\\")escape=true;else if(c==='"')inString=false;continue}if(c==='"'){inString=true;continue}if(c==='{')depth++;if(c==='}'){depth--;if(depth===0){end=i+1;break}}}const initial=JSON.parse(data.slice(start,end));if(initial.objects.length!==395){console.error(`对象数量异常：${initial.objects.length}`);failed=true}const ids=new Set(initial.objects.map(x=>x.id));if(ids.size!==initial.objects.length){console.error("对象ID重复");failed=true}
+const data=fs.readFileSync(path.join(root,"public/app/data.js"),"utf8");const marker="window.SHJ_INITIAL_DATA=";const start=data.indexOf(marker)+marker.length;let depth=0,inString=false,escape=false,end=-1;for(let i=start;i<data.length;i++){const c=data[i];if(inString){if(escape)escape=false;else if(c==="\\")escape=true;else if(c==='"')inString=false;continue}if(c==='"'){inString=true;continue}if(c==='{')depth++;if(c==='}'){depth--;if(depth===0){end=i+1;break}}}const initial=JSON.parse(data.slice(start,end));if(initial.objects.length!==617){console.error(`对象数量异常：${initial.objects.length}`);failed=true}const ids=new Set(initial.objects.map(x=>x.id));if(ids.size!==initial.objects.length){console.error("对象ID重复");failed=true}
+
+const waterMarker="window.SHJ_WATER_PATHS=";const waterStart=data.indexOf(waterMarker)+waterMarker.length;const waterEnd=data.indexOf(";\nwindow.SHJ_ORIGINAL_LIBRARY",waterStart);const waterPaths=JSON.parse(data.slice(waterStart,waterEnd));
+if(waterPaths.length!==79){console.error(`水系路径数量异常：${waterPaths.length}`);failed=true}
+if(waterPaths.some(path=>!path.id||!path.name||!Array.isArray(path.points)||path.points.length<2)){console.error("水系路径存在缺失名称、ID或节点不足");failed=true}
+if(initial.metadata.waterArrowCellCount!==118||initial.metadata.coverage?.water?.orphanArrows!==0){console.error(`水系箭头校验异常：箭头格${initial.metadata.waterArrowCellCount}，孤立${initial.metadata.coverage?.water?.orphanArrows}`);failed=true}
 const pkg=JSON.parse(fs.readFileSync(path.join(root,"package.json"),"utf8"));const conf=JSON.parse(fs.readFileSync(path.join(root,"src-tauri/tauri.conf.json"),"utf8"));const releaseConf=JSON.parse(fs.readFileSync(path.join(root,"src-tauri/tauri.release.conf.json"),"utf8"));const cargo=fs.readFileSync(path.join(root,"src-tauri/Cargo.toml"),"utf8");const cargoVersion=cargo.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 if(new Set([pkg.version,conf.version,cargoVersion]).size!==1){console.error(`版本号未同步：package=${pkg.version} tauri=${conf.version} cargo=${cargoVersion}`);failed=true}
 const [,minor="0"]=pkg.version.split(".");const edition=`v${String(Number(minor)).padStart(3,"0")}`;const rust=fs.readFileSync(path.join(root,"src-tauri/src/lib.rs"),"utf8");if(!rust.includes(`edition: "${edition}"`)){console.error(`桌面版本名称未同步：应为${edition}`);failed=true}
@@ -43,8 +48,13 @@ if(!app.includes("v050Undo")||!app.includes("v050Redo")||!app.includes("v050Reco
 if(!app.includes("v050TogglePanel")||!css.includes(".workspace.focus-map")||!css.includes(".workspace.left-collapsed")||!css.includes(".workspace.right-collapsed")){console.error("v0.5.0侧栏折叠或专注地图模式缺失");failed=true}
 if(!app.includes("v050SetupRelationMenuPortal")||!app.includes("v050PositionRelationMenu")||!css.includes(".v050-relation-menu-portal")){console.error("v0.5.0关系详细筛选菜单防裁切逻辑缺失");failed=true}
 if(!app.includes("V050_TEXT_SCALE_KEY")||!app.includes("v050ApplyTextScale")||!app.includes("v050InjectTextScaleControl")||!css.includes("全局可读字号与高分辨率屏幕适配")||!css.includes(".v050-text-scale-control")){console.error("v0.5.0全局可读字号或字号切换逻辑缺失");failed=true}
+
+if(!app.includes("drawWaterPaths")||!app.includes("waterPathAtClient")||!app.includes("waterPathDetailCard")||!app.includes("migrateWorkspaceObjects")){console.error("v0.5.1线型水系渲染、交互、档案或数据迁移逻辑缺失");failed=true}
+if(!css.includes("v0.5.1 · 线型水系")||!css.includes(".water-path-card")||!css.includes(".water-path-tooltip")){console.error("v0.5.1线型水系样式缺失");failed=true}
+if(!app.includes('type==="error"?4800:2400')||!app.includes('while(els.toastHost.children.length>3)')||!css.includes('pointer-events:none')){console.error("v0.5.0特大字号与非阻挡通知修复发生回退");failed=true}
+if(pkg.scripts?.["import:master"]!=="node scripts/import-master.mjs"){console.error("v0.5.1母表导入命令缺失");failed=true}
 const versionMeta=JSON.parse(fs.readFileSync(path.join(root,"VERSION.json"),"utf8"));if(versionMeta.semver!==pkg.version||versionMeta.app_version!==edition){console.error(`VERSION.json未同步：${versionMeta.app_version} / ${versionMeta.semver}`);failed=true}
 const publishWorkflow=fs.readFileSync(path.join(root,"..",".github","workflows","publish-desktop-windows-update.yml"),"utf8");if(!publishWorkflow.includes("Sync stable update feed")||!publishWorkflow.includes("updates/latest.json")){console.error("稳定更新源同步工作流缺失");failed=true}
 for(const name of fs.readdirSync(root)){if(/\.key$|PRIVATE_KEY|password/i.test(name)){console.error(`仓库根目录疑似包含密钥：${name}`);failed=true}}
 const lock=fs.readFileSync(path.join(root,"package-lock.json"),"utf8");if(lock.includes("applied-caas-gateway")||lock.includes("artifactory/api/npm")){console.error("package-lock仍包含内部依赖地址");failed=true}
-console.log(`校验：${initial.objects.length}个对象，程序${edition} / ${pkg.version}，数据版本${initial.metadata.dataVersion}`);if(failed)process.exit(1);
+console.log(`校验：${initial.objects.length}个对象，程序${edition} / ${pkg.version}，数据版本${initial.metadata.dataVersion}`);console.log(`水系路径校验：通过（${waterPaths.length}段，${initial.metadata.waterArrowCellCount}个箭头格，孤立箭头${initial.metadata.coverage?.water?.orphanArrows||0}）`);if(failed)process.exit(1);
