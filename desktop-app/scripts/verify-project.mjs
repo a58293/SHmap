@@ -4,9 +4,48 @@ const root=process.cwd();
 const required=["index.html","src/desktop-bootstrap.js","public/app/app.js","public/app/data.js","src-tauri/src/lib.rs","src-tauri/tauri.conf.json","src-tauri/tauri.release.conf.json","scripts/set-version.mjs","scripts/verify-release-tag.mjs","scripts/release.ps1","scripts/import-master.mjs",".npmrc"];
 let failed=false;
 for(const file of required){if(!fs.existsSync(path.join(root,file))){console.error(`缺少：${file}`);failed=true}}
-const data=fs.readFileSync(path.join(root,"public/app/data.js"),"utf8");const marker="window.SHJ_INITIAL_DATA=";const start=data.indexOf(marker)+marker.length;let depth=0,inString=false,escape=false,end=-1;for(let i=start;i<data.length;i++){const c=data[i];if(inString){if(escape)escape=false;else if(c==="\\")escape=true;else if(c==='"')inString=false;continue}if(c==='"'){inString=true;continue}if(c==='{')depth++;if(c==='}'){depth--;if(depth===0){end=i+1;break}}}const initial=JSON.parse(data.slice(start,end));if(initial.objects.length!==617){console.error(`对象数量异常：${initial.objects.length}`);failed=true}const ids=new Set(initial.objects.map(x=>x.id));if(ids.size!==initial.objects.length){console.error("对象ID重复");failed=true}
+function parseAssignedJson(source, marker) {
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex < 0) throw new Error(`缺少数据标记：${marker}`);
 
-const waterMarker="window.SHJ_WATER_PATHS=";const waterStart=data.indexOf(waterMarker)+waterMarker.length;const waterEnd=data.indexOf(";\nwindow.SHJ_ORIGINAL_LIBRARY",waterStart);const waterPaths=JSON.parse(data.slice(waterStart,waterEnd));
+  let start = markerIndex + marker.length;
+  while (/\s/.test(source[start] || "")) start += 1;
+
+  const opener = source[start];
+  const closer = opener === "{" ? "}" : opener === "[" ? "]" : "";
+  if (!closer) throw new Error(`数据标记 ${marker} 后不是JSON对象或数组`);
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < source.length; i += 1) {
+    const char = source[i];
+    if (inString) {
+      if (escape) escape = false;
+      else if (char === "\\") escape = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === opener) depth += 1;
+    else if (char === closer) {
+      depth -= 1;
+      if (depth === 0) return JSON.parse(source.slice(start, i + 1));
+    }
+  }
+  throw new Error(`数据标记 ${marker} 对应的JSON没有闭合`);
+}
+
+const data=fs.readFileSync(path.join(root,"public/app/data.js"),"utf8");
+const initial=parseAssignedJson(data,"window.SHJ_INITIAL_DATA=");
+if(initial.objects.length!==617){console.error(`对象数量异常：${initial.objects.length}`);failed=true}
+const ids=new Set(initial.objects.map(x=>x.id));
+if(ids.size!==initial.objects.length){console.error("对象ID重复");failed=true}
+
+const waterPaths=parseAssignedJson(data,"window.SHJ_WATER_PATHS=");
 if(waterPaths.length!==79){console.error(`水系路径数量异常：${waterPaths.length}`);failed=true}
 if(waterPaths.some(path=>!path.id||!path.name||!Array.isArray(path.points)||path.points.length<2)){console.error("水系路径存在缺失名称、ID或节点不足");failed=true}
 if(initial.metadata.waterArrowCellCount!==118||initial.metadata.coverage?.water?.orphanArrows!==0){console.error(`水系箭头校验异常：箭头格${initial.metadata.waterArrowCellCount}，孤立${initial.metadata.coverage?.water?.orphanArrows}`);failed=true}
