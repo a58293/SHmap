@@ -2,8 +2,8 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v006",
-  "semver": "0.6.0",
-  "frontend_base": "v060",
+  "semver": "0.6.1",
+  "frontend_base": "v061",
   "data_version": "v125-r0001",
   "object_count": 617,
   "original_library_records": 4120,
@@ -17,5 +17,7 @@
   "hierarchy_fix": "v0.5.3 region overview and local bounds",
   "relation_line_fix": "v0.5.4 stable pan, viewport clipping, offscreen targets and relation cache",
   "relation_network": "v0.6.0 compact/full modes, directional bundling, offscreen aggregation and hover labels",
-  "ux_bundle": "v0.6.0 object focus, research/display view, image manager and delete impact preview"
+  "ux_bundle": "v0.6.0 object focus, research/display view, image manager and delete impact preview",
+  "relation_interaction": "v0.6.1 click-to-explain cards, wider hit areas, edge routing and persistent relation focus",
+  "toolbar_ux": "v0.6.1 responsive groups, More menu, delayed help tips and collapsible legend"
 }
