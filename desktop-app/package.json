@@ -1,7 +1,7 @@
 {
   "name": "shanhaijing-map-desktop",
   "private": true,
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,8 +10,8 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "verify": "node scripts/verify-project.mjs",
-    "import:master": "node scripts/import-master.mjs"
+    "verify": "node scripts/verify-project.mjs && node scripts/verify-v0.5.3.mjs",
+    "import:master": "node scripts/import-master-v053.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1"

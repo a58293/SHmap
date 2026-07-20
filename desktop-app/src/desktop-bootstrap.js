@@ -192,7 +192,19 @@ async function start(){
     if(bootInfo.snapshot)localStorage.setItem(STORAGE_KEY,bootInfo.snapshot);
   }
   window.SHJ_DESKTOP={active:isTauri,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
-  await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="/app/app.js";script.onload=resolve;script.onerror=()=>reject(new Error("无法加载地图主程序"));document.body.appendChild(script)});
+  if(!window.SHJ_INITIAL_DATA)throw new Error("地图数据未载入：public/app/data.js");
+  if(!window.__SHJ_APP_INSTANCE_ACTIVE__){
+    await new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[data-shj-main-app="1"]');
+      if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",()=>reject(new Error("无法加载地图主程序")),{once:true});return}
+      const script=document.createElement("script");
+      script.src="/app/app.js";
+      script.dataset.shjMainApp="1";
+      script.onload=resolve;
+      script.onerror=()=>reject(new Error("无法加载地图主程序"));
+      document.body.appendChild(script)
+    });
+  }
   setupNativeUi();
   scheduleAutomaticUpdateCheck();
   if(!isTauri)toast("当前为浏览器预览模式；SQLite与原生备份未启用。",true);

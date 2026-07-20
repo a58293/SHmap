@@ -1312,3 +1312,13 @@ html[data-ui-text-scale="large"] .region-tree-macro strong,
 html[data-ui-text-scale="large"] .hierarchy-detail-card p,
 html[data-ui-text-scale="large"] .hierarchy-object-list strong{font-size:var(--ui-font-small)}
 @media(max-width:900px){.hierarchy-macro-grid,.hierarchy-child-grid{grid-template-columns:1fr}}
+
+/* v0.5.3 · 单实例渲染与区域概览稳定性 */
+.map-viewport.region-overview-mode .tile{display:none!important}
+.map-viewport.region-overview-mode .tile-layer{pointer-events:none}
+.map-viewport:not(.region-overview-mode) .region-overview-label{display:none!important}
+.tile.hierarchy-region-dim,.precision-object-group.hierarchy-region-dim{opacity:1!important;filter:none!important}
+.tile.hierarchy-region-member .tile-card{box-shadow:none!important}
+.precision-object-group.hierarchy-region-member .precision-marker{filter:none!important}
+.region-overview-label{will-change:transform;contain:layout paint style}
+.map-viewport.light-camera-motion .region-overview-label{transition:none!important}

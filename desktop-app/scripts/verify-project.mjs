@@ -4,71 +4,43 @@ const root=process.cwd();
 const required=["index.html","src/desktop-bootstrap.js","public/app/app.js","public/app/data.js","src-tauri/src/lib.rs","src-tauri/tauri.conf.json","src-tauri/tauri.release.conf.json","scripts/set-version.mjs","scripts/verify-release-tag.mjs","scripts/release.ps1","scripts/import-master.mjs",".npmrc"];
 let failed=false;
 for(const file of required){if(!fs.existsSync(path.join(root,file))){console.error(`缺少：${file}`);failed=true}}
-function parseAssignedJson(source, marker) {
-  const markerIndex = source.indexOf(marker);
-  if (markerIndex < 0) throw new Error(`缺少数据标记：${marker}`);
-
-  let start = markerIndex + marker.length;
-  while (/\s/.test(source[start] || "")) start += 1;
-
-  const opener = source[start];
-  const closer = opener === "{" ? "}" : opener === "[" ? "]" : "";
-  if (!closer) throw new Error(`数据标记 ${marker} 后不是JSON对象或数组`);
-
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-  for (let i = start; i < source.length; i += 1) {
-    const char = source[i];
-    if (inString) {
-      if (escape) escape = false;
-      else if (char === "\\") escape = true;
-      else if (char === '"') inString = false;
-      continue;
-    }
-    if (char === '"') {
-      inString = true;
-      continue;
-    }
-    if (char === opener) depth += 1;
-    else if (char === closer) {
-      depth -= 1;
-      if (depth === 0) return JSON.parse(source.slice(start, i + 1));
-    }
-  }
-  throw new Error(`数据标记 ${marker} 对应的JSON没有闭合`);
-}
-
 const data=fs.readFileSync(path.join(root,"public/app/data.js"),"utf8");
-const initial=parseAssignedJson(data,"window.SHJ_INITIAL_DATA=");
-if(initial.objects.length!==617){console.error(`对象数量异常：${initial.objects.length}`);failed=true}
-const ids=new Set(initial.objects.map(x=>x.id));
-if(ids.size!==initial.objects.length){console.error("对象ID重复");failed=true}
+function extractAssignedJson(source, marker, { optional=false }={}){
+  const markerIndex=source.indexOf(marker);
+  if(markerIndex<0){
+    if(optional)return null;
+    throw new Error(`找不到数据标记：${marker}`);
+  }
+  let valueStart=markerIndex+marker.length;
+  while(valueStart<source.length&&/\s/.test(source[valueStart]))valueStart++;
+  const opener=source[valueStart];
+  const closer=opener==="{"?"}":opener==="["?"]":null;
+  if(!closer)throw new Error(`数据标记后的值不是JSON对象或数组：${marker}`);
+  let depth=0,inString=false,escape=false,end=-1;
+  for(let i=valueStart;i<source.length;i++){
+    const c=source[i];
+    if(inString){
+      if(escape)escape=false;
+      else if(c==="\\")escape=true;
+      else if(c==='"')inString=false;
+      continue;
+    }
+    if(c==='"'){inString=true;continue}
+    if(c===opener)depth++;
+    else if(c===closer){depth--;if(depth===0){end=i+1;break}}
+  }
+  if(end<0)throw new Error(`数据未闭合：${marker}`);
+  return JSON.parse(source.slice(valueStart,end));
+}
+const initial=extractAssignedJson(data,"window.SHJ_INITIAL_DATA=");
+if(initial.objects.length!==617){console.error(`对象数量异常：${initial.objects.length}`);failed=true}const ids=new Set(initial.objects.map(x=>x.id));if(ids.size!==initial.objects.length){console.error("对象ID重复");failed=true}
 
-const waterPaths=parseAssignedJson(data,"window.SHJ_WATER_PATHS=");
+const waterPaths=extractAssignedJson(data,"window.SHJ_WATER_PATHS=");
 if(waterPaths.length!==79){console.error(`水系路径数量异常：${waterPaths.length}`);failed=true}
 if(waterPaths.some(path=>!path.id||!path.name||!Array.isArray(path.points)||path.points.length<2)){console.error("水系路径存在缺失名称、ID或节点不足");failed=true}
 if(initial.metadata.waterArrowCellCount!==118||initial.metadata.coverage?.water?.orphanArrows!==0){console.error(`水系箭头校验异常：箭头格${initial.metadata.waterArrowCellCount}，孤立${initial.metadata.coverage?.water?.orphanArrows}`);failed=true}
-
-const hierarchy=parseAssignedJson(data,"window.SHJ_WORLD_HIERARCHY=");
-const hierarchyRegions=Array.isArray(hierarchy.regions)?hierarchy.regions:[];
-const hierarchyRegionIds=new Set(hierarchyRegions.map(region=>region.id));
-const hierarchyObjectIds=new Set(initial.objects.map(object=>object.id));
-if(!hierarchy.schemaVersion||hierarchy.world?.id!=="world-shanhaijing"||hierarchy.world?.type!=="world"){console.error("v0.5.2世界根节点或层级Schema缺失");failed=true}
-if(hierarchyRegionIds.size!==hierarchyRegions.length){console.error("v0.5.2区域ID重复");failed=true}
-if(!hierarchyRegions.some(region=>region.level===1)||!hierarchyRegions.some(region=>region.level===2)){console.error("v0.5.2世界大区或地图区域缺失");failed=true}
-for(const object of initial.objects){
-  const regionIds=Array.isArray(object.regionIds)?object.regionIds:[];
-  if(!object.primaryRegionId||!regionIds.length||!regionIds.includes(object.primaryRegionId)){console.error(`对象${object.id}缺少主要区域或多区域关系`);failed=true;break}
-  if(regionIds.some(id=>!hierarchyRegionIds.has(id))){console.error(`对象${object.id}引用不存在的区域`);failed=true;break}
-}
-for(const region of hierarchyRegions){
-  if(!region.id||region.type!=="region"||![1,2].includes(region.level)){console.error("v0.5.2区域结构异常");failed=true;break}
-  if((region.memberObjectIds||[]).some(id=>!hierarchyObjectIds.has(id))){console.error(`区域${region.id}引用不存在的对象`);failed=true;break}
-  if(region.level===2&&!hierarchyRegionIds.has(region.parentRegionId)){console.error(`区域${region.id}缺少有效上级大区`);failed=true;break}
-}
-if(hierarchy.world?.objectCount!==initial.objects.length||hierarchy.stats?.assignedObjectCount+hierarchy.stats?.unassignedObjectCount!==initial.objects.length){console.error("v0.5.2层级对象统计与母表不一致");failed=true}
-if(initial.metadata.schemaVersion!=="desktop-1.2-world-hierarchy"){console.error(`v0.5.2数据Schema异常：${initial.metadata.schemaVersion}`);failed=true}
+const hierarchy=extractAssignedJson(data,"window.SHJ_WORLD_HIERARCHY=",{optional:true});
+if(!hierarchy?.world||!Array.isArray(hierarchy?.regions)){console.error("世界／区域层级数据缺失");failed=true}else{const regionIds=new Set(hierarchy.regions.map(region=>region.id));if(regionIds.size!==hierarchy.regions.length){console.error("世界区域ID重复");failed=true}for(const region of hierarchy.regions){if(!region.id||!region.name){console.error("世界区域缺少ID或名称");failed=true;break}for(const objectId of region.memberObjectIds||[]){if(!ids.has(objectId)){console.error(`区域${region.name}引用不存在对象：${objectId}`);failed=true;break}}}}
 const pkg=JSON.parse(fs.readFileSync(path.join(root,"package.json"),"utf8"));const conf=JSON.parse(fs.readFileSync(path.join(root,"src-tauri/tauri.conf.json"),"utf8"));const releaseConf=JSON.parse(fs.readFileSync(path.join(root,"src-tauri/tauri.release.conf.json"),"utf8"));const cargo=fs.readFileSync(path.join(root,"src-tauri/Cargo.toml"),"utf8");const cargoVersion=cargo.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 if(new Set([pkg.version,conf.version,cargoVersion]).size!==1){console.error(`版本号未同步：package=${pkg.version} tauri=${conf.version} cargo=${cargoVersion}`);failed=true}
 const [,minor="0"]=pkg.version.split(".");const edition=`v${String(Number(minor)).padStart(3,"0")}`;const rust=fs.readFileSync(path.join(root,"src-tauri/src/lib.rs"),"utf8");if(!rust.includes(`edition: "${edition}"`)){console.error(`桌面版本名称未同步：应为${edition}`);failed=true}
@@ -95,7 +67,7 @@ if(!app.includes("setupV044RelationNavigation")||!app.includes("v029RelationHit"
 if(!css.includes("v0.4.4 · 博物志可读排版与可点击关系线")||!css.includes(".relation-legend")||!css.includes(".relation-line-tooltip")||!fs.readFileSync(path.join(root,"index.html"),"utf8").includes("relationLegend")){console.error("v0.4.4关系图例或博物志排版样式缺失");failed=true}
 const indexHtml=fs.readFileSync(path.join(root,"index.html"),"utf8");
 if(!app.includes("updateV044HighZoomLocator")||!app.includes("drawV044LocationWatermark")||!indexHtml.includes("highZoomLocator")||!css.includes(".high-zoom-locator")){console.error("v0.4.4高倍缩放定位辅助缺失");failed=true}
-if(!indexHtml.includes('id="layerEmpty" />')||!app.includes("uiSchemaVersion:52")||!app.includes('message:"已点击地图空白区域"')||!app.includes('message:"已通过右键退出地块聚焦"')){console.error("v0.4.4空白地块默认关闭或聚焦退出逻辑缺失");failed=true}
+if(!indexHtml.includes('id="layerEmpty" />')||!(/uiSchemaVersion:(?:5[0-9]|[6-9][0-9])/.test(app))||!app.includes('message:"已点击地图空白区域"')||!app.includes('message:"已通过右键退出地块聚焦"')){console.error("v0.4.4空白地块默认关闭或聚焦退出逻辑缺失");failed=true}
 if(!app.includes("undoLastBrushAction")||!app.includes("queueBrushRightClick")||!app.includes("cancelBrushModeAndClearTraces")||!indexHtml.includes("cancelBrushModeBtn")||!app.includes('scopeLabel:`画笔采集 ${entries.length} 个地块`')){console.error("v0.4.4画笔撤回、清空、取消或分类博物志逻辑缺失");failed=true}
 if(!app.includes("v045RelationThemes")||!app.includes("v045RelationCatalog")||!app.includes("v045RelationCounts")||!app.includes("relationEvidenceFilter")||!indexHtml.includes("data-relation-count")||!indexHtml.includes("data-relation-evidence")){console.error("v0.4.5关系多标签分类或证据筛选逻辑缺失");failed=true}
 if(!app.includes("openIdentityTagExplorer")||!app.includes("findIdentityTagMatches")||!app.includes("data-identity-tag-value")||!css.includes(".identity-tag-explorer")||!css.includes(".identity-tag-button")){console.error("v0.4.5可点击标签与同标签检索逻辑缺失");failed=true}
@@ -108,15 +80,14 @@ if(!app.includes("v050TogglePanel")||!css.includes(".workspace.focus-map")||!css
 if(!app.includes("v050SetupRelationMenuPortal")||!app.includes("v050PositionRelationMenu")||!css.includes(".v050-relation-menu-portal")){console.error("v0.5.0关系详细筛选菜单防裁切逻辑缺失");failed=true}
 if(!app.includes("V050_TEXT_SCALE_KEY")||!app.includes("v050ApplyTextScale")||!app.includes("v050InjectTextScaleControl")||!css.includes("全局可读字号与高分辨率屏幕适配")||!css.includes(".v050-text-scale-control")){console.error("v0.5.0全局可读字号或字号切换逻辑缺失");failed=true}
 
-if(!app.includes("v052Hierarchy")||!app.includes("v052RenderRegionSidebar")||!app.includes("v052RenderRegionDetails")||!app.includes("v052RegionFocusContext")||!app.includes("setupV052Features")){console.error("v0.5.2世界／区域／地点层级逻辑缺失");failed=true}
-if(!indexHtml.includes("regionIndexModeBtn")||!indexHtml.includes("indexResultTitle")||!css.includes("v0.5.2 · 世界／区域／地点层级")||!css.includes(".region-tree")||!css.includes(".hierarchy-detail-card")){console.error("v0.5.2区域目录、详情或样式缺失");failed=true}
-if(!app.includes("selectedRegionId:state.selectedRegionId")||!app.includes("expandedRegionIds:[...(state.expandedRegionIds||[])]")||!app.includes("hierarchy-region-dim")){console.error("v0.5.2区域状态保存或聚焦表现缺失");failed=true}
+if(!app.includes("HIERARCHY_SEED")||!app.includes("renderRegionOverviewLayer")||!app.includes("setupV052Features")||!indexHtml.includes("objectIndexModeBtn")||!indexHtml.includes("regionIndexModeBtn")||!css.includes("region-overview")){console.error("v0.5.2世界／区域／地点层级逻辑缺失");failed=true}
+if(!fs.existsSync(path.join(root,"vite.config.js"))||!fs.existsSync(path.join(root,"scripts","v053-core.mjs"))||!fs.existsSync(path.join(root,"src","v053-entry.js"))){console.error("v0.5.3稳定修复文件缺失");failed=true}
 if(!app.includes("drawWaterPaths")||!app.includes("waterPathAtClient")||!app.includes("waterPathDetailCard")||!app.includes("migrateWorkspaceObjects")){console.error("v0.5.1线型水系渲染、交互、档案或数据迁移逻辑缺失");failed=true}
 if(!css.includes("v0.5.1 · 线型水系")||!css.includes(".water-path-card")||!css.includes(".water-path-tooltip")){console.error("v0.5.1线型水系样式缺失");failed=true}
 if(!app.includes('type==="error"?4800:2400')||!app.includes('while(els.toastHost.children.length>3)')||!css.includes('pointer-events:none')){console.error("v0.5.0特大字号与非阻挡通知修复发生回退");failed=true}
-if(pkg.scripts?.["import:master"]!=="node scripts/import-master.mjs"){console.error("v0.5.1母表导入命令缺失");failed=true}
+if(pkg.scripts?.["import:master"]!=="node scripts/import-master-v053.mjs"){console.error("v0.5.3母表导入归一化命令缺失");failed=true}
 const versionMeta=JSON.parse(fs.readFileSync(path.join(root,"VERSION.json"),"utf8"));if(versionMeta.semver!==pkg.version||versionMeta.app_version!==edition){console.error(`VERSION.json未同步：${versionMeta.app_version} / ${versionMeta.semver}`);failed=true}
 const publishWorkflow=fs.readFileSync(path.join(root,"..",".github","workflows","publish-desktop-windows-update.yml"),"utf8");if(!publishWorkflow.includes("Sync stable update feed")||!publishWorkflow.includes("updates/latest.json")){console.error("稳定更新源同步工作流缺失");failed=true}
 for(const name of fs.readdirSync(root)){if(/\.key$|PRIVATE_KEY|password/i.test(name)){console.error(`仓库根目录疑似包含密钥：${name}`);failed=true}}
 const lock=fs.readFileSync(path.join(root,"package-lock.json"),"utf8");if(lock.includes("applied-caas-gateway")||lock.includes("artifactory/api/npm")){console.error("package-lock仍包含内部依赖地址");failed=true}
-console.log(`校验：${initial.objects.length}个对象，程序${edition} / ${pkg.version}，数据版本${initial.metadata.dataVersion}`);console.log(`水系路径校验：通过（${waterPaths.length}段，${initial.metadata.waterArrowCellCount}个箭头格，孤立箭头${initial.metadata.coverage?.water?.orphanArrows||0}）`);console.log(`世界层级校验：通过（${hierarchy.stats?.macroRegionCount||0}个世界大区，${hierarchy.stats?.regionCount||0}个地图区域，未归区${hierarchy.stats?.unassignedObjectCount||0}）`);if(failed)process.exit(1);
+console.log(`校验：${initial.objects.length}个对象，程序${edition} / ${pkg.version}，数据版本${initial.metadata.dataVersion}`);console.log(`水系路径校验：通过（${waterPaths.length}段，${initial.metadata.waterArrowCellCount}个箭头格，孤立箭头${initial.metadata.coverage?.water?.orphanArrows||0}）`);console.log(`世界层级校验：通过（${hierarchy?.stats?.macroRegionCount||0}个世界大区，${hierarchy?.stats?.regionCount||0}个地图区域）`);if(failed)process.exit(1);
