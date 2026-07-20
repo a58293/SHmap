@@ -1,15 +1,15 @@
 {
-  "version": "0.5.2",
-  "notes": "# 山海经原典地图研究台 v0.5.2\r\n\r\nv0.5.2 在 v0.5.1 线型水系版基础上，增加世界／区域／地点层级。当前目标是让内部成员快速理解全图结构，不实装游戏任务、区域等级、敌人、资源或气候生态内容。\r\n\r\n## 世界与区域层级\r\n\r\n- 建立固定世界根节点“山海经世界”。\r\n- 根据现有区域文字与坐标方位生成5个世界大区、266个地图区域。\r\n- 世界大区和地图区域均支持父子关系、中心、范围、成员对象和涉及经篇统计。\r\n- 区域环境字段 `environmentProfile` 与边界字段 `boundary` 已预留为空。\r\n- 区域分类不替代原有经篇分类。\r\n\r\n## 对象归属\r\n\r\n- 每个对象新增 `primaryRegionId`，用于默认区域、检索和层级路径。\r\n- 每个对象新增 `regionIds`，允许河流、山系和跨区对象关联多个区域。\r\n- 未分区对象会进入待归区结构，不会丢失或隐藏。\r\n- 母表导入时会重新生成区域归属、世界层级和区域统计。\r\n\r\n## 界面与导航\r\n\r\n- 左侧索引新增“对象／世界·区域”切换。\r\n- 世界大区支持折叠，地图区域支持关键词检索。\r\n- 点击世界、大区或区域会自动缩放到对应范围。\r\n- 区域聚焦会保留本区域对象并降低其他区域干扰。\r\n- 右侧新增世界详情与区域详情，显示上级区域、成员数量、涉及经篇和成员地点。\r\n- 地点详情增加“世界 > 大区 > 区域 > 地块 > 地点”可点击路径。\r\n- 低倍缩放优先显示区域名称，高倍缩放恢复具体地点。\r\n\r\n## 数据与水系\r\n\r\n- 地图对象：617。\r\n- 原文记录：4120。\r\n- 世界大区：5。\r\n- 地图区域：266。\r\n- 未归区对象：0。\r\n- 线型水系：79段。\r\n- 河流箭头格：118。\r\n- 数据版本：v125-r0001。\r\n\r\n## 校验结果\r\n\r\n```text\r\n校验：617个对象，程序v005 / 0.5.2，数据版本v125-r0001\r\n水系路径校验：通过（79段，118个箭头格，孤立箭头0）\r\n世界层级校验：通过（5个世界大区，266个地图区域，未归区0）\r\n```\r\n\r\n正式发布标签：`desktop-v0.5.2`。",
-  "pub_date": "2026-07-19T08:05:07.769Z",
+  "version": "0.5.3",
+  "notes": "# 山海经原典地图研究台 v0.5.3\r\n\r\nv0.5.3以v0.5.2世界／区域／地点层级版为基线，修复区域概览的白色碎块、伪边界、标签重建和跨区水系范围膨胀问题，并重新区分水系方向证据与非水系线对象。\r\n\r\n## 区域概览\r\n\r\n- 区域概览不再绘制100里格逐格遮罩。\r\n- 拖动和缩放时保留搜索与聚焦反馈。\r\n- 区域标签复用DOM节点，不再每帧整体销毁重建。\r\n- 退出区域概览后恢复普通操作提示。\r\n- 无真实边界的区域不再显示实心椭圆。\r\n\r\n## 层级与范围\r\n\r\n- 区域名称使用严格分隔规则，减少碎片化区域。\r\n- 模块、路径、异文、候选和项目描述不再默认作为主要地理区域。\r\n- 区域范围按成员对象的点位或自身面积计算；跨区河流整条路径不再扩张每个区域。\r\n- 世界大区仍是项目坐标导航层，不作为《山海经》原文明载边界。\r\n\r\n## 线型对象与水系\r\n\r\n- 边界、山系、路线、关系线采用不同线型和颜色。\r\n- 只有明确标为有向的非水系线才显示箭头。\r\n- 水系方向拆分为原文方向、拓扑方向、项目排版与未定。\r\n- G3项目示意路径不显示确定流向箭头。\r\n\r\n正式版本：`0.5.3`。",
+  "pub_date": "2026-07-20T04:18:11.431Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkNxQTN0M2NINGFBbFRhVlNMa2pBZXJBQ3o1TkhHZkY3VmxNM3QrUmdkRVFUbTliL3dodHZFQzQySGJGQk93THpQYUttc2dUMW10T2VGeVRUNGJ6TVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDQ4MzA1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4yX3g2NC1zZXR1cC5leGUKWjdnY1IyMWFnYmpZVnFlaUUzdmFmRGRLdjhBNUh0Uit0ZERnc0UrQ3k5QmxRVzhpQ0ZvNGRLUlVIS0t0WXRpZmljeU1pOVRadWdUbDUycEpmdnZUQ0E9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482213935"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkVLc1hFZVN2SnhMbU1yMTdxVEV3dDBmWGE4Y3BLR0JpRUxwYzQrbDQxRFo1QXZuWWNqY2owRzh0U2dNc2R4REY3VTI2Um9pby9ISWJtb3BGL0NqTmdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTIxMDg5CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4zX3g2NC1zZXR1cC5leGUKbXhUYzcvOS9UTjI0M0FLNWlZSDVpTHEvazYvS2dBRlh6WmdJZ1hUUStRV3NXZ0VyOWluQTlON1pIMjYxZXI4elA0bTI4QnRZMVEyOGJCZkZ2dDU1QVE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/483044138"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkNxQTN0M2NINGFBbFRhVlNMa2pBZXJBQ3o1TkhHZkY3VmxNM3QrUmdkRVFUbTliL3dodHZFQzQySGJGQk93THpQYUttc2dUMW10T2VGeVRUNGJ6TVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDQ4MzA1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4yX3g2NC1zZXR1cC5leGUKWjdnY1IyMWFnYmpZVnFlaUUzdmFmRGRLdjhBNUh0Uit0ZERnc0UrQ3k5QmxRVzhpQ0ZvNGRLUlVIS0t0WXRpZmljeU1pOVRadWdUbDUycEpmdnZUQ0E9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/482213935"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkVLc1hFZVN2SnhMbU1yMTdxVEV3dDBmWGE4Y3BLR0JpRUxwYzQrbDQxRFo1QXZuWWNqY2owRzh0U2dNc2R4REY3VTI2Um9pby9ISWJtb3BGL0NqTmdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTIxMDg5CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNS4zX3g2NC1zZXR1cC5leGUKbXhUYzcvOS9UTjI0M0FLNWlZSDVpTHEvazYvS2dBRlh6WmdJZ1hUUStRV3NXZ0VyOWluQTlON1pIMjYxZXI4elA0bTI4QnRZMVEyOGJCZkZ2dDU1QVE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/483044138"
     }
   }
 }
