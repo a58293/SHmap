@@ -1322,3 +1322,27 @@ html[data-ui-text-scale="large"] .hierarchy-object-list strong{font-size:var(--u
 .precision-object-group.hierarchy-region-member .precision-marker{filter:none!important}
 .region-overview-label{will-change:transform;contain:layout paint style}
 .map-viewport.light-camera-motion .region-overview-label{transition:none!important}
+
+/* v0.5.4 · 关系线拖动稳定与视口内裁切 */
+.map-viewport.relation-line-hover { cursor: pointer; }
+
+
+/* v0.6.0 · 关系网络与浏览体验整合 */
+.v060-relation-display{display:flex;align-items:center;gap:4px;padding-left:6px;border-left:1px solid rgba(118,111,91,.22)}
+.v060-relation-display button{height:30px;padding:0 9px;border:1px solid #d7cfbd;border-radius:7px;background:#fffdf7;color:#40584f;font-size:11px;font-weight:800;white-space:nowrap}
+.v060-relation-display button.active{background:#185e4d;color:#fff;border-color:#185e4d;box-shadow:0 3px 10px rgba(25,91,74,.16)}
+.v060-relation-group{position:fixed;right:24px;bottom:74px;z-index:190;width:min(360px,calc(100vw - 48px));max-height:58vh;background:#fffdf7;border:1px solid #d6cebd;border-radius:14px;box-shadow:0 18px 48px rgba(28,45,39,.24);overflow:hidden}
+.v060-relation-group.hidden{display:none}
+.v060-relation-group header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e3dccd;background:#f7f3e8}
+.v060-relation-group header div{display:flex;flex-direction:column;gap:2px}.v060-relation-group header span{font-size:10px;letter-spacing:.14em;color:#9b654d}.v060-relation-group header strong{font-size:15px;color:#244d40}
+.v060-relation-group header button{border:0;background:transparent;font-size:22px;color:#725f52}.v060-relation-group main{display:grid;gap:6px;padding:10px;max-height:44vh;overflow:auto}
+.v060-relation-group main button{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #e1d9c8;background:#fff;border-radius:10px;padding:9px 10px}.v060-relation-group main button:hover{border-color:#1f6d5a;background:#f0f7f3}
+.v060-relation-group main i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#e7f1ed;color:#1c6c59;font-style:normal;font-weight:900}.v060-relation-group main span{display:flex;flex-direction:column}.v060-relation-group main small{color:#7d827d;margin-top:2px}
+.v060-image-manager{display:grid;grid-template-columns:150px 1fr 1fr;gap:10px;align-items:start;padding:12px;border:1px solid #ddd5c4;border-radius:12px;background:#faf7ef;margin-top:-3px}
+.v060-image-preview{grid-row:1/4;width:150px;aspect-ratio:4/3;border:1px dashed #bcb4a3;border-radius:10px;background:#f0eee7;display:grid;place-items:center;overflow:hidden;color:#8a8376;font-weight:800}.v060-image-preview img{width:100%;height:100%;object-fit:cover}
+.v060-image-actions{grid-column:2/4;display:flex;gap:8px}.v060-image-actions button{border:1px solid #c9c0ad;background:#fffdf7;border-radius:8px;padding:8px 12px;font-weight:800;color:#305548}.v060-image-actions button:last-child{color:#9b4739}
+.v060-image-manager .field{margin:0}.v060-image-manager>p{grid-column:2/4;margin:0;color:#777164;font-size:11px;line-height:1.5}
+.v060-delete-impact{grid-column:1/-1;padding:10px 12px;border:1px solid #ddc5a8;border-radius:10px;background:#fff8e9;color:#6c5132;display:flex;flex-direction:column;gap:4px}.v060-delete-impact strong{font-size:13px}.v060-delete-impact span{font-size:11px}
+.v060-object-focus .tile:not(.selected),.v060-object-focus .precision-object-group:not(.selected){opacity:.18!important;filter:saturate(.55)!important;transition:opacity .16s ease}.v060-object-focus .region-overview-label{opacity:.24!important}.v060-object-focus .tile.selected{opacity:1!important;filter:none!important;z-index:20}
+.v060-display-view .left-panel,.v060-display-view .right-panel{background:rgba(250,248,241,.92)}.v060-display-view .tile-change-badge,.v060-display-view .search-highlight-summary,.v060-display-view .precision-mode-badge{display:none!important}.v060-display-view .map-guide{opacity:.55}
+@media(max-width:1300px){.v060-relation-display{max-width:360px;overflow:auto}.v060-image-manager{grid-template-columns:120px 1fr}.v060-image-preview{width:120px}.v060-image-actions,.v060-image-manager>p{grid-column:2}.v060-image-manager .field{grid-column:2}}

@@ -1,6 +1,6 @@
 [package]
 name = "shj-map-desktop"
-version = "0.5.3"
+version = "0.6.0"
 description = "山海经原典地图研究台桌面版"
 authors = ["Lumen Auralis"]
 edition = "2021"
@@ -13,7 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-log = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-updater = "2"

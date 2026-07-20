@@ -526,10 +526,81 @@ fn open_data_directory(state: tauri::State<'_, AppState>) -> Result<(), String> 
 }
 
 
+
+#[tauri::command]
+fn save_object_image(
+    app: AppHandle,
+    object_id: String,
+    bytes: Vec<u8>,
+    extension: Option<String>,
+) -> Result<String, String> {
+    if bytes.is_empty() {
+        return Err("图片内容为空".into());
+    }
+    if bytes.len() > 12 * 1024 * 1024 {
+        return Err("图片超过12MB限制".into());
+    }
+    let safe_id: String = object_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if safe_id.is_empty() {
+        return Err("对象ID无效".into());
+    }
+    let ext = extension
+        .unwrap_or_else(|| "webp".into())
+        .to_ascii_lowercase();
+    let ext = match ext.as_str() {
+        "png" => "png",
+        "jpg" | "jpeg" => "jpg",
+        _ => "webp",
+    };
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("无法定位程序数据目录：{e}"))?
+        .join("images")
+        .join("objects");
+    fs::create_dir_all(&dir).map_err(|e| format!("无法创建图片目录：{e}"))?;
+    for old_ext in ["webp", "png", "jpg"] {
+        let old = dir.join(format!("{safe_id}.{old_ext}"));
+        if old.exists() {
+            let _ = fs::remove_file(old);
+        }
+    }
+    let target = dir.join(format!("{safe_id}.{ext}"));
+    fs::write(&target, bytes).map_err(|e| format!("无法写入图片：{e}"))?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn remove_object_image(app: AppHandle, object_id: String) -> Result<(), String> {
+    let safe_id: String = object_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if safe_id.is_empty() {
+        return Ok(());
+    }
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("无法定位程序数据目录：{e}"))?
+        .join("images")
+        .join("objects");
+    for ext in ["webp", "png", "jpg"] {
+        let file = dir.join(format!("{safe_id}.{ext}"));
+        if file.exists() {
+            fs::remove_file(file).map_err(|e| format!("无法删除图片：{e}"))?;
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn app_version() -> AppVersionInfo {
     AppVersionInfo {
-        edition: "v005",
+        edition: "v006",
         version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }
@@ -674,7 +745,7 @@ pub fn run() {
             app.manage(PendingUpdate(Mutex::new(None)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![bootstrap_workspace,save_workspace,create_backup,list_backups,restore_backup,storage_status,check_database,open_data_directory,app_version,publish_patch_to_github,check_for_update,install_update])
+        .invoke_handler(tauri::generate_handler![bootstrap_workspace,save_workspace,create_backup,list_backups,restore_backup,storage_status,check_database,open_data_directory,save_object_image,remove_object_image,app_version,publish_patch_to_github,check_for_update,install_update])
         .run(tauri::generate_context!())
         .expect("山海经原典地图研究台启动失败");
 }
