@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v006 · 0.6.1</title>
+  <title>山海经原典地图研究台 · 桌面版 v007 · 0.7.0</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v006 · 0.6.1</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v007 · 0.7.0</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -66,6 +66,7 @@
           <label><input type="checkbox" id="layerAreas" checked /> 面积与作用域</label>
           <label><input type="checkbox" id="layerTerrain" checked /> 高倍率彩色地形</label>
           <label><input type="checkbox" id="layerRivers" checked /> 河流与线型对象</label>
+          <label title="依据周边地块类型与真实水系走向生成淡墨山水纹理"><input type="checkbox" id="layerEnvironment" checked /> 山水环境纹理</label>
           <label><input type="checkbox" id="layerEmpty" /> 空白地块</label>
           <label><input type="checkbox" id="layerChanges" checked /> 本轮更改标记</label>
         </div>
@@ -137,6 +138,7 @@
         <div id="mapViewport" class="map-viewport">
           <canvas id="worldCanvas"></canvas>
           <div id="tileLayer" class="tile-layer"></div>
+          <canvas id="overviewFogCanvas" class="overview-fog-canvas" aria-hidden="true"></canvas>
           <canvas id="brushTraceCanvas" class="brush-trace-canvas" aria-hidden="true"></canvas>
           <div id="mapTooltip" class="map-tooltip hidden"></div>
           <div id="precisionModeBadge" class="precision-mode-badge hidden"><strong>10里彩色精细地图</strong><span>真实里坐标 · 地貌底色 · 水系叠加 · 路径流向</span></div>

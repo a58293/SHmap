@@ -1392,3 +1392,465 @@ html.v061-ui-ready .v050-mode-actions > :is(#v050BookmarkAdd,#v050BookmarkOpen,#
 .v050-mode-bar:not(.v061-relation-active):not([data-mode="relation"]) .v050-relation-depth,
 .v050-mode-bar:not(.v061-relation-active):not([data-mode="relation"]) .v060-relation-display{display:none!important}
 .v050-mode-bar.v061-relation-active .v060-relation-display{flex-wrap:wrap;max-width:none;overflow:visible}
+
+
+/* ==========================================================================\n   v0.6.2 玉简山海视觉系统\n   暖宣纸、墨玉、青铜与低饱和水色；不改变数据与交互结构。\n   ========================================================================== */
+:root{
+  --paper:#efe7d7;--paper-2:#f8f3e8;--paper-3:#ded3bf;--ink:#27362f;--muted:#746f62;
+  --jade:#285f55;--jade-dark:#143f39;--jade-soft:#dce9e1;--cinnabar:#a65342;--gold:#b08a45;
+  --line:#d3c5aa;--line-strong:#b9a67e;--river:#3f8d98;
+  --shadow:0 12px 34px rgba(47,43,33,.12);--shadow-soft:0 6px 18px rgba(47,43,33,.075);
+}
+html.v062-yujian-theme body{background:#e6dcc9;color:var(--ink)}
+html.v062-yujian-theme body:before{
+  background:
+    radial-gradient(circle at 18% -8%,rgba(255,252,238,.86),transparent 38rem),
+    radial-gradient(circle at 92% 2%,rgba(40,95,85,.07),transparent 32rem),
+    repeating-linear-gradient(0deg,rgba(108,91,61,.018) 0 1px,transparent 1px 5px);
+}
+html.v062-yujian-theme .topbar{
+  height:82px;flex-basis:82px;padding:0 20px;border-top:3px solid #173f38;border-bottom:1px solid rgba(169,139,82,.42);
+  background:linear-gradient(180deg,rgba(252,248,239,.985),rgba(244,237,223,.965));
+  box-shadow:0 7px 24px rgba(56,47,32,.085);backdrop-filter:blur(18px) saturate(.85);
+}
+html.v062-yujian-theme .seal{
+  width:46px;height:56px;border-color:#a86d4b;color:#8d573d;background:#f8f0de;
+  box-shadow:inset 0 0 0 4px #f8f0de,inset 0 0 0 5px rgba(139,85,57,.28),0 4px 12px rgba(91,68,40,.12);
+}
+html.v062-yujian-theme .brand-kicker{color:#356a5e}html.v062-yujian-theme .brand-kicker i{background:#b18c4c}
+html.v062-yujian-theme .brand-copy h1{font-size:23px;letter-spacing:.025em;color:#26372f}
+html.v062-yujian-theme .brand-copy h1 small{color:#9b5a42;border-color:rgba(155,90,66,.38);background:rgba(255,250,240,.7)}
+html.v062-yujian-theme .top-center{padding:5px;gap:4px;border-color:rgba(159,137,95,.28);background:rgba(225,215,196,.56);box-shadow:inset 0 1px rgba(255,255,255,.75)}
+html.v062-yujian-theme .nav-tab{color:#706b5f;transition:.18s ease}
+html.v062-yujian-theme .nav-tab:hover{color:#244d45;background:rgba(255,252,243,.65)}
+html.v062-yujian-theme .nav-tab.active{background:linear-gradient(180deg,#24564d,#173f39);color:#fff6e3;border:1px solid rgba(185,143,66,.50);box-shadow:0 5px 14px rgba(20,63,57,.24),inset 0 1px rgba(255,255,255,.12)}
+html.v062-yujian-theme .btn,html.v062-yujian-theme .icon-btn,html.v062-yujian-theme .zoom-readout{
+  border-color:rgba(165,143,99,.45);background:linear-gradient(180deg,#fffaf0,#f1e8d7);box-shadow:0 2px 7px rgba(67,55,34,.06),inset 0 1px rgba(255,255,255,.9);transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+html.v062-yujian-theme .btn:hover,html.v062-yujian-theme .icon-btn:hover{transform:translateY(-1px);border-color:#6e8f7b;box-shadow:0 5px 14px rgba(41,79,68,.10)}
+html.v062-yujian-theme .btn.primary{background:linear-gradient(180deg,#2c685c,#17453e);border-color:#27594f;color:#fff7e8;box-shadow:0 5px 14px rgba(20,63,57,.24),inset 0 1px rgba(255,255,255,.14)}
+html.v062-yujian-theme .btn.danger{background:#fbf2ea;border-color:rgba(166,83,66,.55);color:#8e4638}
+html.v062-yujian-theme .workspace{grid-template-columns:278px minmax(520px,1fr) 352px;background:#e6dcc9}
+html.v062-yujian-theme .left-panel{
+  color:#eee4cf;border-right:1px solid rgba(185,144,71,.44);padding:17px 15px;
+  background:
+    radial-gradient(circle at 20% 0,rgba(91,139,117,.20),transparent 28rem),
+    linear-gradient(180deg,#173f39 0%,#10342f 55%,#0b2b28 100%);
+  box-shadow:inset -1px 0 rgba(255,255,255,.035),8px 0 24px rgba(25,43,37,.10);
+}
+html.v062-yujian-theme .left-panel .eyebrow{color:#c6a866}html.v062-yujian-theme .left-panel h2{color:#fff3db}
+html.v062-yujian-theme .left-panel .field>span,html.v062-yujian-theme .left-panel .section-label,html.v062-yujian-theme .left-panel .result-head{color:#c8c0ac}
+html.v062-yujian-theme .left-panel input,html.v062-yujian-theme .left-panel select,html.v062-yujian-theme .left-panel textarea,html.v062-yujian-theme .left-panel summary{
+  color:#f7eedb;border-color:rgba(215,190,139,.25);background:rgba(255,250,234,.075);box-shadow:inset 0 1px 2px rgba(0,0,0,.12)
+}
+html.v062-yujian-theme .left-panel input::placeholder{color:rgba(232,223,202,.55)}
+html.v062-yujian-theme .left-panel input:focus,html.v062-yujian-theme .left-panel select:focus,html.v062-yujian-theme .left-panel textarea:focus{border-color:#c4a15d;box-shadow:0 0 0 3px rgba(196,161,93,.12)}
+html.v062-yujian-theme .left-panel option{color:#27362f;background:#f7f1e5}
+html.v062-yujian-theme .left-panel .quick-nav,html.v062-yujian-theme .left-panel .layer-box,html.v062-yujian-theme .left-panel .map-stats,html.v062-yujian-theme .left-panel .index-mode-tabs{
+  border-color:rgba(213,186,132,.22);background:rgba(255,249,230,.065);box-shadow:inset 0 1px rgba(255,255,255,.035)
+}
+html.v062-yujian-theme .left-panel .chip-row button,html.v062-yujian-theme .left-panel .icon-btn,html.v062-yujian-theme .left-panel .object-sort-bar button{
+  color:#efe3ca;border-color:rgba(209,181,126,.30);background:rgba(255,249,230,.07);box-shadow:none
+}
+html.v062-yujian-theme .left-panel .chip-row button:hover{color:#ffe8a8;border-color:#c8a55e;background:rgba(200,165,94,.13)}
+html.v062-yujian-theme .left-panel .stat-item strong{color:#e5c477}html.v062-yujian-theme .left-panel .stat-item span{color:#bbb6aa}
+html.v062-yujian-theme .left-panel .result-head strong{color:#e5c477}
+html.v062-yujian-theme .left-panel .object-list-item{color:#eee5d2;border-bottom-color:rgba(231,215,181,.10)}
+html.v062-yujian-theme .left-panel .object-list-item small{color:#aea99d}
+html.v062-yujian-theme .left-panel .object-list-item:hover{background:rgba(110,155,132,.16)}
+html.v062-yujian-theme .left-panel .object-list-item.selected{background:linear-gradient(90deg,rgba(195,158,86,.20),rgba(95,145,121,.12));box-shadow:inset 3px 0 #d0aa61}
+html.v062-yujian-theme .left-panel .object-list-item em{color:#e1ae8a}
+html.v062-yujian-theme .left-panel ::-webkit-scrollbar-thumb{background:rgba(220,195,143,.25)}
+html.v062-yujian-theme .map-section{background:#e6dcc9}
+html.v062-yujian-theme .map-toolbar{
+  height:70px;padding:0 16px 0 18px;border-bottom-color:rgba(169,139,82,.35);
+  background:linear-gradient(180deg,rgba(251,247,237,.98),rgba(242,234,219,.97));box-shadow:0 4px 13px rgba(72,58,35,.055)
+}
+html.v062-yujian-theme .map-heading h2{color:#2e3d34;letter-spacing:.012em}
+html.v062-yujian-theme .map-breadcrumb button{color:#4c675d}
+html.v062-yujian-theme .map-viewport{background:#e9e1d1}
+html.v062-yujian-theme .map-viewport:before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.22;mix-blend-mode:multiply;
+  background:repeating-linear-gradient(3deg,rgba(111,91,61,.025) 0 1px,transparent 1px 8px),radial-gradient(ellipse at 24% 34%,rgba(255,255,255,.42),transparent 38%);
+}
+html.v062-yujian-theme .map-viewport:after{box-shadow:inset 0 0 92px rgba(73,57,32,.11),inset 0 0 0 1px rgba(143,116,70,.12)}
+html.v062-yujian-theme #worldCanvas{filter:saturate(.88) contrast(.99)}
+html.v062-yujian-theme .tile-face{
+  border-color:rgba(152,126,78,.52);border-radius:8px;background:linear-gradient(145deg,rgba(255,251,239,.92),rgba(239,228,207,.84));
+  box-shadow:0 5px 13px rgba(63,52,34,.07),inset 0 0 0 1px rgba(255,255,255,.52)
+}
+html.v062-yujian-theme .tile-face:before{background:linear-gradient(135deg,rgba(255,255,255,.48),transparent 38%),radial-gradient(circle at 92% 8%,rgba(173,138,73,.10),transparent 28%)}
+html.v062-yujian-theme .tile.selected .tile-face{border-color:#2d685c;box-shadow:0 8px 18px rgba(37,74,63,.13),inset 0 0 0 2px rgba(39,99,84,.22)}
+html.v062-yujian-theme .tile-content h3{color:#214b42;text-shadow:0 1px rgba(255,253,244,.9);letter-spacing:.01em}
+html.v062-yujian-theme .chapter-stripe{height:3px;background:linear-gradient(90deg,#315f55,#ba9149);opacity:.72}
+html.v062-yujian-theme .region-overview-label{
+  background:linear-gradient(145deg,rgba(255,251,239,.96),rgba(239,230,211,.91));border-color:rgba(166,139,87,.55);box-shadow:0 9px 23px rgba(64,53,35,.10)
+}
+html.v062-yujian-theme .map-tooltip,html.v062-yujian-theme .relation-card,html.v062-yujian-theme #v061RelationCard{
+  color:#f7efdc;background:linear-gradient(160deg,rgba(22,64,56,.98),rgba(11,45,41,.98));border:1px solid rgba(194,156,84,.55);box-shadow:0 16px 36px rgba(23,42,36,.28),inset 0 1px rgba(255,255,255,.08)
+}
+html.v062-yujian-theme .map-tooltip strong,html.v062-yujian-theme #v061RelationCard strong{color:#fff3d6}
+html.v062-yujian-theme .map-tooltip small,html.v062-yujian-theme .map-tooltip p{color:#d6d3c3}
+html.v062-yujian-theme .research-minimap{
+  border-color:rgba(155,125,69,.55);background:rgba(248,241,225,.94);box-shadow:0 10px 26px rgba(64,53,35,.16),inset 0 0 0 1px rgba(255,255,255,.55)
+}
+html.v062-yujian-theme .research-minimap>button{border-color:rgba(53,98,85,.28);background:rgba(252,247,236,.95);color:#285b50}
+html.v062-yujian-theme .detail-panel{
+  border-left-color:rgba(171,141,84,.40);background:
+  radial-gradient(circle at 100% 0,rgba(180,146,78,.08),transparent 22rem),linear-gradient(180deg,#faf6ed,#f2eadc);
+  box-shadow:inset 1px 0 rgba(255,255,255,.65),-8px 0 24px rgba(71,57,34,.06)
+}
+html.v062-yujian-theme .detail-head{border-bottom-color:rgba(166,139,87,.34);background:rgba(253,249,240,.78)}
+html.v062-yujian-theme .detail-ref{color:#9a6048}html.v062-yujian-theme .detail-head h2{color:#244b42}
+html.v062-yujian-theme .detail-location-card,html.v062-yujian-theme .detail-body>section,html.v062-yujian-theme .detail-body>article{
+  border-color:rgba(163,137,90,.33);background:rgba(255,251,242,.70);box-shadow:0 5px 15px rgba(72,58,35,.045)
+}
+html.v062-yujian-theme .detail-tabs{border-bottom-color:rgba(166,139,87,.30)}
+html.v062-yujian-theme .detail-tabs button.active{color:#245b50;border-bottom-color:#b28b48;background:linear-gradient(180deg,transparent,rgba(178,139,72,.08))}
+html.v062-yujian-theme .coord-status,html.v062-yujian-theme .camera-status,html.v062-yujian-theme .map-guide{
+  color:#3a5148;border-color:rgba(155,128,78,.32);background:rgba(250,245,233,.90);box-shadow:0 4px 12px rgba(69,55,34,.06)
+}
+html.v062-yujian-theme .precision-mode-badge,html.v062-yujian-theme .precision-terrain-legend{background:rgba(249,244,233,.92);border-color:rgba(165,139,91,.35)}
+html.v062-yujian-theme .v050-mode-bar{background:linear-gradient(180deg,rgba(248,243,232,.98),rgba(236,226,207,.97));border-color:rgba(163,137,91,.34)}
+html.v062-yujian-theme .v061-more-menu{background:#f7f0e2;border-color:rgba(157,129,77,.45);box-shadow:0 15px 34px rgba(55,45,29,.18)}
+html.v062-yujian-theme [data-v062-layer="environment"]{grid-column:1/-1;padding-top:4px;border-top:1px solid rgba(213,186,132,.15)}
+html.v062-yujian-theme .relation-legend{border-color:rgba(160,133,82,.40);background:rgba(249,244,233,.94);box-shadow:0 10px 24px rgba(66,52,31,.10)}
+html.v062-yujian-theme ::selection{background:rgba(47,102,87,.25)}
+html.v062-yujian-theme ::-webkit-scrollbar{width:9px;height:9px}html.v062-yujian-theme ::-webkit-scrollbar-track{background:rgba(121,102,69,.06)}html.v062-yujian-theme ::-webkit-scrollbar-thumb{background:rgba(83,105,90,.30);border:2px solid transparent;background-clip:padding-box;border-radius:999px}
+@media(max-width:1450px){html.v062-yujian-theme .workspace{grid-template-columns:250px minmax(500px,1fr) 320px}html.v062-yujian-theme .brand-copy h1{font-size:20px}}
+
+
+/* v0.7.0 首版美术素材接入：宣纸 / 墨玉 / 青铜 / 山海环境资产 */
+body{
+  background:
+    radial-gradient(circle at 8% 0, rgba(31,109,90,.08), transparent 26rem),
+    radial-gradient(circle at 100% 0, rgba(173,77,61,.05), transparent 24rem),
+    url('/assets/ui/shell/paper_texture_main.png') center/300px repeat,
+    var(--paper);
+}
+#app{
+  background:linear-gradient(180deg, rgba(255,253,248,.84), rgba(245,239,226,.58));
+}
+.topbar{
+  background:
+    url('/assets/ui/shell/mountain_header_wash.png') right 22px top 6px / 250px auto no-repeat,
+    url('/assets/ui/shell/paper_texture_detail.png') center/260px repeat,
+    linear-gradient(180deg, rgba(254,252,247,.97), rgba(245,239,227,.96));
+  border-top-color:#244a42;
+  box-shadow:0 6px 24px rgba(41,49,43,.08);
+}
+.brand-copy h1 small{background:rgba(255,250,239,.9)}
+.top-center{background:rgba(234,226,209,.9)}
+.nav-tab{
+  background:rgba(255,252,246,.46);
+  border:1px solid rgba(201,185,151,.55);
+}
+.nav-tab.active{
+  background:linear-gradient(180deg,#25544b,#163b35);
+  color:#fff;
+  border-color:#25544b;
+}
+.btn,.icon-btn,.zoom-readout,.type-filter-menu>summary,.research-minimap button,.spatial-focus-clear,.close-flip,
+.compare-status-bar button,.measure-readout button,.relation-legend button,.detail-tabs button,.index-mode-tabs button,
+.object-sort-bar select,.object-sort-bar button{
+  background-image:url('/assets/ui/shell/paper_texture_detail.png'),linear-gradient(180deg,#fffdf7,#f1eadb);
+  background-size:240px auto,auto;
+  background-repeat:repeat,no-repeat;
+  border-color:#c9b185;
+}
+.btn.primary,.brush-toggle.active,.nav-tab.active,.index-mode-tabs button.active,.detail-tabs button.active{
+  background-image:url('/assets/ui/shell/paper_texture_alt.png'),linear-gradient(180deg,#25564d,#173e38);
+  border-color:#21483f;
+  color:#fff;
+}
+.btn.secondary:hover,.icon-btn:hover,.zoom-readout:hover,.nav-tab:hover{border-color:#9f8350}
+.workspace{background:transparent;grid-template-columns:270px minmax(520px,1fr) 350px}
+.left-panel{
+  position:relative;
+  padding-top:128px;
+  background:
+    linear-gradient(180deg, rgba(10,40,36,.97), rgba(13,58,50,.97)),
+    url('/assets/ui/shell/paper_texture_alt.png') center/260px repeat;
+  color:#ece2ca;
+  border-right:1px solid rgba(184,156,96,.44);
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.03), 8px 0 24px rgba(23,37,33,.08);
+}
+.left-panel::before{
+  content:"";
+  position:absolute;
+  top:14px;left:14px;right:14px;height:108px;
+  border-radius:14px;
+  background:
+    linear-gradient(180deg,rgba(4,21,19,.2),rgba(4,21,19,.05)),
+    url('/assets/ui/navigation/compass_emblem.png') center/contain no-repeat;
+  border:1px solid rgba(184,156,96,.35);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+  pointer-events:none;
+}
+.left-panel::after{
+  content:"";
+  position:absolute;
+  left:8px;right:8px;bottom:12px;height:220px;
+  background:url('/assets/ui/navigation/nav_landscape_ornament.png') center bottom/contain no-repeat;
+  opacity:.82;pointer-events:none;
+}
+.left-panel > *{position:relative;z-index:1}
+.left-panel .panel-title-row,
+.left-panel .search-subview-head,
+.left-panel .quick-nav,
+.left-panel .layer-box,
+.left-panel .map-stats,
+.left-panel .result-head,
+.left-panel .object-sort-bar,
+.left-panel .search-highlight-summary,
+.left-panel .search-region-group,
+.left-panel .search-name-group,
+.left-panel .type-filter-menu,
+.left-panel .index-mode-tabs,
+.left-panel .filter-row,
+.left-panel .field{
+  color:#f2e8d4;
+}
+.left-panel h2,.left-panel .section-label,.left-panel .result-head span,.left-panel .field span,
+.left-panel .chip-row button,.left-panel .object-list-item strong,.left-panel .search-subview-head strong,
+.left-panel label,.left-panel small,.left-panel p,.left-panel .eyebrow,.left-panel .map-stats,
+.left-panel .result-head strong,.left-panel .index-mode-tabs button,.left-panel .object-sort-round,
+.left-panel .search-priority-head strong{
+  color:#f2e8d4;
+}
+.left-panel input,.left-panel select,.left-panel textarea,.left-panel details,
+.left-panel .object-sort-bar select,
+.left-panel .type-filter-menu>summary,.left-panel .search-tile-hit,.left-panel .search-name-hit,
+.left-panel .object-list-item,.left-panel .chip-row button,.left-panel .quick-nav button,
+.left-panel .layer-box label,.left-panel .search-highlight-summary,
+.left-panel .search-region-group,.left-panel .search-name-group,.left-panel .type-filter-tree,
+.left-panel .field input,.left-panel .field select{
+  background-color:rgba(255,251,243,.08);
+  color:#f4ebda;
+  border-color:rgba(197,169,106,.38)!important;
+}
+.left-panel .object-list-item:hover,.left-panel .search-tile-hit:hover,.left-panel .search-name-hit:hover,
+.left-panel .chip-row button:hover,.left-panel .quick-nav button:hover{background-color:rgba(255,251,243,.14)}
+.left-panel .object-list,.left-panel .type-filter-tree{padding-bottom:180px}
+.map-section{
+  background:
+    linear-gradient(180deg,rgba(255,253,248,.9),rgba(246,240,230,.78)),
+    url('/assets/ui/shell/paper_texture_main.png') center/360px repeat;
+}
+.map-toolbar{
+  background:
+    url('/assets/ui/shell/mountain_header_wash.png') right 14px top 8px / 180px auto no-repeat,
+    url('/assets/ui/shell/paper_texture_detail.png') center/240px repeat,
+    linear-gradient(180deg,rgba(252,249,241,.98),rgba(242,236,223,.94));
+  border-bottom:1px solid rgba(201,177,133,.55);
+}
+.map-heading{position:relative}
+.map-heading::after{
+  content:"";display:block;width:140px;height:12px;margin-top:8px;
+  background:url('/assets/ui/ornaments/divider_line.png') left center/contain no-repeat;
+  opacity:.75;
+}
+.map-viewport{position:relative;isolation:isolate;
+  background:
+    linear-gradient(180deg,rgba(251,248,240,.88),rgba(242,238,230,.82)),
+    url('/assets/ui/shell/paper_texture_alt.png') center/360px repeat;
+}
+.map-viewport::before{
+  content:"";
+  position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.22;
+  background:
+    url('/assets/ui/map-environment/distant_ridges_strip.png') center top 3% / 78% auto no-repeat,
+    url('/assets/ui/map-environment/landscape_strip_01.png') left bottom / 38% auto no-repeat,
+    url('/assets/ui/map-environment/landscape_strip_03.png') right bottom / 36% auto no-repeat,
+    url('/assets/ui/shell/mist_overlay.png') center / cover no-repeat;
+  mix-blend-mode:multiply;
+}
+.legend-bar{
+  background:
+    url('/assets/ui/shell/paper_texture_detail.png') center/240px repeat,
+    linear-gradient(180deg,rgba(252,249,241,.98),rgba(244,239,229,.94));
+  border-top:1px solid rgba(201,177,133,.55);
+}
+.detail-panel{
+  position:relative;
+  background:
+    url('/assets/ui/shell/mountain_header_wash.png') right 12px top 18px / 180px auto no-repeat,
+    url('/assets/ui/shell/paper_texture_main.png') center/280px repeat,
+    linear-gradient(180deg,rgba(252,250,244,.98),rgba(246,240,229,.95));
+  border-left:1px solid rgba(201,177,133,.55);
+}
+.detail-panel::before,.detail-panel::after{
+  content:"";position:absolute;top:8px;width:64px;height:72px;pointer-events:none;opacity:.7;
+  background-size:contain;background-repeat:no-repeat;
+}
+.detail-panel::before{left:8px;background-image:url('/assets/ui/ornaments/corner_ornament_left.png')}
+.detail-panel::after{right:8px;background-image:url('/assets/ui/ornaments/corner_ornament_right.png')}
+.detail-empty,.detail-content,.detail-location-card,.detail-body,.detail-tabs,.detail-head{position:relative;z-index:1}
+.detail-head{padding-top:18px;border-bottom:1px solid rgba(201,177,133,.45)}
+.detail-location-card,.detail-body .detail-card,.detail-body .info-card,.detail-body .section-card,.detail-body .story-card{
+  background-color:rgba(255,251,243,.75)!important;
+  border-color:rgba(201,177,133,.45)!important;
+}
+.research-minimap{
+  background:
+    url('/assets/ui/map-environment/landscape_strip_04.png') center/cover no-repeat,
+    url('/assets/ui/shell/paper_texture_detail.png') center/220px repeat,
+    linear-gradient(180deg,rgba(252,250,244,.95),rgba(240,234,223,.95));
+  border:1px solid rgba(201,177,133,.58);
+  box-shadow:0 10px 24px rgba(50,57,54,.12);
+}
+.research-minimap::before{
+  content:"";position:absolute;inset:6px;pointer-events:none;border:1px solid rgba(184,156,96,.42);border-radius:10px;
+}
+#researchMinimapCanvas{border-radius:10px;overflow:hidden}
+.map-guide,.coord-status,.camera-status,.relation-legend,.compare-status-bar,.measure-readout,.precision-mode-badge,.precision-terrain-legend,.high-zoom-locator{
+  background-image:url('/assets/ui/shell/paper_texture_detail.png'),linear-gradient(180deg,rgba(255,254,249,.96),rgba(243,237,226,.95));
+  background-size:220px auto,auto;
+  border-color:rgba(201,177,133,.58);
+}
+@media (max-width: 1280px){
+  .left-panel{padding-top:116px}
+  .left-panel::after{height:170px;opacity:.55}
+  .map-viewport::before{background-size:70% auto,44% auto,40% auto,cover}
+}
+
+
+/* v0.7.0 修正：纯色索引栏、关系线独立上层 */
+.left-panel{
+  padding-top:0!important;
+  background:#103f38!important;
+  background-image:none!important;
+}
+.left-panel::before{content:none!important;display:none!important;background:none!important}
+.left-panel::after{opacity:.42!important}
+.map-viewport::before{content:none!important;display:none!important;background:none!important;opacity:0!important}
+#worldCanvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:1!important}
+#tileLayer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:3!important;pointer-events:none}
+#brushTraceCanvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:8!important;pointer-events:none!important}
+.map-viewport::after{z-index:9!important}
+.map-tooltip,.precision-mode-badge,.precision-terrain-legend,.map-guide,.coord-status,.camera-status,.high-zoom-locator,
+.spatial-focus-clear,.close-flip,.compare-status-bar,.measure-readout,.research-minimap,.relation-legend{z-index:12!important}
+.map-viewport.relation-line-hover #brushTraceCanvas{z-index:14!important}
+
+
+/* v0.7.0 最终修正：地块尺度显现、顶部 UI 不被地图层遮挡 */
+#app{isolation:isolate;overflow:hidden}
+.topbar{
+  position:relative!important;
+  z-index:200!important;
+  height:auto!important;
+  min-height:82px!important;
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  padding-top:8px!important;
+  padding-bottom:8px!important;
+}
+.topbar>*{position:relative;z-index:201}
+.workspace{position:relative!important;z-index:1!important;min-height:0!important;overflow:hidden!important}
+.map-section{position:relative!important;z-index:1!important;min-height:0!important;overflow:hidden!important}
+.map-toolbar{
+  position:relative!important;
+  z-index:120!important;
+  height:auto!important;
+  min-height:76px!important;
+  flex:0 0 auto!important;
+  flex-wrap:wrap!important;
+  overflow:visible!important;
+  align-content:center!important;
+}
+.map-heading,.map-controls,.research-tool-wrap{position:relative!important;z-index:125!important;overflow:visible!important}
+.view-preset-menu,.relation-filter-menu,.type-filter-tree{z-index:1000!important}
+.map-viewport{position:relative!important;z-index:1!important;min-height:0!important;overflow:hidden!important}
+.legend-bar{position:relative!important;z-index:20!important;flex:0 0 auto!important}
+
+/* 山水在总览层显示；完整地块卡片出现时，由地块自身遮住环境图像。 */
+.tile:not(.empty)::before{
+  content:"";
+  position:absolute;
+  inset:3px;
+  z-index:0;
+  border-radius:9px;
+  background:#f4eddd;
+  box-shadow:0 4px 12px rgba(55,47,34,.08);
+  pointer-events:none;
+}
+.tile-card{position:relative!important;z-index:1!important}
+.tile-face,
+html.v062-yujian-theme .tile-face{
+  background:
+    url('/assets/ui/shell/paper_texture_detail.png') center/240px repeat,
+    linear-gradient(145deg,#fffaf0,#eee3cf)!important;
+  background-color:#f6efdf!important;
+  opacity:1!important;
+  backdrop-filter:none!important;
+}
+.tile.empty .tile-face{background:rgba(242,234,214,.30)!important}
+.tile.micro:not(.empty)::before,.tile.compact:not(.empty)::before{inset:2px;border-radius:5px}
+
+@media(max-width:1450px){
+  .topbar{grid-template-columns:minmax(320px,1fr) auto minmax(250px,.85fr)!important}
+  .top-actions{flex-wrap:wrap;justify-content:flex-end}
+  .map-toolbar{padding-top:8px!important;padding-bottom:8px!important}
+}
+
+/* v0.7.0｜数据地貌静态总览底图、渐变地块卡牌、画笔轨迹修复 */
+.map-viewport{
+  --v070-overview-art-opacity:1;
+  --v070-tile-card-opacity:1;
+}
+#tileLayer > .tile{
+  opacity:var(--v070-tile-card-opacity,1);
+  transition:opacity .16s linear,transform .05s linear;
+}
+.map-viewport.v070-tile-transition #tileLayer > .tile{
+  filter:saturate(calc(.76 + var(--v070-tile-card-opacity,1) * .24));
+}
+/* 最大地图只保留山水底图、区域名称与真实水系，不显示范围圈和实时小山纹样。 */
+.map-viewport.region-overview-mode #tileLayer > .region-overview-label{
+  opacity:.94;
+}
+/* 画笔和关系线共用的上层画布必须始终可见，但不遮挡 HUD 控件。 */
+#brushTraceCanvas,
+.brush-trace-canvas{
+  position:absolute!important;
+  inset:0!important;
+  z-index:32!important;
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:none!important;
+  mix-blend-mode:multiply;
+}
+.map-viewport.brush-mode #brushTraceCanvas,
+.map-viewport.brush-trace-active #brushTraceCanvas,
+.map-viewport.relation-line-hover #brushTraceCanvas{
+  z-index:34!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+.map-tooltip,.precision-mode-badge,.precision-terrain-legend,.map-guide,.coord-status,.camera-status,.high-zoom-locator,
+.spatial-focus-clear,.close-flip,.compare-status-bar,.measure-readout,.research-minimap,.relation-legend{
+  z-index:48!important;
+}
+
+
+/* v0.7.0｜世界坐标雾区与总览河流箭头分级 */
+#overviewFogCanvas,.overview-fog-canvas{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:18!important;
+  display:block!important;
+  pointer-events:none!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+#overviewFogCanvas:not(.active){opacity:0!important;visibility:hidden!important}
+/* 雾区覆盖地图内容，但不遮挡画笔、关系交互与 HUD。 */
+#tileLayer{z-index:3!important}
+#brushTraceCanvas,.brush-trace-canvas{z-index:32!important}
+.map-tooltip,.precision-mode-badge,.precision-terrain-legend,.map-guide,.coord-status,.camera-status,.high-zoom-locator,
+.spatial-focus-clear,.close-flip,.compare-status-bar,.measure-readout,.research-minimap,.relation-legend{z-index:48!important}

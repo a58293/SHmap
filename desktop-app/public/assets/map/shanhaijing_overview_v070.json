@@ -1,0 +1,23 @@
+{
+  "version": "0.7.0",
+  "source": "Current SHJ_INITIAL_DATA, terrain descriptions, and 79 SHJ_WATER_PATHS",
+  "objectCount": 617,
+  "waterPathCount": 79,
+  "worldBounds": {
+    "minX": -5100,
+    "maxX": 1400,
+    "minY": -500,
+    "maxY": 2500
+  },
+  "pixelSize": [
+    3072,
+    1418
+  ],
+  "transition": {
+    "backgroundFullUntilZoom": 0.28,
+    "backgroundGoneAtZoom": 0.98,
+    "tileCardsBeginAtZoom": 0.34,
+    "tileCardsFullAtZoom": 0.92
+  },
+  "notes": "Static overview art; geography distribution is masked by current terrain-bearing objects and exact existing water paths. No new named geography."
+}

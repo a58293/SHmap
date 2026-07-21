@@ -1,9 +1,9 @@
 {
   "product": "山海经原典地图研究台",
   "edition": "desktop",
-  "app_version": "v006",
-  "semver": "0.6.1",
-  "frontend_base": "v061",
+  "app_version": "v007",
+  "semver": "0.7.0",
+  "frontend_base": "v070-static-overview-fog-river-blend",
   "data_version": "v125-r0001",
   "object_count": 617,
   "original_library_records": 4120,
@@ -19,5 +19,11 @@
   "relation_network": "v0.6.0 compact/full modes, directional bundling, offscreen aggregation and hover labels",
   "ux_bundle": "v0.6.0 object focus, research/display view, image manager and delete impact preview",
   "relation_interaction": "v0.6.1 click-to-explain cards, wider hit areas, edge routing and persistent relation focus",
-  "toolbar_ux": "v0.6.1 responsive groups, More menu, delayed help tips and collapsible legend"
+  "toolbar_ux": "v0.6.1 responsive groups, More menu, delayed help tips and collapsible legend",
+  "visual_theme": "v0.7.0 玉简山海：地块地貌静态总览、雾幕遮边、总览水系融图与地块卡牌渐变",
+  "environment_layer": "v0.7.0 static overview art with four-edge feather mask and large atmospheric fog; runtime repeated mountain motifs disabled",
+  "river_guidance": "all 79 existing water paths use muted ink-water rendering in overview and gradually return to functional lines while zooming in",
+  "performance": "one reusable overview buffer canvas; cached overview image; no runtime mountain motif generation; CSS tile-card fade",
+  "asset_bundle": "v0.7.0 integrated ui and map-environment assets",
+  "brush_trace_fix": "upper overlay canvas, immediate pointer-move redraw, resize safety and visible red trace"
 }

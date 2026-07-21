@@ -42,7 +42,7 @@
     event:{color:"#cf8240",cell:"rgba(207,130,64,.25)",line:"#9e5c29"},
     unknown:{color:"#858b87",cell:"rgba(133,139,135,.16)",line:"#676d69"}
   };
-  const COLORS = {grid:"rgba(79,84,84,.28)",minor:"rgba(79,84,84,.10)",axis:"rgba(55,61,61,.52)",hard:"rgba(145,111,42,.19)",candidate:"rgba(145,111,42,.08)",field:"rgba(173,77,61,.08)",river:"#2b7f99"};
+  const COLORS = {grid:"rgba(91,82,61,.20)",minor:"rgba(91,82,61,.065)",axis:"rgba(47,67,58,.42)",hard:"rgba(167,135,72,.17)",candidate:"rgba(167,135,72,.065)",field:"rgba(145,73,57,.065)",river:"#3f8d98"};
   const CHAPTER_GROUPS = [
     {name:"五藏山经",chapters:["南山经","西山经","北山经","东山经","中山经"]},
     {name:"海外四经",chapters:["海外南经","海外西经","海外北经","海外东经"]},
@@ -234,9 +234,9 @@
     versionLine:$("#versionLine"), saveState:$("#saveState"), topChangeCount:$("#topChangeCount"), topTrashCount:$("#topTrashCount"), openTrashTab:$("#openTrashTab"), finishRoundBtn:$("#finishRoundBtn"),
     searchInput:$("#searchInput"), chapterFilter:$("#chapterFilter"), typeFilterMenu:$("#typeFilterMenu"), typeFilterSummary:$("#typeFilterSummary"), typeFilterTree:$("#typeFilterTree"), resetFilterBtn:$("#resetFilterBtn"),
     objectList:$("#objectList"), resultCount:$("#resultCount"), mapStats:$("#mapStats"), indexResultTitle:$("#indexResultTitle"), objectSortBar:$("#objectSortBar"), objectIndexModeBtn:$("#objectIndexModeBtn"), regionIndexModeBtn:$("#regionIndexModeBtn"),
-    viewport:$("#mapViewport"), canvas:$("#worldCanvas"), brushTraceCanvas:$("#brushTraceCanvas"), tileLayer:$("#tileLayer"), coordStatus:$("#coordStatus"), cameraStatus:$("#cameraStatus"), zoomReadout:$("#zoomReadout"), precisionModeBadge:$("#precisionModeBadge"), precisionTerrainLegend:$("#precisionTerrainLegend"), mapGuide:$("#mapGuide"),
+    viewport:$("#mapViewport"), canvas:$("#worldCanvas"), overviewFogCanvas:$("#overviewFogCanvas"), brushTraceCanvas:$("#brushTraceCanvas"), tileLayer:$("#tileLayer"), coordStatus:$("#coordStatus"), cameraStatus:$("#cameraStatus"), zoomReadout:$("#zoomReadout"), precisionModeBadge:$("#precisionModeBadge"), precisionTerrainLegend:$("#precisionTerrainLegend"), mapGuide:$("#mapGuide"),
     zoomInBtn:$("#zoomInBtn"), zoomOutBtn:$("#zoomOutBtn"), originBtn:$("#originBtn"), jumpCoordBtn:$("#jumpCoordBtn"), fitAllBtn:$("#fitAllBtn"), closeFlipBtn:$("#closeFlipBtn"), clearSpatialFocusBtn:$("#clearSpatialFocusBtn"),
-    layerAreas:$("#layerAreas"), layerTerrain:$("#layerTerrain"), layerRivers:$("#layerRivers"), layerEmpty:$("#layerEmpty"), layerChanges:$("#layerChanges"),
+    layerAreas:$("#layerAreas"), layerTerrain:$("#layerTerrain"), layerRivers:$("#layerRivers"), layerEnvironment:$("#layerEnvironment"), layerEmpty:$("#layerEmpty"), layerChanges:$("#layerChanges"),
     emptyDetail:$("#emptyDetail"), detailContent:$("#detailContent"), detailRef:$("#detailRef"), detailName:$("#detailName"), detailMeta:$("#detailMeta"), detailLocation:$("#detailLocation"), detailBody:$("#detailBody"), detailTabs:$("#detailTabs"), detailHeadActions:$("#detailHeadActions"), editTileBtn:$("#editTileBtn"), openDossierBtn:$("#openDossierBtn"), openRangeEditorBtn:$("#openRangeEditorBtn"), deleteTileBtn:$("#deleteTileBtn"),
     dossierWorkspace:$("#dossierWorkspace"), closeDossierBtn:$("#closeDossierBtn"), dossierPageTitle:$("#dossierPageTitle"), dossierPageMeta:$("#dossierPageMeta"), dossierCoordBadge:$("#dossierCoordBadge"), dossierCardTitle:$("#dossierCardTitle"), dossierBrief:$("#dossierBrief"), dossierStandard:$("#dossierStandard"), dossierBadges:$("#dossierBadges"), dossierCompletenessText:$("#dossierCompletenessText"), dossierCompletenessBar:$("#dossierCompletenessBar"), dossierCompletenessMeta:$("#dossierCompletenessMeta"), dossierObjectCount:$("#dossierObjectCount"), dossierObjectIndex:$("#dossierObjectIndex"), dossierLocateBtn:$("#dossierLocateBtn"), dossierChapterBadge:$("#dossierChapterBadge"), dossierHeroTitle:$("#dossierHeroTitle"), dossierContent:$("#dossierContent"), copyPromptBtn:$("#copyPromptBtn"), copyBriefBtn:$("#copyBriefBtn"), editDossierBtn:$("#editDossierBtn"), dossierModeBrief:$("#dossierModeBrief"), dossierModeFull:$("#dossierModeFull"),
     drillModal:$("#drillModal"), drillTitle:$("#drillTitle"), drillSubtitle:$("#drillSubtitle"), innerGrid:$("#innerGrid"), innerCoord:$("#innerCoord"), drillCount:$("#drillCount"), drillObjectList:$("#drillObjectList"), drillAddBtn:$("#drillAddBtn"),
@@ -306,6 +306,7 @@
       areas:saved?.layers?.areas??true,
       terrain:saved?.layers?.terrain??true,
       rivers:saved?.layers?.rivers??true,
+      environment:saved?.layers?.environment??true,
       empty:Number(saved?.uiSchemaVersion)>=44?(saved?.layers?.empty??false):false,
       changes:saved?.layers?.changes??true
     },
@@ -590,7 +591,7 @@
 
   function init(){
     cleanupExpiredTrash(false);ensureObjectIndexes();populateFilters();bindEvents();
-    [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,key])=>{if(el)el.checked=!!state.layers[key]});
+    [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEnvironment,"environment"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,key])=>{if(el)el.checked=!!state.layers[key]});
     renderSidebar();renderDetails();resizeCanvas();scheduleRender();updateHeader();renderExamplePanel();
     if(dataUpgradeFrom)setTimeout(()=>toast("地图数据已升级",`${dataUpgradeFrom} → ${state.dataVersion} · 已同步${state.objects.length}个对象与${state.waterPaths.length}段线型水系`),420);
     const ro=new ResizeObserver(()=>{resizeCanvas();state.perf.minimapRevision=-1;scheduleRender()});ro.observe(els.viewport);
@@ -807,7 +808,7 @@
       const main=group.querySelector("[data-precision-main]");main?.addEventListener("click",e=>{e.stopPropagation();const key=group.dataset.precisionGroup,items=ensureObjectIndexes().anchorGroupByKey.get(key)?.items||[];if(items.length>1){state.precisionClusterOpen=state.precisionClusterOpen===key?null:key;scheduleRender()}else if(main.dataset.precisionMain)openPrecisionDossier(main.dataset.precisionMain,key)});main?.addEventListener("dblclick",e=>{e.stopPropagation();openObjectForm(indexedObject(main.dataset.precisionMain))});group.querySelectorAll("[data-precision-preview-object]").forEach(btn=>{btn.addEventListener("click",e=>{e.stopPropagation();openPrecisionDossier(btn.dataset.precisionPreviewObject,group.dataset.precisionGroup)});btn.addEventListener("dblclick",e=>{e.stopPropagation();openObjectForm(indexedObject(btn.dataset.precisionPreviewObject))})});
     })
   }
-  function resizeCanvas(){const r=els.viewport.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);[els.canvas,els.brushTraceCanvas].filter(Boolean).forEach(canvas=>{canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));canvas.style.width=r.width+"px";canvas.style.height=r.height+"px"})}
+  function resizeCanvas(){const r=els.viewport.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);[els.canvas,els.overviewFogCanvas,els.brushTraceCanvas].filter(Boolean).forEach(canvas=>{canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));canvas.style.width=r.width+"px";canvas.style.height=r.height+"px"})}
   function scheduleRender(){if(state.renderQueued)return;state.renderQueued=true;requestAnimationFrame(()=>{state.renderQueued=false;renderMap()})}
   function updateMapHUD(){
     const zoomText=Math.round(state.camera.zoom*100)+"%";
@@ -851,9 +852,9 @@
   }
   function renderCameraFrame(){
     if(!els.viewport.clientWidth)return;
-    updatePrecisionMode();updateRegionOverviewMode();updateHoverLensSuppression();
+    updatePrecisionMode();updateRegionOverviewMode();updateHoverLensSuppression();v070SyncMapTransition();
     // 缩放与拖动均按当前 camera 在同一动画帧真实重绘，禁止临时缩放图层后再回基准造成回弹。
-    resetDeferredLayerTransform();drawCanvas(true);renderTilesLive();drawBrushTraceCanvas();updateMapHUD();
+    resetDeferredLayerTransform();drawCanvas(true);renderTilesLive();v070DrawWorldFogOverlay();drawBrushTraceCanvas();updateMapHUD();
     if(!state.pan.active&&!state.cameraAnimation)renderV029Minimap();
   }
   function scheduleCameraFrame(){if(state.perf.lightRenderQueued)return;state.perf.lightRenderQueued=true;requestAnimationFrame(()=>{state.perf.lightRenderQueued=false;renderCameraFrame()})}
@@ -919,7 +920,7 @@
     }
     if (els.mapGuide && !state.precisionMode) {
       els.mapGuide.innerHTML = state.regionOverviewMode
-        ? "区域概览 · 显示大区／区域分布范围与水系 · 放大至52%以上恢复100里地块"
+        ? "山水总览 · 底图依据当前地块与79段水系生成 · 放大后自然过渡为100里地块卡牌"
         : "拖动地图 · 滚轮缩放 · 右键返回 · 放大至420%进入彩色精细地图";
     }
   } function regionOverviewLabelPlacement(groups){
@@ -1145,10 +1146,167 @@
       ctx.setLineDash([]);
     }
     ctx.restore();
-  } function renderMap(){
+  }
+  const V070_OVERVIEW_ART={
+    url:"/assets/map/shanhaijing_overview_v070.webp",
+    bounds:{minX:-5100,maxX:1400,minY:-500,maxY:2500},
+    fullUntil:.28,
+    goneAt:.98,
+    tilesBegin:.34,
+    tilesFull:.92
+  };
+  function v070Smoothstep(edge0,edge1,value){
+    if(edge0===edge1)return value>=edge1?1:0;
+    const t=Math.max(0,Math.min(1,(value-edge0)/(edge1-edge0)));
+    return t*t*(3-2*t)
+  }
+  function v070OverviewArtOpacity(){
+    if(!state.layers.environment)return 0;
+    return 1-v070Smoothstep(V070_OVERVIEW_ART.fullUntil,V070_OVERVIEW_ART.goneAt,state.camera.zoom)
+  }
+  function v070TileCardOpacity(){
+    return v070Smoothstep(V070_OVERVIEW_ART.tilesBegin,V070_OVERVIEW_ART.tilesFull,state.camera.zoom)
+  }
+  function v070SyncMapTransition(){
+    const art=v070OverviewArtOpacity(),tiles=v070TileCardOpacity();
+    els.viewport.style.setProperty("--v070-overview-art-opacity",art.toFixed(4));
+    els.viewport.style.setProperty("--v070-tile-card-opacity",tiles.toFixed(4));
+    els.viewport.classList.toggle("v070-overview-art-active",art>.015);
+    els.viewport.classList.toggle("v070-tile-transition",tiles<.995&&!state.regionOverviewMode&&!state.precisionMode)
+  }
+  function v070OverviewImage(){
+    if(state.perf.v070OverviewImage)return state.perf.v070OverviewImage;
+    const image=new Image();
+    image.decoding="async";
+    image.onload=()=>{state.perf.v070OverviewReady=true;scheduleRender()};
+    image.onerror=()=>{state.perf.v070OverviewFailed=true};
+    image.src=V070_OVERVIEW_ART.url;
+    state.perf.v070OverviewImage=image;
+    return image
+  }
+  function v070OverviewBuffer(width,height){
+    const w=Math.max(1,Math.ceil(width)),h=Math.max(1,Math.ceil(height));
+    let canvas=state.perf.v070OverviewBuffer;
+    if(!canvas){canvas=document.createElement("canvas");state.perf.v070OverviewBuffer=canvas}
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+    return canvas
+  }
+  function v070OverviewFeatherPx(w,h){
+    return Math.max(190,Math.min(620,Math.min(Math.abs(w),Math.abs(h))*.27))
+  }
+  function v070FogHash(ix,iy,salt=0){
+    let n=((ix*374761393)^(iy*668265263)^(salt*2246822519))>>>0;
+    n=Math.imul(n^(n>>>13),1274126177)>>>0;
+    return ((n^(n>>>16))>>>0)/4294967295
+  }
+  function v070DrawEndlessMist(ctx,rect,strength){
+    if(strength<=.001)return;
+    const v=visibleWorld(),s=scale(),cellWorld=720;
+    ctx.save();ctx.globalAlpha=strength;
+    const base=ctx.createLinearGradient(0,0,rect.width,rect.height);
+    base.addColorStop(0,"rgba(239,236,228,.96)");
+    base.addColorStop(.46,"rgba(231,231,224,.93)");
+    base.addColorStop(1,"rgba(244,240,232,.97)");
+    ctx.fillStyle=base;ctx.fillRect(0,0,rect.width,rect.height);
+    const wash=ctx.createRadialGradient(rect.width*.42,rect.height*.44,0,rect.width*.42,rect.height*.44,Math.max(rect.width,rect.height)*.86);
+    wash.addColorStop(0,"rgba(250,248,242,.18)");
+    wash.addColorStop(.58,"rgba(222,226,220,.08)");
+    wash.addColorStop(1,"rgba(246,242,234,.30)");
+    ctx.fillStyle=wash;ctx.fillRect(0,0,rect.width,rect.height);
+    const ix0=Math.floor(v.left/cellWorld)-2,ix1=Math.ceil(v.right/cellWorld)+2;
+    const iy0=Math.floor(v.bottom/cellWorld)-2,iy1=Math.ceil(v.top/cellWorld)+2;
+    for(let ix=ix0;ix<=ix1;ix+=1){
+      for(let iy=iy0;iy<=iy1;iy+=1){
+        const jx=(v070FogHash(ix,iy,1)-.5)*cellWorld*.72;
+        const jy=(v070FogHash(ix,iy,2)-.5)*cellWorld*.72;
+        const p=worldToScreen(ix*cellWorld+jx,iy*cellWorld+jy);
+        const radius=Math.max(120,Math.min(560,cellWorld*s*(.58+v070FogHash(ix,iy,3)*.78)));
+        const rg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);
+        const alpha=.18+v070FogHash(ix,iy,4)*.19;
+        rg.addColorStop(0,`rgba(252,250,245,${alpha})`);
+        rg.addColorStop(.42,`rgba(239,240,235,${alpha*.66})`);
+        rg.addColorStop(1,"rgba(228,231,225,0)");
+        ctx.fillStyle=rg;ctx.fillRect(p.x-radius,p.y-radius,radius*2,radius*2);
+        if(v070FogHash(ix,iy,5)>.54){
+          const darkRadius=radius*(.52+v070FogHash(ix,iy,6)*.28);
+          const dg=ctx.createRadialGradient(p.x-radius*.18,p.y+radius*.12,0,p.x-radius*.18,p.y+radius*.12,darkRadius);
+          dg.addColorStop(0,"rgba(158,173,166,.075)");
+          dg.addColorStop(1,"rgba(158,173,166,0)");
+          ctx.fillStyle=dg;ctx.fillRect(p.x-radius,p.y-radius,radius*2,radius*2)
+        }
+      }
+    }
+    const band=ctx.createLinearGradient(0,rect.height*.16,0,rect.height*.86);
+    band.addColorStop(0,"rgba(255,252,245,.22)");
+    band.addColorStop(.35,"rgba(240,239,233,.05)");
+    band.addColorStop(.72,"rgba(216,221,215,.08)");
+    band.addColorStop(1,"rgba(250,247,240,.25)");
+    ctx.fillStyle=band;ctx.fillRect(0,0,rect.width,rect.height);
+    ctx.restore()
+  }
+  function v070DrawBoundaryMist(ctx,nw,se,opacity,feather){
+    if(opacity<=.001)return;
+    const w=se.x-nw.x,h=se.y-nw.y;if(w<=0||h<=0)return;
+    const puffs=[];
+    for(let i=0;i<9;i+=1){
+      const t=(i+.32)/9,j=(v070FogHash(i,17,1)-.5)*feather*.42;
+      puffs.push([nw.x+j,nw.y+h*t,feather*(.46+v070FogHash(i,17,2)*.42)]);
+      puffs.push([se.x+j,nw.y+h*t,feather*(.46+v070FogHash(i,23,2)*.42)]);
+    }
+    for(let i=0;i<12;i+=1){
+      const t=(i+.18)/12,j=(v070FogHash(i,31,1)-.5)*feather*.34;
+      puffs.push([nw.x+w*t,nw.y+j,feather*(.42+v070FogHash(i,31,2)*.44)]);
+      puffs.push([nw.x+w*t,se.y+j,feather*(.42+v070FogHash(i,37,2)*.44)]);
+    }
+    ctx.save();ctx.globalAlpha=opacity;
+    for(const [x,y,radius] of puffs){
+      const rg=ctx.createRadialGradient(x,y,0,x,y,radius);
+      rg.addColorStop(0,"rgba(245,243,236,.30)");
+      rg.addColorStop(.44,"rgba(235,235,228,.18)");
+      rg.addColorStop(1,"rgba(225,228,221,0)");
+      ctx.fillStyle=rg;ctx.fillRect(x-radius,y-radius,radius*2,radius*2)
+    }
+    ctx.restore()
+  }
+  function drawV070OverviewArt(ctx){
+    const opacity=v070OverviewArtOpacity(),fogStrength=v070OverviewFogStrength();
+    const rect=els.viewport.getBoundingClientRect();
+    if(fogStrength>.001)v070DrawEndlessMist(ctx,rect,fogStrength);
+    if(opacity<=.001)return;
+    const image=v070OverviewImage();if(!image.complete||!image.naturalWidth)return;
+    const b=V070_OVERVIEW_ART.bounds,nw=worldToScreen(b.minX,b.maxY),se=worldToScreen(b.maxX,b.minY),w=se.x-nw.x,h=se.y-nw.y;
+    if(w<=0||h<=0)return;
+    const layer=v070OverviewBuffer(rect.width,rect.height),lctx=layer.getContext("2d"),feather=v070OverviewFeatherPx(w,h);
+    lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,layer.width,layer.height);lctx.imageSmoothingEnabled=true;lctx.imageSmoothingQuality="high";
+    lctx.drawImage(image,nw.x,nw.y,w,h);
+    const fx=Math.min(.46,Math.max(.055,feather/Math.max(1,w))),fy=Math.min(.46,Math.max(.07,feather/Math.max(1,h)));
+    lctx.globalCompositeOperation="destination-in";
+    let mask=lctx.createLinearGradient(nw.x,0,se.x,0);
+    mask.addColorStop(0,"rgba(0,0,0,0)");mask.addColorStop(fx,"rgba(0,0,0,1)");mask.addColorStop(1-fx,"rgba(0,0,0,1)");mask.addColorStop(1,"rgba(0,0,0,0)");
+    lctx.fillStyle=mask;lctx.fillRect(nw.x,nw.y,w,h);
+    mask=lctx.createLinearGradient(0,nw.y,0,se.y);
+    mask.addColorStop(0,"rgba(0,0,0,0)");mask.addColorStop(fy,"rgba(0,0,0,1)");mask.addColorStop(1-fy,"rgba(0,0,0,1)");mask.addColorStop(1,"rgba(0,0,0,0)");
+    lctx.fillStyle=mask;lctx.fillRect(nw.x,nw.y,w,h);
+    lctx.globalCompositeOperation="source-over";
+    ctx.save();ctx.globalAlpha=opacity*(state.presentationMode==="display"?.99:.97);ctx.drawImage(layer,0,0,rect.width,rect.height);ctx.restore();
+    v070DrawBoundaryMist(ctx,nw,se,opacity*.92,feather);
+    const veil=Math.max(0,v070Smoothstep(.62,.98,state.camera.zoom));if(veil>0){ctx.save();ctx.globalAlpha=veil*.24;ctx.fillStyle="#f3ecdc";ctx.fillRect(nw.x,nw.y,w,h);ctx.restore()}
+  }
+  function v070OverviewFogStrength(){
+    if(!state.layers.environment||state.precisionMode)return 0;
+    const art=v070OverviewArtOpacity(),cards=v070TileCardOpacity();
+    return art*(1-v070Smoothstep(.42,.94,cards))
+  }
+  function v070DrawWorldFogOverlay(){
+    const canvas=els.overviewFogCanvas;if(!canvas)return;
+    const rect=els.viewport.getBoundingClientRect(),dpr=canvas.width/Math.max(1,rect.width),ctx=canvas.getContext("2d");
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,rect.width,rect.height);
+    canvas.classList.remove("active")
+  }
+  function renderMap(){
     if(!els.viewport.clientWidth)return;
-    updatePrecisionMode();updateRegionOverviewMode();updateHoverLensSuppression();
-    resetDeferredLayerTransform();drawCanvas(false);renderTiles();drawBrushTraceCanvas();updateMapHUD();
+    updatePrecisionMode();updateRegionOverviewMode();updateHoverLensSuppression();v070SyncMapTransition();
+    resetDeferredLayerTransform();drawCanvas(false);renderTiles();v070DrawWorldFogOverlay();drawBrushTraceCanvas();updateMapHUD();
     els.closeFlipBtn.classList.toggle("hidden",state.regionOverviewMode||state.precisionMode||!state.flippedCell);
     const spatial=getSpatialFocusContext(),hierarchyFocus=v052RegionFocusContext(),focusActive=spatial.active||hierarchyFocus.active;
     if(els.clearSpatialFocusBtn){
@@ -1162,25 +1320,31 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, r.width, r.height);
     const v = visibleWorld(), s = scale(), cellPx = CELL_LI * s;
-    ctx.fillStyle = state.precisionMode ? "#aeb1af" : "#cfd1d0";
+    ctx.fillStyle = state.precisionMode ? "#ddd5c5" : "#e9e1d1";
     ctx.fillRect(0, 0, r.width, r.height);
-    const grad = ctx.createRadialGradient(r.width * .15, r.height * .05, 0, r.width * .15, r.height * .05, r.width * .72);
-    grad.addColorStop(0, "rgba(255,255,255,.22)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
+    drawV062PaperTexture(ctx, r);
+    const grad = ctx.createRadialGradient(r.width * .20, r.height * .04, 0, r.width * .20, r.height * .04, r.width * .82);
+    grad.addColorStop(0, "rgba(255,252,239,.40)");
+    grad.addColorStop(.58, "rgba(255,252,239,.08)");
+    grad.addColorStop(1, "rgba(73,71,54,.035)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, r.width, r.height);
     state.perf.waterHitAreas = [];
+    // v0.7.0：最大地图使用由当前617个对象、地貌描述和79段水系离线生成的固定山水底图。
+    // 放大时底图逐步退去，100里地块卡牌同步显现；不再实时绘制重复小山，也不显示大区范围圈。
+    if (!state.precisionMode) drawV070OverviewArt(ctx);
     if (state.precisionMode) {
       drawPrecisionTerrain(ctx, v, s);
       drawPrecisionGrid(ctx, v, s);
       drawV044LocationWatermark(ctx, r);
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, true); drawPrecisionLines(ctx, v, s); }
     } else if (state.regionOverviewMode) {
-      drawRegionOverviewBackdrops(ctx, v, s);
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, false); drawLines(ctx, v, s); }
     } else {
-      if (state.layers.areas) drawAreas(ctx, v, s);
-      drawGrid(ctx, v, s, cellPx);
+      const tilePhase=v070TileCardOpacity();
+      ctx.save();ctx.globalAlpha=Math.max(.12,tilePhase);
+      if (state.layers.areas && state.camera.zoom >= .84) drawAreas(ctx, v, s);
+      drawGrid(ctx, v, s, cellPx);ctx.restore();
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, false); drawLines(ctx, v, s); }
     }
     if (!state.regionOverviewMode) drawBrushSelection(ctx, v);
@@ -1305,7 +1469,7 @@
     const path=()=>{ctx.beginPath();ctx.moveTo(-size*.92,0);ctx.lineTo(size*.22,0);ctx.moveTo(-size*.18,-size*.52);ctx.lineTo(size*.28,0);ctx.lineTo(-size*.18,size*.52)};
     path();ctx.strokeStyle="rgba(251,254,255,.98)";ctx.lineWidth=4.8;ctx.stroke();path();ctx.strokeStyle=color;ctx.lineWidth=2.25;ctx.stroke();ctx.restore()
   }
-  function drawWaterFlowArrows(ctx, path, pts, style, active, hydrology, muted) {
+  function drawWaterFlowArrows(ctx, path, pts, style, active, hydrology, muted, visibility=1) {
     const mode = waterDirectionMode(path);
     if (mode === "none") return;
     const total = waterPolylineLength(pts);
@@ -1318,7 +1482,7 @@
     const color = active ? "#0b5872" : style.color;
     for (let index = 1; index <= count; index += 1) {
       const sample = waterPointAtDistance(pts, total * index / (count + 1));
-      const alpha = muted ? .25 : topology ? (active ? .82 : .58) : (active ? 1 : hydrology ? .96 : .88);
+      const alpha = (muted ? .25 : topology ? (active ? .82 : .58) : (active ? 1 : hydrology ? .96 : .88))*visibility;
       drawWaterFlowArrow(ctx, sample, size, color, alpha);
     }
   } function waterRoundRect(ctx,x,y,w,h,r){const radius=Math.max(0,Math.min(r,w/2,h/2));ctx.beginPath();ctx.moveTo(x+radius,y);ctx.arcTo(x+w,y,x+w,y+h,radius);ctx.arcTo(x+w,y+h,x,y+h,radius);ctx.arcTo(x,y+h,x,y,radius);ctx.arcTo(x,y,x+w,y,radius);ctx.closePath()}
@@ -1331,17 +1495,44 @@
     ctx.beginPath();ctx.arc(source.x,source.y,sourceR+2,0,Math.PI*2);ctx.fillStyle="rgba(255,255,255,.94)";ctx.fill();ctx.beginPath();ctx.arc(source.x,source.y,sourceR,0,Math.PI*2);ctx.fillStyle=active?"#0d5871":style.color;ctx.fill();ctx.beginPath();ctx.arc(source.x-1.2,source.y-1.2,Math.max(1.2,sourceR*.28),0,Math.PI*2);ctx.fillStyle="rgba(220,248,252,.92)";ctx.fill();
     ctx.beginPath();ctx.arc(mouth.x,mouth.y,mouthR+2,0,Math.PI*2);ctx.fillStyle="rgba(255,255,255,.94)";ctx.fill();ctx.beginPath();ctx.arc(mouth.x,mouth.y,mouthR,0,Math.PI*2);ctx.strokeStyle=active?"#0d5871":style.color;ctx.lineWidth=2.2;ctx.stroke();ctx.beginPath();ctx.arc(mouth.x,mouth.y,Math.max(1.5,mouthR*.32),0,Math.PI*2);ctx.fillStyle=active?"#0d5871":style.color;ctx.fill();ctx.restore()
   }
+  function v070RiverUiStrength(precision=false,active=false,hydrology=false){
+    if(precision||active||hydrology)return 1;
+    return v070Smoothstep(.42,.90,state.camera.zoom)
+  }
+  function v070WaterArrowStrength(precision=false){
+    if(precision)return 1;
+    if(state.regionOverviewMode)return 0;
+    const cards=v070TileCardOpacity();
+    if(cards<.52)return 0;
+    return v070Smoothstep(.52,.90,cards)
+  }
+  function v070DrawIntegratedWater(ctx,pts,style,strength,muted){
+    if(strength<=.001)return;
+    ctx.save();ctx.globalCompositeOperation="multiply";ctx.globalAlpha=strength*(muted?.22:.72);ctx.lineCap="round";ctx.lineJoin="round";ctx.setLineDash(style.dash?.length?style.dash.map(v=>Math.max(2,v*.72)):[]);
+    traceWaterCurve(ctx,pts);ctx.strokeStyle="rgba(102,151,151,.24)";ctx.lineWidth=Math.max(4.6,style.width+4.2);ctx.stroke();
+    traceWaterCurve(ctx,pts);ctx.strokeStyle="rgba(66,120,132,.60)";ctx.lineWidth=Math.max(1.35,style.width*.74);ctx.stroke();
+    traceWaterCurve(ctx,pts);ctx.strokeStyle="rgba(213,231,226,.48)";ctx.lineWidth=Math.max(.55,style.width*.20);ctx.stroke();ctx.setLineDash([]);ctx.restore()
+  }
   function drawWaterPaths(ctx,v,s,precision=false){
     const paths=visibleWaterPaths(v),hydrology=state.viewPreset==="hydrology",selected=state.selectedWaterPathId,hover=state.hoverWaterPathId;
     for(const path of paths){
       if(!Array.isArray(path.points)||path.points.length<2)continue;
-      const style=waterEvidenceStyle(path),active=path.id===selected||path.id===hover,muted=!!selected&&!active,pts=path.points.map(point=>worldToScreen(Number(point[0])||0,Number(point[1])||0)),alpha=muted?.18:(active?1:hydrology?style.alpha:style.alpha*.86);
-      ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.globalAlpha=alpha;ctx.setLineDash(style.dash);
-      traceWaterCurve(ctx,pts);ctx.strokeStyle="rgba(250,253,253,.96)";ctx.lineWidth=style.width+(active?6.2:4.4);ctx.stroke();
-      traceWaterCurve(ctx,pts);ctx.strokeStyle=style.bank;ctx.lineWidth=style.width+(active?3.8:2.5);ctx.stroke();
-      traceWaterCurve(ctx,pts);ctx.strokeStyle=active?"#0d5871":style.color;ctx.lineWidth=style.width+(active?1.65:0);ctx.stroke();
-      traceWaterCurve(ctx,pts);ctx.strokeStyle=style.highlight;ctx.lineWidth=Math.max(.8,style.width*.34);ctx.stroke();ctx.setLineDash([]);ctx.restore();
-      drawWaterFlowArrows(ctx,path,pts,style,active,hydrology,muted);drawWaterEndpoints(ctx,pts,style,active,hydrology);drawWaterLabel(ctx,path,pts,style,active,hydrology);
+      const style=waterEvidenceStyle(path),active=path.id===selected||path.id===hover,muted=!!selected&&!active,pts=path.points.map(point=>worldToScreen(Number(point[0])||0,Number(point[1])||0)),baseAlpha=muted?.18:(active?1:hydrology?style.alpha:style.alpha*.86),uiStrength=v070RiverUiStrength(precision,active,hydrology),inkStrength=(active||hydrology||precision)?0:1-uiStrength;
+      v070DrawIntegratedWater(ctx,pts,style,inkStrength,muted);
+      if(uiStrength>.001){
+        ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.globalAlpha=baseAlpha*uiStrength;ctx.setLineDash(style.dash);
+        traceWaterCurve(ctx,pts);ctx.strokeStyle="rgba(250,253,253,.96)";ctx.lineWidth=style.width+(active?6.2:4.4);ctx.stroke();
+        traceWaterCurve(ctx,pts);ctx.strokeStyle=style.bank;ctx.lineWidth=style.width+(active?3.8:2.5);ctx.stroke();
+        traceWaterCurve(ctx,pts);ctx.strokeStyle=active?"#0d5871":style.color;ctx.lineWidth=style.width+(active?1.65:0);ctx.stroke();
+        traceWaterCurve(ctx,pts);ctx.strokeStyle=style.highlight;ctx.lineWidth=Math.max(.8,style.width*.34);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      const arrowStrength=v070WaterArrowStrength(precision);
+      if(arrowStrength>.001){
+        ctx.save();drawWaterFlowArrows(ctx,path,pts,style,active,hydrology,muted,arrowStrength);ctx.restore()
+      }
+      if(uiStrength>.12||active||hydrology||precision){
+        ctx.save();ctx.globalAlpha=Math.max(.12,uiStrength);drawWaterEndpoints(ctx,pts,style,active,hydrology);drawWaterLabel(ctx,path,pts,style,active,hydrology);ctx.restore()
+      }
       state.perf.waterHitAreas.push({pathId:path.id,segments:pts.slice(1).map((point,index)=>({a:pts[index],b:point}))})
     }
   }
@@ -2287,7 +2478,7 @@
     document.getElementById("objectSortSelect")?.addEventListener("change",e=>{state.objectSort.key=e.target.value;renderSidebar();persist()});document.getElementById("objectSortDirectionBtn")?.addEventListener("click",()=>{state.objectSort.direction=state.objectSort.direction==="desc"?"asc":"desc";renderSidebar();persist()});document.getElementById("objectRoundOnly")?.addEventListener("change",e=>{state.objectSort.roundOnly=!!e.target.checked;renderSidebar();persist()});
     $$("[data-jump-name]").forEach(b=>b.addEventListener("click",()=>jumpName(b.dataset.jumpName)));els.fitAllBtn.addEventListener("click",fitAll);els.originBtn.addEventListener("click",()=>{state.camera={...state.camera,x:0,y:0,zoom:.92};state.flippedCell=null;scheduleRender();persist()});els.zoomInBtn.addEventListener("click",()=>setZoom(state.camera.zoom*1.18));els.zoomOutBtn.addEventListener("click",()=>setZoom(state.camera.zoom/1.18));els.zoomReadout.addEventListener("click",()=>setZoom(1));
     els.jumpCoordBtn.addEventListener("click",()=>{els.jumpX.value=Math.round(state.camera.x);els.jumpY.value=Math.round(state.camera.y);openModal("jumpModal")});els.jumpForm.addEventListener("submit",e=>{e.preventDefault();state.camera.x=Number(els.jumpX.value)||0;state.camera.y=Number(els.jumpY.value)||0;state.camera.zoom=Math.max(.72,state.camera.zoom);state.flippedCell=null;closeModal("jumpModal");scheduleRender();persist()});
-    [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,k])=>el.addEventListener("change",()=>{state.layers[k]=el.checked;scheduleRender();persist()}));
+    [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEnvironment,"environment"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,k])=>el?.addEventListener("change",()=>{state.layers[k]=el.checked;if(k==="environment")state.perf.v062EnvironmentSignature="";scheduleRender();persist()}));
     els.openImportBtn.addEventListener("click",openImportWorkspace);els.closeImportBtn.addEventListener("click",closeImportWorkspace);els.importChooseFileBtn.addEventListener("click",()=>{els.importFileInput.value="";els.importFileInput.click()});els.importChooseBatchBtn?.addEventListener("click",()=>{els.importBatchFileInput.value="";els.importBatchFileInput.click()});els.importDropZone.addEventListener("click",()=>els.importFileInput.click());els.importFileInput.addEventListener("change",()=>readImportFiles(els.importFileInput.files,{forceBatch:false}));els.importBatchFileInput?.addEventListener("change",()=>readImportFiles(els.importBatchFileInput.files,{forceBatch:true}));["dragenter","dragover"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.add("dragover")}));["dragleave","drop"].forEach(ev=>els.importDropZone.addEventListener(ev,e=>{e.preventDefault();els.importDropZone.classList.remove("dragover")}));els.importDropZone.addEventListener("drop",e=>readImportFiles(e.dataTransfer.files,{forceBatch:(e.dataTransfer.files?.length||0)>1}));els.importText.addEventListener("input",()=>{updateImportCharCount();debouncedImportAnalyze()});els.reanalyzeImportBtn.addEventListener("click",analyzeImportText);els.clearImportBtn.addEventListener("click",()=>{els.importText.value="";els.importFileName.textContent="尚未选择文件";resetImportFiles();state.importAnalysis=null;updateImportCharCount();renderImportAnalysis(null)});els.importApplyBtn.addEventListener("click",applyMarkdownImport);$$('.example-tabs button').forEach(b=>b.addEventListener('click',()=>{state.exampleTab=b.dataset.exampleTab;renderExamplePanel()}));els.loadExampleBtn.addEventListener("click",()=>{resetImportFiles();els.importText.value=state.exampleTab==='wrong'?WRONG_MD_SAMPLE:state.exampleTab==='rules'?BLANK_MD_TEMPLATE:`<!-- SHMAP_IMPORT_FILE: 示例地块.md -->\n${NINE_SECTION_MD_SAMPLE}`;els.importFileName.textContent=state.exampleTab==='wrong'?'错误案例.md':state.exampleTab==='rules'?'空白导入模板.md':'示例地块.md';analyzeImportText()});
     $$(".detail-tabs button").forEach(b=>b.addEventListener("click",()=>{state.detailTab=b.dataset.tab;renderDetails()}));els.editTileBtn.addEventListener("click",openTileProfileForm);els.deleteTileBtn.addEventListener("click",()=>openDeleteModal("tile"));els.openDossierBtn.addEventListener("click",openDossierWorkspace);els.openRangeEditorBtn.addEventListener("click",()=>openRangeEditor());els.closeDossierBtn.addEventListener("click",closeDossierWorkspace);els.dossierWorkspace.addEventListener("click",e=>{if(e.target===els.dossierWorkspace)closeDossierWorkspace()});els.editDossierBtn.addEventListener("click",()=>{if(!state.dossierCollectionMode)openTileProfileForm()});els.dossierModeBrief.addEventListener("click",()=>{if(state.dossierCollectionMode)return;state.dossierMode="brief";renderDossierWorkspace();persist()});els.dossierModeFull.addEventListener("click",()=>{if(state.dossierCollectionMode)return;state.dossierMode="full";renderDossierWorkspace();persist()});els.dossierLocateBtn.addEventListener("click",()=>{const tile=activeDossierTile();if(!tile)return;const target=tile.precision?{x:tile.precision.x,y:tile.precision.y,zoom:Math.max(state.camera.zoom,5.2)}:{x:cellCenter(tile.gx),y:cellCenter(tile.gy),zoom:Math.max(state.camera.zoom,.88)};closeDossierWorkspace();animateCameraTo(target.x,target.y,target.zoom,()=>{state.flippedCell=tile.precision?null:tile.key;scheduleRender()})});els.copyPromptBtn.addEventListener("click",()=>{if(state.dossierCollectionMode){const keys=[...state.brushKeys].filter(key=>objectsInCellKey(key).length||state.tileProfiles[key]);if(keys.length)copyText(collectionSummaryText(aggregateBrushCollection(keys)),"区域摘要已复制");return}const tile=activeDossierTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makePrompt(profile,tile,main),tile.precision?"精确点摘要已复制":"地块摘要已复制")});els.copyBriefBtn.addEventListener("click",()=>{if(state.dossierCollectionMode)return;const tile=activeDossierTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items),main=selectedTileMain(tile.items);copyText(makeArtBrief(profile,tile,main),tile.precision?"精确点证据摘要已复制":"证据摘要已复制")});$$('[data-dossier-tab]').forEach(b=>b.addEventListener('click',()=>{state.dossierTab=b.dataset.dossierTab;renderDossierWorkspace()}));els.tileProfileForm.addEventListener("submit",saveTileProfileForm);els.objectForm.addEventListener("submit",saveObjectForm);els.deleteObjectBtn.addEventListener("click",()=>{const id=els.formObjectId.value;if(id){closeModal("objectModal");openDeleteModal("object",id)}});els.formGeometry.addEventListener("change",updateGeometryRangeHint);els.exportPatchBtn.addEventListener("click",()=>exportPatch(false));els.finishRoundBtn.addEventListener("click",finishRoundAndPublish);els.roundKeepBtn.addEventListener("click",()=>{state.pendingRoundExport=null;closeModal("roundModal");toast("已保留本轮更改","可继续编辑或稍后完成本轮")});els.roundRetryPublishBtn?.addEventListener("click",publishPendingRound);els.roundExportFallbackBtn?.addEventListener("click",exportPendingRoundLocally);els.roundArchiveBtn.addEventListener("click",()=>archiveCurrentRound(false));els.openChangesTab.addEventListener("click",showChanges);els.openTrashTab.addEventListener("click",openTrash);els.clearTrashBtn.addEventListener("click",clearTrash);els.trashRetentionSelect.addEventListener("change",()=>{state.trashRetentionDays=Number(els.trashRetentionSelect.value)||0;const removed=cleanupExpiredTrash(true);renderTrash();persist();updateHeader();if(!removed)toast("回收站保留规则已更新",state.trashRetentionDays?`自动清理超过${state.trashRetentionDays}天的内容`:"永久保留")});els.openSpecTab.addEventListener("click",showSpecs);els.checkUpdateBtn.addEventListener("click",()=>checkUpdate(false));els.closeFlipBtn.addEventListener("click",()=>{state.flippedCell=null;scheduleRender()});if(els.clearSpatialFocusBtn)els.clearSpatialFocusBtn.addEventListener("click",()=>clearSpatialFocus());
     els.closeRangeEditorBtn.addEventListener("click",closeRangeEditor);els.rangeSaveBtn.addEventListener("click",saveRangeEditor);els.rangeUndoBtn.addEventListener("click",undoRange);els.rangeResetBtn.addEventListener("click",resetRange);els.rangeFitBtn.addEventListener("click",fitRangeEditor);els.createAreaObjectBtn.addEventListener("click",()=>createSpatialObject("area"));els.createFieldObjectBtn.addEventListener("click",()=>createSpatialObject("field"));$$('[data-range-tool]').forEach(b=>b.addEventListener('click',()=>setRangeTool(b.dataset.rangeTool)));els.rangeSnapSelect.addEventListener("change",()=>{state.rangeEditor.snap=Number(els.rangeSnapSelect.value)||10});els.rangeShape.addEventListener("change",()=>convertRangeShape(els.rangeShape.value));els.rangeKind.addEventListener("change",()=>{const o=currentRangeObject();if(o)els.rangeObjectBadge.textContent=`${els.rangeKind.value==='field'?'作用域':'面积'} · ${o.name}`;drawRangeEditor()});els.rangeEvidence.addEventListener("change",()=>{if(state.rangeEditor.draft){state.rangeEditor.draft.evidence=els.rangeEvidence.value;renderRangeAnalysis();drawRangeEditor()}});[els.rangeCenterX,els.rangeCenterY,els.rangeWidth,els.rangeHeight,els.rangeRadius].forEach(x=>x.addEventListener("input",updateRangeFromInputs));els.rangePoints.addEventListener("change",updateRangePoints);els.rangeViewport.addEventListener("pointerdown",rangePointerDown);els.rangeViewport.addEventListener("pointermove",rangePointerMove);els.rangeViewport.addEventListener("pointerup",rangePointerUp);els.rangeViewport.addEventListener("pointercancel",rangePointerUp);els.rangeViewport.addEventListener("click",rangeCanvasClick);els.rangeViewport.addEventListener("dblclick",rangeCanvasDblClick);els.rangeViewport.addEventListener("wheel",rangeWheel,{passive:false});
@@ -2714,13 +2905,16 @@
   function brushTracePoint(clientX,clientY){
     const w=screenToWorld(clientX,clientY),stroke=state.brushCurrentStroke;if(!stroke)return;
     const last=stroke[stroke.length-1],minWorld=Math.max(.6,3/Math.max(scale(),.001));
-    if(!last||Math.hypot(w.x-last.x,w.y-last.y)>=minWorld){stroke.push({x:w.x,y:w.y});scheduleBrushTraceDraw()}
+    if(!last||Math.hypot(w.x-last.x,w.y-last.y)>=minWorld){stroke.push({x:w.x,y:w.y});drawBrushTraceCanvas()}
   }
   function startBrushTrace(clientX,clientY){
     state.brushCurrentAction={added:new Set(),removed:new Set(),hadStroke:!state.brushErase};
-    if(state.brushErase){state.brushCurrentStroke=null;return}
+    els.viewport.classList.add("brush-mode","brush-trace-active");
+    const r=els.viewport.getBoundingClientRect(),canvas=els.brushTraceCanvas,dpr=Math.min(devicePixelRatio||1,2);
+    if(canvas&&(Math.abs(canvas.width-r.width*dpr)>2||Math.abs(canvas.height-r.height*dpr)>2))resizeCanvas();
+    if(state.brushErase){state.brushCurrentStroke=null;drawBrushTraceCanvas();return}
     const w=screenToWorld(clientX,clientY),stroke=[{x:w.x,y:w.y}];state.brushCurrentStroke=stroke;state.brushStrokes.push(stroke);
-    if(state.brushStrokes.length>40)state.brushStrokes.splice(0,state.brushStrokes.length-40);scheduleBrushTraceDraw()
+    if(state.brushStrokes.length>40)state.brushStrokes.splice(0,state.brushStrokes.length-40);drawBrushTraceCanvas()
   }
   function finishBrushTrace(){
     const stroke=state.brushCurrentStroke;
@@ -2732,17 +2926,17 @@
     }
     state.brushCurrentStroke=null;state.brushCurrentAction=null;scheduleBrushTraceDraw()
   }
-  function clearBrushTraces(){state.brushCurrentStroke=null;state.brushStrokes=[];scheduleBrushTraceDraw()}
+  function clearBrushTraces(){state.brushCurrentStroke=null;state.brushStrokes=[];if(!state.brushMode)els.viewport.classList.remove("brush-trace-active");drawBrushTraceCanvas()}
   function clearBrushActionHistory(){
     state.brushHistory=[];state.brushCurrentAction=null;
     if(state.brushRightClickTimer){clearTimeout(state.brushRightClickTimer);state.brushRightClickTimer=null}
     state.brushRightClickAt=0
   }
   function drawBrushTraceCanvas(){
-    const canvas=els.brushTraceCanvas;if(!canvas||!els.viewport.clientWidth)return;const r=els.viewport.getBoundingClientRect(),dpr=canvas.width/Math.max(1,r.width),ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,r.width,r.height);
+    const canvas=els.brushTraceCanvas;if(!canvas||!els.viewport.clientWidth)return;const r=els.viewport.getBoundingClientRect();if(canvas.width<2||canvas.height<2)resizeCanvas();const dpr=canvas.width/Math.max(1,r.width),ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;ctx.clearRect(0,0,r.width,r.height);
     const strokes=state.brushStrokes||[];
     if(strokes.length){ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
-      strokes.forEach((stroke,index)=>{if(!stroke?.length)return;const pts=stroke.map(p=>worldToScreen(p.x,p.y));ctx.beginPath();if(pts.length===1){ctx.arc(pts[0].x,pts[0].y,5.5,0,Math.PI*2)}else{ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length-1;i++){const mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,mx,my)}const last=pts[pts.length-1];ctx.lineTo(last.x,last.y)}ctx.strokeStyle="rgba(255,247,239,.82)";ctx.lineWidth=14;ctx.stroke();ctx.strokeStyle=index===strokes.length-1?"rgba(181,47,42,.92)":"rgba(181,47,42,.72)";ctx.lineWidth=8;ctx.stroke();ctx.strokeStyle="rgba(126,24,27,.72)";ctx.lineWidth=2.2;ctx.stroke()});ctx.restore()
+      strokes.forEach((stroke,index)=>{if(!stroke?.length)return;const pts=stroke.map(p=>worldToScreen(p.x,p.y));ctx.beginPath();if(pts.length===1){ctx.arc(pts[0].x,pts[0].y,5.5,0,Math.PI*2)}else{ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length-1;i++){const mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,mx,my)}const last=pts[pts.length-1];ctx.lineTo(last.x,last.y)}ctx.strokeStyle="rgba(255,248,238,.96)";ctx.lineWidth=16;ctx.stroke();ctx.strokeStyle=index===strokes.length-1?"rgba(196,45,39,.98)":"rgba(181,47,42,.86)";ctx.lineWidth=9;ctx.stroke();ctx.strokeStyle="rgba(112,20,24,.86)";ctx.lineWidth=2.4;ctx.stroke()});ctx.restore()
     }
     // 关系线绘制在独立上层画布，始终位于地块卡片和精确对象标记之上。
     if(state.relationMode)drawV029RelationOverlay(ctx,visibleWorld(),scale())
@@ -2754,7 +2948,7 @@
     cancel?.classList.toggle("hidden",!state.brushMode);if(count)count.textContent=state.brushKeys.size;if(collection)collection.classList.toggle("hidden",!state.brushKeys.size);
     els.viewport.classList.toggle("brush-mode",state.brushMode);if(render)scheduleRender()
   }
-  function setBrushMode(on,erase=false){state.brushMode=!!on;state.brushErase=!!erase;state.brushDrawing=false;updateBrushUI();if(on)toast(erase?"擦除画笔已开启":"采集画笔已开启",erase?"划过已收录地块即可移除":"拖动划过有对象或已有档案的地块；单击右键撤回上一笔，双击右键清空集合")}
+  function setBrushMode(on,erase=false){state.brushMode=!!on;state.brushErase=!!erase;state.brushDrawing=false;if(on){state.pan.active=false;els.viewport.classList.remove("dragging","light-camera-motion");els.viewport.classList.add("brush-trace-active")}else els.viewport.classList.remove("brush-trace-active");updateBrushUI();drawBrushTraceCanvas();if(on)toast(erase?"擦除画笔已开启":"采集画笔已开启",erase?"划过已收录地块即可移除":"拖动划过有对象或已有档案的地块；轨迹会实时显示，右键撤回上一笔，双击右键清空集合")}
   function cancelBrushMode(){
     if(state.brushRightClickTimer){clearTimeout(state.brushRightClickTimer);state.brushRightClickTimer=null}
     setBrushMode(false,false);clearBrushTraces();state.brushHistory=[];state.brushCurrentAction=null;persist();toast("已退出画笔模式","画笔线已清除，已采集地块仍保留。")
@@ -3136,7 +3330,7 @@
     const end=e=>{if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();dragging=false;pointerId=null;minimap.classList.remove("is-navigating");try{minimap.releasePointerCapture(e.pointerId)}catch{}};minimap.addEventListener("pointerup",end,true);minimap.addEventListener("pointercancel",end,true);minimap.addEventListener("click",e=>{if(e.target.closest("#minimapOverviewBtn"))return;e.stopPropagation();e.preventDefault()},true);minimap.addEventListener("dblclick",e=>{e.stopPropagation();e.preventDefault();fitAll()},true);
     overview?.addEventListener("pointerdown",e=>e.stopPropagation(),true);overview?.addEventListener("click",e=>{e.stopPropagation();e.preventDefault();fitAll();toast("已打开地图总览","已缩放到全部已录入对象范围")})
   }
-  function setupV029Features(){const presetBtn=document.getElementById("viewPresetBtn"),presetMenu=document.getElementById("viewPresetMenu"),relationBtn=document.getElementById("relationModeBtn"),compareBtn=document.getElementById("compareModeBtn"),measureBtn=document.getElementById("measureModeBtn");presetBtn?.addEventListener("click",e=>{e.stopPropagation();presetMenu.classList.toggle("hidden")});presetMenu?.querySelectorAll("[data-view-preset]").forEach(b=>b.addEventListener("click",()=>{state.viewPreset=b.dataset.viewPreset;presetMenu.classList.add("hidden");if(state.viewPreset==="geography"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}else if(state.viewPreset==="hydrology"){state.layers.rivers=true;state.layers.terrain=true;state.layers.areas=true}else if(state.viewPreset==="all"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}els.layerTerrain.checked=state.layers.terrain;els.layerRivers.checked=state.layers.rivers;els.layerAreas.checked=state.layers.areas;state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`关系线已切换为${V029_PRESETS[state.viewPreset]||"全部"}`,v044RelationPresetDescription())}));presetMenu?.querySelectorAll("[data-relation-evidence]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();state.relationEvidenceFilter=b.dataset.relationEvidence||"all";state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`证据筛选：${V045_EVIDENCE_LABELS[state.relationEvidenceFilter]}`,v044RelationPresetDescription())}));document.addEventListener("click",e=>{if(!e.target.closest(".research-tool-wrap")&&!e.target.closest("#viewPresetMenu"))presetMenu?.classList.add("hidden")});relationBtn?.addEventListener("click",()=>{state.relationMode=!state.relationMode;if(state.relationMode&&!state.selectedId)toast("请先选择对象","关系高亮以当前选中对象为中心。","error");scheduleRender()});compareBtn?.addEventListener("click",()=>{if(state.compareMode&&state.compareKeys.size>=2)openV029Compare();else{state.compareMode=!state.compareMode;state.measureMode=false;setBrushMode(false);updateV029ToolUI();scheduleRender();toast(state.compareMode?"对比选择已开启":"对比选择已退出",state.compareMode?"点击2—4个地块；右键可移除。":"")}});measureBtn?.addEventListener("click",()=>{state.measureMode=!state.measureMode;state.compareMode=false;setBrushMode(false);state.measure={active:false,start:null,current:null,final:null};updateV029ToolUI();scheduleRender()});document.getElementById("isolatedObjectsBtn")?.addEventListener("click",openV029Isolated);document.getElementById("closeIsolatedWorkspace")?.addEventListener("click",()=>document.getElementById("isolatedWorkspace").classList.add("hidden"));document.getElementById("closeCompareWorkspace")?.addEventListener("click",()=>document.getElementById("compareWorkspace").classList.add("hidden"));document.getElementById("openCompareBtn")?.addEventListener("click",openV029Compare);document.getElementById("clearCompareBtn")?.addEventListener("click",()=>{state.compareKeys.clear();updateV029ToolUI();scheduleRender();persist()});document.getElementById("exitCompareBtn")?.addEventListener("click",()=>{state.compareMode=false;updateV029ToolUI();scheduleRender()});document.getElementById("clearMeasureBtn")?.addEventListener("click",()=>{state.measure={active:false,start:null,current:null,final:null};scheduleRender();updateV029ToolUI()});document.getElementById("compareWorkspace")?.addEventListener("click",e=>{if(e.target.id==="compareWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("isolatedWorkspace")?.addEventListener("click",e=>{if(e.target.id==="isolatedWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("mapBreadcrumb")?.addEventListener("click",e=>{const b=e.target.closest("[data-breadcrumb]");if(!b)return;if(b.dataset.breadcrumb==="world")v052SelectWorld(true);else if(b.dataset.breadcrumb==="region"&&b.dataset.regionId)v052SelectRegion(b.dataset.regionId,true);else if(b.dataset.breadcrumb==="tile"&&state.selectedCell)jumpToCell(state.selectedCell);else if(b.dataset.breadcrumb==="object"&&state.selectedId)jumpToObject(state.selectedId,true,true)});setupMinimapNavigation();setupV044RelationNavigation();setupV044LocationGuide();
+  function setupV029Features(){const presetBtn=document.getElementById("viewPresetBtn"),presetMenu=document.getElementById("viewPresetMenu"),relationBtn=document.getElementById("relationModeBtn"),compareBtn=document.getElementById("compareModeBtn"),measureBtn=document.getElementById("measureModeBtn");presetBtn?.addEventListener("click",e=>{e.stopPropagation();presetMenu.classList.toggle("hidden")});presetMenu?.querySelectorAll("[data-view-preset]").forEach(b=>b.addEventListener("click",()=>{state.viewPreset=b.dataset.viewPreset;presetMenu.classList.add("hidden");if(state.viewPreset==="geography"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}else if(state.viewPreset==="hydrology"){state.layers.rivers=true;state.layers.terrain=true;state.layers.areas=true}else if(state.viewPreset==="all"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}els.layerTerrain.checked=state.layers.terrain;els.layerRivers.checked=state.layers.rivers;els.layerAreas.checked=state.layers.areas;state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`关系线已切换为${V029_PRESETS[state.viewPreset]||"全部"}`,v044RelationPresetDescription())}));presetMenu?.querySelectorAll("[data-relation-evidence]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();state.relationEvidenceFilter=b.dataset.relationEvidence||"all";state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`证据筛选：${V045_EVIDENCE_LABELS[state.relationEvidenceFilter]}`,v044RelationPresetDescription())}));document.addEventListener("click",e=>{if(!e.target.closest(".research-tool-wrap")&&!e.target.closest("#viewPresetMenu"))presetMenu?.classList.add("hidden")});relationBtn?.addEventListener("click",()=>{state.relationMode=!state.relationMode;if(state.relationMode&&!state.selectedId)toast("请先选择对象","关系高亮以当前选中对象为中心。","error");scheduleRender();scheduleBrushTraceDraw()});compareBtn?.addEventListener("click",()=>{if(state.compareMode&&state.compareKeys.size>=2)openV029Compare();else{state.compareMode=!state.compareMode;state.measureMode=false;setBrushMode(false);updateV029ToolUI();scheduleRender();toast(state.compareMode?"对比选择已开启":"对比选择已退出",state.compareMode?"点击2—4个地块；右键可移除。":"")}});measureBtn?.addEventListener("click",()=>{state.measureMode=!state.measureMode;state.compareMode=false;setBrushMode(false);state.measure={active:false,start:null,current:null,final:null};updateV029ToolUI();scheduleRender()});document.getElementById("isolatedObjectsBtn")?.addEventListener("click",openV029Isolated);document.getElementById("closeIsolatedWorkspace")?.addEventListener("click",()=>document.getElementById("isolatedWorkspace").classList.add("hidden"));document.getElementById("closeCompareWorkspace")?.addEventListener("click",()=>document.getElementById("compareWorkspace").classList.add("hidden"));document.getElementById("openCompareBtn")?.addEventListener("click",openV029Compare);document.getElementById("clearCompareBtn")?.addEventListener("click",()=>{state.compareKeys.clear();updateV029ToolUI();scheduleRender();persist()});document.getElementById("exitCompareBtn")?.addEventListener("click",()=>{state.compareMode=false;updateV029ToolUI();scheduleRender()});document.getElementById("clearMeasureBtn")?.addEventListener("click",()=>{state.measure={active:false,start:null,current:null,final:null};scheduleRender();updateV029ToolUI()});document.getElementById("compareWorkspace")?.addEventListener("click",e=>{if(e.target.id==="compareWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("isolatedWorkspace")?.addEventListener("click",e=>{if(e.target.id==="isolatedWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("mapBreadcrumb")?.addEventListener("click",e=>{const b=e.target.closest("[data-breadcrumb]");if(!b)return;if(b.dataset.breadcrumb==="world")v052SelectWorld(true);else if(b.dataset.breadcrumb==="region"&&b.dataset.regionId)v052SelectRegion(b.dataset.regionId,true);else if(b.dataset.breadcrumb==="tile"&&state.selectedCell)jumpToCell(state.selectedCell);else if(b.dataset.breadcrumb==="object"&&state.selectedId)jumpToObject(state.selectedId,true,true)});setupMinimapNavigation();setupV044RelationNavigation();setupV044LocationGuide();
     els.viewport.addEventListener("pointerdown",e=>{if(state.measureMode&&e.button===0&&!e.target.closest("button,input,select,textarea,.precision-object-group,.research-minimap")){e.preventDefault();e.stopImmediatePropagation();const w=screenToWorld(e.clientX,e.clientY);state.measure={active:true,start:w,current:w,final:null};try{els.viewport.setPointerCapture(e.pointerId)}catch{}scheduleRender();return}if(state.compareMode&&e.button===0&&e.target.closest(".tile,.precision-object-group")){e.preventDefault();e.stopImmediatePropagation()}},true);els.viewport.addEventListener("pointermove",e=>{if(!state.measureMode||!state.measure.active)return;e.preventDefault();e.stopImmediatePropagation();state.measure.current=screenToWorld(e.clientX,e.clientY);scheduleRender();updateV029ToolUI()},true);els.viewport.addEventListener("pointerup",e=>{if(!state.measureMode||!state.measure.active)return;e.preventDefault();e.stopImmediatePropagation();state.measure.final=screenToWorld(e.clientX,e.clientY);state.measure.current=null;state.measure.active=false;try{els.viewport.releasePointerCapture(e.pointerId)}catch{}scheduleRender();updateV029ToolUI()},true);els.viewport.addEventListener("click",e=>{if(!state.compareMode)return;const tile=e.target.closest(".tile"),group=e.target.closest(".precision-object-group");let key=tile?.dataset.cell;if(!key&&group){const id=group.querySelector("[data-precision-main]")?.dataset.precisionMain,o=state.objects.find(x=>x.id===id);if(o){const c=objectCell(o);key=cellKey(c.gx,c.gy)}}if(!key)return;e.preventDefault();e.stopImmediatePropagation();if(state.compareKeys.has(key))state.compareKeys.delete(key);else if(state.compareKeys.size<4)state.compareKeys.add(key);else toast("最多对比四个地块","请先移除一个已选地块。","error");updateV029ToolUI();scheduleRender();persist()},true);els.viewport.addEventListener("contextmenu",e=>{if(state.compareMode){const w=screenToWorld(e.clientX,e.clientY),key=cellKey(cellIndex(w.x),cellIndex(w.y));if(state.compareKeys.has(key)){e.preventDefault();e.stopImmediatePropagation();state.compareKeys.delete(key);updateV029ToolUI();scheduleRender();persist();return}}if(state.measureMode){e.preventDefault();state.measure={active:false,start:null,current:null,final:null};scheduleRender();updateV029ToolUI()}},true);document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(state.measureMode){state.measureMode=false;state.measure={active:false,start:null,current:null,final:null};updateV029ToolUI();scheduleRender()}else if(state.compareMode){state.compareMode=false;updateV029ToolUI();scheduleRender()}}},true);updateV029ToolUI();renderV029Minimap();updateV029Breadcrumb();setTimeout(()=>scheduleRender(),50)}
 
 
@@ -3327,7 +3521,7 @@
 
   // v0.6.1 · 关系说明、工具栏可用性与关系图整理
   const V061_HELP_TEXT={
-    zoomOutBtn:["缩小地图","降低地图缩放级别。"],zoomReadout:["当前缩放","单击恢复100%；地图最高可放大至3000%。"],zoomInBtn:["放大地图","提高地图缩放级别。"],originBtn:["回到都广","定位到全局原点都广之野。"],jumpCoordBtn:["输入坐标","按里坐标直接跳转到指定位置。"],viewPresetBtn:["关系主题","筛选地理、水系、文明、神话、事件或异名关系。"],relationModeBtn:["关系高亮","以当前对象为中心显示关系网络；再次点击可关闭。"],compareModeBtn:["地块对比","选择2—4个地块并排核对资料。"],measureModeBtn:["测量","在地图上拖动，测量两点的距离与方向。"],isolatedObjectsBtn:["孤立对象","查找缺少空间关系或未接入地图网络的对象。"],brushModeBtn:["画笔采集","拖动画笔收集经过的地块，便于集中查看。"],cancelBrushModeBtn:["退出画笔","清除笔迹并退出画笔状态，已采集地块仍保留。"],brushCollectionBtn:["地块集合","查看画笔已经收集的地块。"],v060BundleToggle:["同向合流","方向相近的关系先共享主干，再分叉到目标，减少线条拥挤。"],v060ObjectFocus:["聚焦对象","降低无关对象透明度，只突出当前对象及关系目标。"],v060ViewMode:["研究／展示视图","研究视图保留证据与技术标记；展示视图减少研究性信息。"],v050NavBack:["上一个位置","返回最近一次地图定位。"],v050NavForward:["下一个位置","前往导航历史中的下一处位置。"],v050BookmarkAdd:["收藏当前位置","保存当前坐标、缩放与选中对象。"],v050BookmarkOpen:["打开书签","查看并跳转到收藏的位置。"],v050Undo:["撤销","撤销最近一次可恢复的编辑。"],v050Redo:["重做","恢复刚刚撤销的编辑。"],v050HistoryOpen:["本轮修改","查看当前编辑轮次中的变更记录。"],v050GlobalSearchOpen:["全局检索","搜索对象、地块档案、标签、原文与关系字段。"],v050LeftToggle:["左侧索引","显示或收起检索与对象索引。"],v050RightToggle:["右侧档案","显示或收起当前对象详情。"],v050FocusToggle:["专注地图","同时收起左右栏，扩大地图浏览空间。"],v050ExitMode:["退出当前模式","退出关系、测量、对比或画笔模式，恢复普通浏览。"],v061MoreButton:["更多工具","打开书签、撤销、侧栏和专注地图等低频操作。"],v061LegendToggle:["折叠关系图例","收起或展开左上角的关系线说明。"]
+    zoomOutBtn:["缩小地图","降低地图缩放级别。"],zoomReadout:["当前缩放","单击恢复100%；地图最高可放大至3000%。"],zoomInBtn:["放大地图","提高地图缩放级别。"],originBtn:["回到都广","定位到全局原点都广之野。"],jumpCoordBtn:["输入坐标","按里坐标直接跳转到指定位置。"],viewPresetBtn:["关系主题","筛选地理、水系、文明、神话、事件或异名关系。"],relationModeBtn:["关系高亮","以当前对象为中心显示关系网络；再次点击可关闭。"],compareModeBtn:["地块对比","选择2—4个地块并排核对资料。"],measureModeBtn:["测量","在地图上拖动，测量两点的距离与方向。"],isolatedObjectsBtn:["孤立对象","查找缺少空间关系或未接入地图网络的对象。"],brushModeBtn:["画笔采集","拖动画笔收集经过的地块，便于集中查看。"],cancelBrushModeBtn:["退出画笔","清除笔迹并退出画笔状态，已采集地块仍保留。"],brushCollectionBtn:["地块集合","查看画笔已经收集的地块。"],v060BundleToggle:["同向合流","方向相近的关系先共享主干，再分叉到目标，减少线条拥挤。"],v060ObjectFocus:["聚焦对象","降低无关对象透明度，只突出当前对象及关系目标。"],v060ViewMode:["研究／展示视图","研究视图保留证据与技术标记；展示视图减少研究性信息。"],v050NavBack:["上一个位置","返回最近一次地图定位。"],v050NavForward:["下一个位置","前往导航历史中的下一处位置。"],v050BookmarkAdd:["收藏当前位置","保存当前坐标、缩放与选中对象。"],v050BookmarkOpen:["打开书签","查看并跳转到收藏的位置。"],v050Undo:["撤销","撤销最近一次可恢复的编辑。"],v050Redo:["重做","恢复刚刚撤销的编辑。"],v050HistoryOpen:["本轮修改","查看当前编辑轮次中的变更记录。"],v050GlobalSearchOpen:["全局检索","搜索对象、地块档案、标签、原文与关系字段。"],v050LeftToggle:["左侧索引","显示或收起检索与对象索引。"],v050RightToggle:["右侧档案","显示或收起当前对象详情。"],v050FocusToggle:["专注地图","同时收起左右栏，扩大地图浏览空间。"],v050ExitMode:["退出当前模式","退出关系、测量、对比或画笔模式，恢复普通浏览。"],v061MoreButton:["更多工具","打开书签、撤销、侧栏和专注地图等低频操作。"],v061LegendToggle:["折叠关系图例","收起或展开左上角的关系线说明。"],layerEnvironment:["山水环境纹理","依据周边山、丘、林、泽等地块与真实河流路径生成淡墨背景；不会改变地图数据。"]
   };
   function v061Hash(text){let h=2166136261;for(const ch of String(text||"")){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
   function v061ViewportRect(){return els.viewport.getBoundingClientRect()}
@@ -3436,7 +3630,203 @@
     window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(state.relationCardTargetId){e.preventDefault();e.stopImmediatePropagation();v061CloseRelationCard(false);return}const group=document.getElementById('v060RelationGroup');if(group&&!group.classList.contains('hidden')){e.preventDefault();e.stopImmediatePropagation();group.classList.add('hidden')}setTimeout(queueSync,0)},true);
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.6.1",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",bootGuard:true};
+
+  /* v0.6.2 玉简山海：程序化山水环境层。装饰只使用既有对象、地块档案和水系路径，
+     不生成新的地理事实；所有纹理都位于信息层下方，并使用固定种子保持稳定。 */
+  function v062Hash(value){let h=2166136261>>>0;const text=String(value??"");for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+  function v062Rng(seed){let x=(Number(seed)||1)>>>0;return()=>{x=(x+0x6D2B79F5)>>>0;let t=x;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
+  function v062Clamp(value,min,max){return Math.max(min,Math.min(max,value))}
+  function v062PointSegment(x,y,a,b){const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;if(!l2)return{distance:Math.hypot(x-a.x,y-a.y),x:a.x,y:a.y,angle:0};const t=v062Clamp(((x-a.x)*dx+(y-a.y)*dy)/l2,0,1),px=a.x+dx*t,py=a.y+dy*t;return{distance:Math.hypot(x-px,y-py),x:px,y:py,angle:Math.atan2(dy,dx)}}
+  function v062EnvironmentSignature(){return`${state.dataVersion}|${state.objects.length}|${state.waterPaths?.length||0}|${state.changes.length}|${Object.keys(state.tileProfiles||{}).length}`}
+  function v062ProfileCell(key){const raw=String(key||"");let m=raw.match(/^(-?\d+)\s*,\s*(-?\d+)$/);if(m)return{x:cellCenter(Number(m[1])),y:cellCenter(Number(m[2]))};m=raw.match(/X([+-]?\d+)_Y([+-]?\d+)/i);if(m)return{x:cellCenter(Number(m[1])),y:cellCenter(Number(m[2]))};return null}
+  function v062TerrainWeight(category){return({mountain:1.35,hill:1.05,forest:1.15,plain:.74,wetland:1.05,desert:1.0,ice:1.0,settlement:.28}[category]||0)}
+  function v062BuildEnvironmentModel(){
+    const signature=v062EnvironmentSignature();if(state.perf.v062EnvironmentModel&&state.perf.v062EnvironmentSignature===signature)return state.perf.v062EnvironmentModel;
+    const waterSegments=[];
+    for(const path of state.waterPaths||[]){const pts=Array.isArray(path.points)?path.points:[];for(let i=1;i<pts.length;i++){const a={x:Number(pts[i-1][0])||0,y:Number(pts[i-1][1])||0},b={x:Number(pts[i][0])||0,y:Number(pts[i][1])||0},length=Math.hypot(b.x-a.x,b.y-a.y);if(length<1)continue;waterSegments.push({a,b,length,path,angle:Math.atan2(b.y-a.y,b.x-a.x)})}}
+    const clusterSize=280,clusters=new Map();
+    const add=(x,y,category,weight,source)=>{if(!Number.isFinite(x)||!Number.isFinite(y)||!v062TerrainWeight(category))return;const key=`${Math.floor(x/clusterSize)},${Math.floor(y/clusterSize)}`;let c=clusters.get(key);if(!c){c={key,sumX:0,sumY:0,total:0,counts:{},sources:[]};clusters.set(key,c)}c.sumX+=x*weight;c.sumY+=y*weight;c.total+=weight;c.counts[category]=(c.counts[category]||0)+weight;if(c.sources.length<12)c.sources.push(source)};
+    for(const o of state.objects||[]){let category=baseTerrainCategory(o);if(category==="unknown"&&isWetlandObject(o))category="wetland";if(category==="water"||category==="unknown")continue;const weight=v062TerrainWeight(category)*(o.geometryType==="area"?1.9:o.geometryType==="line"?1.15:1),p=objectAnchor(o);add(p.x,p.y,category,weight,o.id)}
+    for(const [key,profile] of Object.entries(state.tileProfiles||{})){const category=baseTerrainCategoryFromProfile(profile);const p=v062ProfileCell(key);if(p)add(p.x,p.y,category,v062TerrainWeight(category)*1.55,`profile:${key}`)}
+    const motifs=[];
+    for(const cluster of clusters.values()){
+      if(cluster.total<=0)continue;const cx=cluster.sumX/cluster.total,cy=cluster.sumY/cluster.total,ranked=Object.entries(cluster.counts).sort((a,b)=>b[1]-a[1]);if(!ranked.length)continue;const dominant=ranked[0][0],secondary=ranked[1]?.[0]||dominant;
+      let nearest=null;for(const segment of waterSegments){const hit=v062PointSegment(cx,cy,segment.a,segment.b);if(!nearest||hit.distance<nearest.distance)nearest={...hit,segment}}
+      const rand=v062Rng(v062Hash(`${cluster.key}:${dominant}:${cluster.sources.join('|')}`)),count=v062Clamp(Math.round(1.6+cluster.total*.78),2,8),radius=v062Clamp(72+cluster.total*13,88,190);
+      for(let i=0;i<count;i++){
+        const category=i>0&&i%4===0?secondary:dominant,theta=rand()*Math.PI*2,rr=Math.sqrt(rand())*radius;let x=cx+Math.cos(theta)*rr,y=cy+Math.sin(theta)*rr,angle=(nearest&&nearest.distance<420?nearest.angle:(rand()-.5)*.55)+(rand()-.5)*.22;
+        if(nearest&&nearest.distance<250&&(category==="mountain"||category==="hill"||category==="forest")){
+          const projected=v062PointSegment(x,y,nearest.segment.a,nearest.segment.b),nx=-Math.sin(nearest.angle),ny=Math.cos(nearest.angle),side=v062Hash(`${cluster.key}:${i}`)%2?1:-1,minGap=category==="forest"?42:66;if(projected.distance<minGap){x=projected.x+nx*side*(minGap+rand()*48);y=projected.y+ny*side*(minGap+rand()*48)}}
+        motifs.push({x,y,category,angle,scale:.72+rand()*.62,alpha:.58+rand()*.34,seed:v062Hash(`${cluster.key}:${i}`)})
+      }
+    }
+    const waterMarks=[];
+    for(const segment of waterSegments){const path=segment.path,spacing=path.isMain?120:165,count=Math.floor(segment.length/spacing);if(!count)continue;const rand=v062Rng(v062Hash(`${path.id}:${segment.a.x}:${segment.a.y}`)),nx=-Math.sin(segment.angle),ny=Math.cos(segment.angle);for(let i=1;i<=count;i++){const t=i/(count+1),offset=(rand()-.5)*(path.isMain?34:22);waterMarks.push({x:segment.a.x+(segment.b.x-segment.a.x)*t+nx*offset,y:segment.a.y+(segment.b.y-segment.a.y)*t+ny*offset,angle:segment.angle,scale:(path.isMain?1.15:.82)+rand()*.34,alpha:path.evidenceLevel==="G3"?.40:path.evidenceLevel==="G4"?.30:.54,pathId:path.id})}}
+    const bucketSize=520,buckets=new Map(),put=(item,type)=>{const key=`${Math.floor(item.x/bucketSize)},${Math.floor(item.y/bucketSize)}`;let b=buckets.get(key);if(!b){b={motifs:[],waterMarks:[]};buckets.set(key,b)}b[type].push(item)};motifs.forEach(x=>put(x,"motifs"));waterMarks.forEach(x=>put(x,"waterMarks"));
+    const model={signature,bucketSize,buckets,motifs,waterMarks,waterSegments};state.perf.v062EnvironmentSignature=signature;state.perf.v062EnvironmentModel=model;return model
+  }
+  function v062VisibleEnvironmentItems(model,v){const margin=240,size=model.bucketSize,minX=Math.floor((v.left-margin)/size),maxX=Math.floor((v.right+margin)/size),minY=Math.floor((v.bottom-margin)/size),maxY=Math.floor((v.top+margin)/size),motifs=[],waterMarks=[];for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const bucket=model.buckets.get(`${x},${y}`);if(bucket){motifs.push(...bucket.motifs);waterMarks.push(...bucket.waterMarks)}}return{motifs,waterMarks}}
+  function drawV062PaperTexture(ctx,r){
+    let tile=state.perf.v062PaperTile;if(!tile){tile=document.createElement("canvas");tile.width=128;tile.height=128;const t=tile.getContext("2d"),rand=v062Rng(6202601);t.clearRect(0,0,128,128);for(let i=0;i<245;i++){const x=rand()*128,y=rand()*128,a=.018+rand()*.04;t.fillStyle=`rgba(${rand()>.52?92:154},${rand()>.52?83:139},${rand()>.52?62:105},${a})`;t.fillRect(x,y,rand()>.7?1.4:.7,rand()>.7?1.2:.55)}for(let i=0;i<15;i++){const y=rand()*128;t.strokeStyle=`rgba(119,104,75,${.018+rand()*.025})`;t.lineWidth=.45;t.beginPath();t.moveTo(0,y);t.bezierCurveTo(38,y+(rand()-.5)*5,90,y+(rand()-.5)*5,128,y+(rand()-.5)*2);t.stroke()}state.perf.v062PaperTile=tile}
+    const pattern=ctx.createPattern(tile,"repeat");if(pattern){ctx.save();ctx.globalAlpha=.78;ctx.fillStyle=pattern;ctx.fillRect(0,0,r.width,r.height);ctx.restore()}
+  }
+  function v062DrawMountain(ctx,size,alpha){ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle=`rgba(60,79,68,${alpha})`;ctx.fillStyle=`rgba(82,103,87,${alpha*.105})`;ctx.lineWidth=Math.max(.75,size*.055);ctx.beginPath();ctx.moveTo(-size*.72,size*.32);ctx.quadraticCurveTo(-size*.39,-size*.14,-size*.13,size*.18);ctx.quadraticCurveTo(size*.12,-size*.62,size*.48,size*.18);ctx.quadraticCurveTo(size*.62,-size*.06,size*.78,size*.30);ctx.quadraticCurveTo(0,size*.46,-size*.72,size*.32);ctx.closePath();ctx.fill();ctx.stroke();ctx.globalAlpha=.58;ctx.beginPath();ctx.moveTo(-size*.12,size*.16);ctx.quadraticCurveTo(size*.08,-size*.30,size*.29,.07);ctx.moveTo(size*.20,.04);ctx.quadraticCurveTo(size*.34,.04,size*.47,.18);ctx.stroke();ctx.restore()}
+  function v062DrawHill(ctx,size,alpha){ctx.save();ctx.strokeStyle=`rgba(75,91,76,${alpha})`;ctx.lineWidth=Math.max(.7,size*.05);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-size*.72,size*.20);ctx.bezierCurveTo(-size*.48,-size*.24,-size*.17,-size*.22,size*.03,size*.18);ctx.bezierCurveTo(size*.24,-size*.14,size*.54,-size*.12,size*.72,size*.20);ctx.stroke();ctx.globalAlpha=.48;ctx.beginPath();ctx.moveTo(-size*.5,size*.32);ctx.quadraticCurveTo(0,size*.15,size*.52,size*.31);ctx.stroke();ctx.restore()}
+  function v062DrawForest(ctx,size,alpha){ctx.save();ctx.strokeStyle=`rgba(48,86,66,${alpha})`;ctx.fillStyle=`rgba(56,101,76,${alpha*.13})`;ctx.lineWidth=Math.max(.65,size*.045);for(const [ox,oy,scale] of [[-.34,.12,.72],[0,-.09,1],[.35,.14,.66]]){const h=size*.62*scale,w=size*.30*scale;ctx.beginPath();ctx.moveTo(ox*size,oy*size-h*.55);ctx.lineTo(ox*size-w,oy*size+h*.26);ctx.lineTo(ox*size+w,oy*size+h*.26);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(ox*size,oy*size+h*.23);ctx.lineTo(ox*size,oy*size+h*.49);ctx.stroke()}ctx.restore()}
+  function v062DrawWetland(ctx,size,alpha){ctx.save();ctx.strokeStyle=`rgba(61,129,133,${alpha})`;ctx.lineWidth=Math.max(.65,size*.043);ctx.lineCap="round";for(let i=-1;i<=1;i++){const y=i*size*.17;ctx.beginPath();ctx.moveTo(-size*.58,y);ctx.bezierCurveTo(-size*.22,y-size*.11,size*.18,y+size*.11,size*.58,y);ctx.stroke()}ctx.restore()}
+  function v062DrawPlain(ctx,size,alpha){ctx.save();ctx.strokeStyle=`rgba(121,113,79,${alpha})`;ctx.lineWidth=Math.max(.55,size*.038);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-size*.72,size*.08);ctx.bezierCurveTo(-size*.34,-size*.12,size*.24,size*.22,size*.72,-size*.02);ctx.moveTo(-size*.48,size*.28);ctx.bezierCurveTo(-size*.12,size*.10,size*.36,size*.38,size*.58,size*.20);ctx.stroke();ctx.restore()}
+  function v062DrawDesert(ctx,size,alpha){ctx.save();ctx.strokeStyle=`rgba(158,124,71,${alpha})`;ctx.lineWidth=Math.max(.65,size*.045);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-size*.72,size*.22);ctx.quadraticCurveTo(-size*.33,-size*.26,size*.08,size*.18);ctx.quadraticCurveTo(size*.42,-size*.12,size*.72,size*.18);ctx.moveTo(-size*.38,size*.35);ctx.quadraticCurveTo(.08*size,.08*size,.48*size,.31*size);ctx.stroke();ctx.restore()}
+  function v062DrawIce(ctx,size,alpha){ctx.save();ctx.strokeStyle=`rgba(102,137,141,${alpha})`;ctx.fillStyle=`rgba(153,187,188,${alpha*.09})`;ctx.lineWidth=Math.max(.65,size*.045);ctx.beginPath();ctx.moveTo(-size*.58,size*.28);ctx.lineTo(-size*.20,-size*.30);ctx.lineTo(size*.02,size*.05);ctx.lineTo(size*.30,-size*.42);ctx.lineTo(size*.62,size*.28);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()}
+  function v062DrawMotif(ctx,motif,s,opacity){const p=worldToScreen(motif.x,motif.y),base=v062Clamp((motif.category==="mountain"?30:motif.category==="hill"?25:20)*motif.scale*s,8,44);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-motif.angle);const alpha=opacity*motif.alpha;switch(motif.category){case"mountain":v062DrawMountain(ctx,base,alpha);break;case"hill":v062DrawHill(ctx,base,alpha);break;case"forest":v062DrawForest(ctx,base,alpha);break;case"wetland":v062DrawWetland(ctx,base,alpha);break;case"desert":v062DrawDesert(ctx,base,alpha);break;case"ice":v062DrawIce(ctx,base,alpha);break;default:v062DrawPlain(ctx,base,alpha)}ctx.restore()}
+  function v062DrawWaterMark(ctx,mark,s,opacity){const p=worldToScreen(mark.x,mark.y),length=v062Clamp(22*mark.scale*s,8,34),rise=v062Clamp(4.5*mark.scale*s,1.8,7);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-mark.angle);ctx.strokeStyle=`rgba(63,139,151,${opacity*mark.alpha})`;ctx.lineWidth=v062Clamp(.72+s*.22,.75,1.55);ctx.lineCap="round";for(let i=-1;i<=1;i++){const y=i*rise*1.55;ctx.beginPath();ctx.moveTo(-length*.52,y);ctx.bezierCurveTo(-length*.18,y-rise*.55,length*.16,y+rise*.55,length*.52,y);ctx.stroke()}ctx.restore()}
+  function v062DrawRiverValleys(ctx,v,s,opacity){for(const path of visibleWaterPaths(v)){if(!Array.isArray(path.points)||path.points.length<2)continue;const pts=path.points.map(point=>worldToScreen(Number(point[0])||0,Number(point[1])||0));ctx.save();ctx.lineCap="round";ctx.lineJoin="round";traceWaterCurve(ctx,pts);ctx.strokeStyle=`rgba(76,143,145,${opacity*(path.isMain?.075:.040)})`;ctx.lineWidth=v062Clamp((path.isMain?74:46)*s,10,82);ctx.stroke();traceWaterCurve(ctx,pts);ctx.strokeStyle=`rgba(244,239,219,${opacity*(path.isMain?.22:.14)})`;ctx.lineWidth=v062Clamp((path.isMain?30:20)*s,5,38);ctx.stroke();ctx.restore()}}
+  function drawV062Environment(ctx,v,s,light=false){
+    if(!state.layers.environment)return;const model=v062BuildEnvironmentModel(),items=v062VisibleEnvironmentItems(model,v),zoom=state.camera.zoom,presentation=state.presentationMode==="display",relationMuted=state.relationMode?.63:1,precisionMuted=state.precisionMode?.42:1,overviewBoost=state.regionOverviewMode?1.18:1,zoomFade=zoom>4.2?v062Clamp(1-(zoom-4.2)/13,.18,1):zoom<.18?.45:1,opacity=(presentation?.88:.66)*relationMuted*precisionMuted*overviewBoost*zoomFade;
+    ctx.save();v062DrawRiverValleys(ctx,v,s,opacity);const waterStep=light?3:zoom<.32?2:1;for(let i=0;i<items.waterMarks.length;i+=waterStep)v062DrawWaterMark(ctx,items.waterMarks[i],s,opacity);const motifStep=light?3:zoom<.25?2:1;for(let i=0;i<items.motifs.length;i+=motifStep){const motif=items.motifs[i];if(motif.x<v.left-180||motif.x>v.right+180||motif.y<v.bottom-180||motif.y>v.top+180)continue;v062DrawMotif(ctx,motif,s,opacity)}ctx.restore()
+  }
+
+  /* v0.7.0 自然山水底图：以真实对象与79段水系为锚点，生成连续地形场与山脊，
+     不再绘制重复的小山／鱼鳍图标。所有形态绑定世界坐标，缩放、拖动和关系模式同步。 */
+  function v071EnvironmentSignature(){return `${v062EnvironmentSignature()}|v071-natural-continuous-terrain`}
+  function v071BuildEnvironmentModel(){
+    const signature=v071EnvironmentSignature();
+    if(state.perf.v071EnvironmentModel&&state.perf.v071EnvironmentSignature===signature)return state.perf.v071EnvironmentModel;
+    const waterSegments=[];
+    for(const path of state.waterPaths||[]){
+      const pts=Array.isArray(path.points)?path.points:[];
+      for(let i=1;i<pts.length;i++){
+        const a={x:Number(pts[i-1][0])||0,y:Number(pts[i-1][1])||0},b={x:Number(pts[i][0])||0,y:Number(pts[i][1])||0};
+        const length=Math.hypot(b.x-a.x,b.y-a.y);if(length<1)continue;
+        waterSegments.push({a,b,length,path,angle:Math.atan2(b.y-a.y,b.x-a.x)});
+      }
+    }
+    const clusterSize=520,clusters=new Map();
+    const add=(x,y,category,weight,source)=>{
+      if(!Number.isFinite(x)||!Number.isFinite(y)||!v062TerrainWeight(category))return;
+      const key=`${Math.floor(x/clusterSize)},${Math.floor(y/clusterSize)}`;
+      let c=clusters.get(key);if(!c){c={key,sumX:0,sumY:0,total:0,counts:{},sources:[]};clusters.set(key,c)}
+      c.sumX+=x*weight;c.sumY+=y*weight;c.total+=weight;c.counts[category]=(c.counts[category]||0)+weight;
+      if(c.sources.length<18)c.sources.push(source);
+    };
+    for(const o of state.objects||[]){
+      let category=baseTerrainCategory(o);if(category==='unknown'&&isWetlandObject(o))category='wetland';
+      if(category==='water'||category==='unknown'||category==='settlement')continue;
+      const p=objectAnchor(o),weight=v062TerrainWeight(category)*(o.geometryType==='area'?2.1:o.geometryType==='line'?1.25:1);
+      add(p.x,p.y,category,weight,o.id);
+    }
+    for(const [key,profile] of Object.entries(state.tileProfiles||{})){
+      const category=baseTerrainCategoryFromProfile(profile),p=v062ProfileCell(key);
+      if(p)add(p.x,p.y,category,v062TerrainWeight(category)*1.7,`profile:${key}`);
+    }
+    const patches=[],ridges=[],wetlands=[];
+    for(const c of clusters.values()){
+      if(c.total<=0)continue;
+      let x=c.sumX/c.total,y=c.sumY/c.total;
+      const ranked=Object.entries(c.counts).sort((a,b)=>b[1]-a[1]);if(!ranked.length)continue;
+      const category=ranked[0][0],secondary=ranked[1]?.[0]||category;
+      let nearest=null;
+      for(const segment of waterSegments){const hit=v062PointSegment(x,y,segment.a,segment.b);if(!nearest||hit.distance<nearest.distance)nearest={...hit,segment}}
+      const seed=v062Hash(`${c.key}:${category}:${c.sources.join('|')}`),rand=v062Rng(seed);
+      let angle=nearest&&nearest.distance<950?nearest.angle:(rand()-.5)*Math.PI;
+      angle+=(rand()-.5)*.28;
+      if(nearest&&nearest.distance<260&&['mountain','hill','forest'].includes(category)){
+        const nx=-Math.sin(nearest.angle),ny=Math.cos(nearest.angle),side=(seed&1)?1:-1;
+        const gap=category==='mountain'?190:category==='hill'?145:110;
+        const shift=Math.max(0,gap-nearest.distance)+40+rand()*80;
+        x=nearest.x+nx*side*shift;y=nearest.y+ny*side*shift;
+      }
+      const strength=v062Clamp(c.total,1,12);
+      const radius=v062Clamp(260+strength*55,300,880);
+      patches.push({x,y,category,secondary,angle,rx:radius*(.72+rand()*.30),ry:radius*(.34+rand()*.18),alpha:.55+rand()*.25,seed});
+      if(['mountain','hill','forest'].includes(category)){
+        ridges.push({x,y,category,angle,length:v062Clamp(300+strength*70,360,980),height:v062Clamp((category==='mountain'?145:category==='hill'?88:72)+strength*9,72,255),alpha:.58+rand()*.24,seed});
+        if(category==='mountain'&&strength>4.2){
+          const side=(seed&2)?1:-1,nx=-Math.sin(angle),ny=Math.cos(angle);
+          ridges.push({x:x+nx*side*(150+rand()*110),y:y+ny*side*(150+rand()*110),category:'hill',angle:angle+(rand()-.5)*.22,length:v062Clamp(230+strength*48,300,720),height:v062Clamp(62+strength*6,65,140),alpha:.38+rand()*.18,seed:seed^0x9e3779b9});
+        }
+      }
+      if(category==='wetland')wetlands.push({x,y,angle,rx:radius*.72,ry:radius*.32,alpha:.48+rand()*.22,seed});
+    }
+    const model={signature,waterSegments,patches,ridges,wetlands};
+    state.perf.v071EnvironmentSignature=signature;state.perf.v071EnvironmentModel=model;return model;
+  }
+  function v071Visible(item,v,margin=500){const rx=item.rx||item.length||300,ry=item.ry||item.height||150;return item.x+rx>v.left-margin&&item.x-rx<v.right+margin&&item.y+ry>v.bottom-margin&&item.y-ry<v.top+margin}
+  function v071TerrainColor(category){return({mountain:[62,84,72],hill:[94,111,91],forest:[47,91,69],plain:[145,137,105],wetland:[73,129,130],desert:[158,129,79],ice:[133,163,167]}[category]||[123,119,96])}
+  function v071DrawWash(ctx,item,s,opacity){
+    const p=worldToScreen(item.x,item.y),rx=v062Clamp(item.rx*s,45,440),ry=v062Clamp(item.ry*s,24,210),[r,g,b]=v071TerrainColor(item.category);
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-item.angle);ctx.scale(rx,ry);
+    const grad=ctx.createRadialGradient(0,0,0,0,0,1);grad.addColorStop(0,`rgba(${r},${g},${b},${opacity*item.alpha*.12})`);grad.addColorStop(.55,`rgba(${r},${g},${b},${opacity*item.alpha*.055})`);grad.addColorStop(1,`rgba(${r},${g},${b},0)`);
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+  function v071RidgePoints(seed,count,kind){
+    const rand=v062Rng(seed),points=[];
+    for(let i=0;i<count;i++){
+      const t=i/(count-1),edge=Math.sin(Math.PI*t),noise=.58+rand()*.52;
+      const hierarchy=kind==='mountain'?(Math.sin(t*Math.PI*3.2)*.14+1):(Math.sin(t*Math.PI*2.4)*.08+1);
+      points.push({t,h:edge*noise*hierarchy});
+    }
+    points[0].h=points[count-1].h=0;return points;
+  }
+  function v071DrawRidge(ctx,ridge,s,opacity){
+    const p=worldToScreen(ridge.x,ridge.y),length=v062Clamp(ridge.length*s,70,520),height=v062Clamp(ridge.height*s,18,150),kind=ridge.category;
+    const count=kind==='mountain'?13:11,profile=v071RidgePoints(ridge.seed,count,kind),[r,g,b]=v071TerrainColor(kind);
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-ridge.angle);ctx.lineJoin='round';ctx.lineCap='round';
+    for(let layer=2;layer>=0;layer--){
+      const spread=1+layer*.12,baseY=height*(.25+layer*.15),layerAlpha=opacity*ridge.alpha*(layer===0?.16:.07);
+      ctx.beginPath();ctx.moveTo(-length*.54,baseY);
+      profile.forEach(pt=>ctx.lineTo((pt.t-.5)*length*spread,baseY-pt.h*height*(1-layer*.09)));
+      ctx.lineTo(length*.54,baseY);ctx.closePath();
+      const grad=ctx.createLinearGradient(0,-height,0,baseY);grad.addColorStop(0,`rgba(${r-4},${g-2},${b},${layerAlpha*.85})`);grad.addColorStop(.65,`rgba(${r},${g},${b},${layerAlpha*.42})`);grad.addColorStop(1,`rgba(${r+26},${g+23},${b+17},0)`);
+      ctx.fillStyle=grad;ctx.fill();
+      if(layer===0){ctx.strokeStyle=`rgba(${r-8},${g-4},${b-2},${opacity*ridge.alpha*.28})`;ctx.lineWidth=kind==='mountain'?1.35:1;ctx.stroke()}
+    }
+    ctx.strokeStyle=`rgba(${r-4},${g-2},${b},${opacity*ridge.alpha*.12})`;ctx.lineWidth=.8;
+    for(let k=1;k<=2;k++){
+      ctx.beginPath();profile.forEach((pt,i)=>{const x=(pt.t-.5)*length,y=height*.32-pt.h*height*(1-k*.18)+k*height*.12;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function v071DrawWetland(ctx,item,s,opacity){
+    const p=worldToScreen(item.x,item.y),rx=v062Clamp(item.rx*s,55,360),ry=v062Clamp(item.ry*s,28,150),rand=v062Rng(item.seed);
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-item.angle);ctx.scale(rx,ry);
+    const grad=ctx.createRadialGradient(0,0,0,0,0,1);grad.addColorStop(0,`rgba(72,137,139,${opacity*item.alpha*.12})`);grad.addColorStop(.7,`rgba(96,151,147,${opacity*item.alpha*.05})`);grad.addColorStop(1,'rgba(96,151,147,0)');ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-item.angle);ctx.strokeStyle=`rgba(69,128,130,${opacity*item.alpha*.16})`;ctx.lineWidth=.9;ctx.lineCap='round';
+    for(let i=-2;i<=2;i++){const y=i*ry*.16+(rand()-.5)*4;ctx.beginPath();ctx.moveTo(-rx*.46,y);ctx.bezierCurveTo(-rx*.16,y-5,rx*.14,y+5,rx*.46,y);ctx.stroke()}ctx.restore();
+  }
+  function v071DrawRiverValleys(ctx,v,s,opacity){
+    for(const path of visibleWaterPaths(v)){
+      if(!Array.isArray(path.points)||path.points.length<2)continue;
+      const pts=path.points.map(point=>worldToScreen(Number(point[0])||0,Number(point[1])||0)),main=!!path.isMain;
+      ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+      traceWaterCurve(ctx,pts);ctx.strokeStyle=`rgba(74,137,139,${opacity*(main?.075:.045)})`;ctx.lineWidth=v062Clamp((main?165:105)*s,18,132);ctx.stroke();
+      traceWaterCurve(ctx,pts);ctx.strokeStyle=`rgba(246,240,222,${opacity*(main?.36:.26)})`;ctx.lineWidth=v062Clamp((main?92:62)*s,11,76);ctx.stroke();
+      traceWaterCurve(ctx,pts);ctx.strokeStyle=`rgba(92,151,153,${opacity*(main?.075:.052)})`;ctx.lineWidth=v062Clamp((main?44:28)*s,5,34);ctx.stroke();
+      ctx.restore();
+    }
+  }
+  function drawV062Environment(ctx,v,s,light=false){
+    if(!state.layers.environment)return;
+    const model=v071BuildEnvironmentModel(),zoom=state.camera.zoom,presentation=state.presentationMode==='display';
+    const relationMuted=state.relationMode?.48:1,precisionMuted=state.precisionMode?.40:1,overviewBoost=state.regionOverviewMode?1.12:1;
+    // 总览层展示连续山水；进入完整地块卡片尺度后，山水逐步退去，只保留清晰地块。
+    const tileCardFade=zoom<=.54?1:zoom>=.96?0:v062Clamp((.96-zoom)/.42,0,1);
+    const deepZoomFade=zoom>5?v062Clamp(1-(zoom-5)/15,.20,1):zoom<.16?.50:1;
+    const opacity=(presentation?.90:.72)*relationMuted*precisionMuted*overviewBoost*deepZoomFade*tileCardFade;
+    ctx.save();
+    for(const patch of model.patches){if(v071Visible(patch,v,300))v071DrawWash(ctx,patch,s,opacity)}
+    v071DrawRiverValleys(ctx,v,s,opacity);
+    const step=light?2:zoom<.25?2:1;
+    for(let i=0;i<model.ridges.length;i+=step){const ridge=model.ridges[i];if(v071Visible(ridge,v,420))v071DrawRidge(ctx,ridge,s,opacity)}
+    for(const wetland of model.wetlands){if(v071Visible(wetland,v,260))v071DrawWetland(ctx,wetland,s,opacity)}
+    ctx.restore();
+  }
+  function setupV062Features(){
+    document.documentElement.classList.add("v062-yujian-theme");
+    if(els.layerEnvironment){els.layerEnvironment.checked=state.layers.environment!==false;els.layerEnvironment.closest("label")?.setAttribute("data-v062-layer","environment")}
+    state.perf.v062EnvironmentSignature="";
+  }
+
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.0",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",bootGuard:true};
   setupV027State();
   init();
   setupV027Features();
@@ -3444,6 +3834,7 @@
   setupV050Features();
   setupV060Features();
   setupV061Features();
+  setupV062Features();
   function v053NormalizeHierarchyAssignments() {
   const hierarchy = window.SHJ_WORLD_HIERARCHY;
   if (!hierarchy || !Array.isArray(hierarchy.regions) || !Array.isArray(state?.objects)) return;

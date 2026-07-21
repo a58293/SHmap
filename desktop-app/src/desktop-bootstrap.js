@@ -1,6 +1,6 @@
 
 import "./desktop-ui.css";
-import { Channel, convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 const STORAGE_KEY = "shj_infinite_tile_demo_v018_v031";
 const isTauri = Boolean(window.__TAURI_INTERNALS__);
@@ -165,7 +165,7 @@ function setupNativeUi(){
   actions.prepend(button);actions.prepend(updateButton);
   const modal=document.createElement("section");modal.id="desktopBackupModal";modal.className="desktop-native-modal hidden";modal.innerHTML=`<div class="desktop-native-backdrop" data-desktop-close></div><article class="desktop-native-card"><header class="desktop-native-head"><div><span class="eyebrow">NATIVE STORAGE</span><h2>桌面数据库与备份</h2><p>SQLite为主存储，兼容缓存只用于界面快速启动。</p></div><button class="desktop-native-close" data-desktop-close>×</button></header><div class="desktop-native-status"><div class="desktop-native-kpi"><strong id="desktopDbObjects">—</strong><span>当前对象</span></div><div class="desktop-native-kpi"><strong id="desktopDbBackups">—</strong><span>可恢复备份</span></div><div class="desktop-native-kpi"><strong id="desktopDbUpdated">—</strong><span>最近写入</span></div></div><div class="desktop-native-actions"><button class="primary" id="desktopCreateBackup">立即备份</button><button id="desktopCheckDb">检查数据库</button><button id="desktopOpenDataDir">打开数据目录</button><button id="desktopRefreshBackups">刷新</button></div><div class="desktop-backup-list" id="desktopBackupList"></div><footer class="desktop-native-foot" id="desktopDbPath"></footer></article>`;document.body.appendChild(modal);
   const updateModal=document.createElement("section");updateModal.id="desktopUpdateModal";updateModal.className="desktop-native-modal hidden";updateModal.innerHTML=`<div class="desktop-native-backdrop" data-update-close></div><article class="desktop-native-card desktop-update-card"><header class="desktop-native-head"><div><span class="eyebrow">SIGNED DESKTOP UPDATE</span><h2>程序更新</h2><p>自动尝试仓库直连、CDN与GitHub Releases，并安装经过签名验证的Windows版本。</p></div><button class="desktop-native-close" data-update-close>×</button></header><div class="desktop-native-status"><div class="desktop-native-kpi"><strong id="desktopCurrentVersion">—</strong><span>当前版本</span></div><div class="desktop-native-kpi"><strong id="desktopLatestVersion">—</strong><span>可用版本</span></div><div class="desktop-native-kpi"><strong id="desktopUpdateChannel">自动选择</strong><span>多线路更新</span></div></div><div class="desktop-update-state" id="desktopUpdateState">尚未检查</div><div class="desktop-update-progress"><i id="desktopUpdateProgressBar"></i></div><div class="desktop-update-progress-text" id="desktopUpdateProgressText"></div><section class="desktop-update-notes"><h3>版本说明</h3><div id="desktopUpdateNotes">点击“检查更新”读取最新版本。</div></section><div class="desktop-native-actions"><button class="primary" id="desktopCheckUpdate">检查更新</button><button id="desktopInstallUpdate" disabled>下载并安装</button><label class="desktop-update-auto"><input type="checkbox" id="desktopAutoUpdate"> 每天自动检查</label></div><footer class="desktop-native-foot">安装前会自动保存工作区并建立“更新前备份”。</footer></article>`;document.body.appendChild(updateModal);
-  const openUpdate=async()=>{updateModal.classList.remove("hidden");try{const info=await invoke("app_version");document.querySelector("#desktopCurrentVersion").textContent=`${info.edition} · ${info.version}`;}catch{document.querySelector("#desktopCurrentVersion").textContent="v006 · 0.6.0";}};
+  const openUpdate=async()=>{updateModal.classList.remove("hidden");try{const info=await invoke("app_version");document.querySelector("#desktopCurrentVersion").textContent=`${info.edition} · ${info.version}`;}catch{document.querySelector("#desktopCurrentVersion").textContent="v007";}};
   const closeTopNativeModal=()=>{const visible=[...document.querySelectorAll(".desktop-native-modal:not(.hidden)")].pop();if(!visible)return false;visible.classList.add("hidden");return true};
   document.addEventListener("contextmenu",e=>{if(e.target.closest("input,textarea,select,[contenteditable=true]"))return;if(closeTopNativeModal()){e.preventDefault();e.stopImmediatePropagation()}},true);
   updateButton.addEventListener("click",openUpdate);
@@ -191,20 +191,8 @@ async function start(){
     bootInfo=await invoke("bootstrap_workspace",{legacySnapshot:legacy,seedSnapshot:JSON.stringify(seedSnapshot())});
     if(bootInfo.snapshot)localStorage.setItem(STORAGE_KEY,bootInfo.snapshot);
   }
-  window.SHJ_DESKTOP={active:isTauri,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args),saveObjectImage:async args=>convertFileSrc(await invoke("save_object_image",args)),removeObjectImage:args=>invoke("remove_object_image",args)};
-  if(!window.SHJ_INITIAL_DATA)throw new Error("地图数据未载入：public/app/data.js");
-  if(!window.__SHJ_APP_INSTANCE_ACTIVE__){
-    await new Promise((resolve,reject)=>{
-      const existing=document.querySelector('script[data-shj-main-app="1"]');
-      if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",()=>reject(new Error("无法加载地图主程序")),{once:true});return}
-      const script=document.createElement("script");
-      script.src="/app/app.js";
-      script.dataset.shjMainApp="1";
-      script.onload=resolve;
-      script.onerror=()=>reject(new Error("无法加载地图主程序"));
-      document.body.appendChild(script)
-    });
-  }
+  window.SHJ_DESKTOP={active:isTauri,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
+  await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="/app/app.js";script.onload=resolve;script.onerror=()=>reject(new Error("无法加载地图主程序"));document.body.appendChild(script)});
   setupNativeUi();
   scheduleAutomaticUpdateCheck();
   if(!isTauri)toast("当前为浏览器预览模式；SQLite与原生备份未启用。",true);
