@@ -1,15 +1,15 @@
 {
-  "version": "0.6.1",
+  "version": "0.7.0",
   "notes": "# v0.6.1 · 关系说明与工具栏可用性修复\r\n\r\n- 单击关系线不再立即跳转，而是在关系线上打开说明卡。\r\n- 说明卡展示起点、终点、关系类型、线型、方向、证据与推导说明，并提供跳转按钮。\r\n- 关系线命中范围扩大，细线更容易点击。\r\n- 关系线优先从对象卡片边缘出发，并进行轻量障碍避让。\r\n- 同坐标对象使用分散接口，减少中心标签与线路堆叠。\r\n- 屏外聚合端点显示“方向＋数量”，不再只显示裸数字。\r\n- 顶部关系工具分组，低频操作收纳到“更多”，避免右侧按钮被裁切。\r\n- 工具按钮停留约0.8秒显示用途说明。\r\n- 关系图例可以折叠；退出关系模式入口更明确。\r\n- 地块文字缩放设置上限，地图继续放大时名称不会无限变大。\r\n\r\n# SHmap v0.6.0｜关系网络与浏览体验整合版\r\n\r\n- 关系网络提供“精简关系／全部关系”双模式。\r\n- 同方向关系先合流再分叉，减少中心放射状拥挤。\r\n- 屏幕外目标按方向聚合，点击数量端点查看目标列表。\r\n- 默认只保留少量关系标签，悬停显示完整关系说明。\r\n- 新增对象聚焦、研究视图／展示视图切换。\r\n- 对象编辑器新增图片选择、WebP压缩、本地程序数据目录存储、来源与版权备注。\r\n- 删除前显示关系、水系、区域及文本提及影响。\r\n- 保留0.5.4关系拖动稳定、区域范围与白块隔离修复。",
-  "pub_date": "2026-07-20T06:01:50.355Z",
+  "pub_date": "2026-07-21T03:48:10.988Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWk5TZG9TVmFwa3pBTXdOWU8zbW5MVll2S25TWmNSKzFNZDlOc1oyWGFBWCtxNFowNlVjekpMaFNyVXE0STZhc2JOWUlaSDRaaXVsRTFYMTk3RkxQamdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTI3MzA3CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNi4xX3g2NC1zZXR1cC5leGUKWEVGVmZ4VmxrZkc0eGh6bUJKUjRVVGxIY0VtYllUdi9qOUhGUVZXLzZBNUxmMXdCSjdTK1dWSWhvOW1NQ0JQMnhzOWdCUUtjNmdoMjRnK1RZT0NmQ3c9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/483121576"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkp4Z2VXRDA3Qk4rZ0dMNEhHQUxpTlViN2Q0MmozMUJMNnFNM25ldVhCQnpkUFF4bmNwNDNucEtSakU1Ym4xOVY5bHFDZ0wvelVOK1hnK0cvQjg2RFFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjA1Njg3CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNy4wX3g2NC1zZXR1cC5leGUKZ3ZhdWNoMmhqQ1lVYmlHSWZiSmFDYlN0WDVSblEyeVlPazZzUllreVl0d2tJZmNIQng1aEs2MGhQTS9PRWN2OTJjTW9CbHd3SXYzL0ZXYVJ6UkpiREE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/484213473"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWk5TZG9TVmFwa3pBTXdOWU8zbW5MVll2S25TWmNSKzFNZDlOc1oyWGFBWCtxNFowNlVjekpMaFNyVXE0STZhc2JOWUlaSDRaaXVsRTFYMTk3RkxQamdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTI3MzA3CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNi4xX3g2NC1zZXR1cC5leGUKWEVGVmZ4VmxrZkc0eGh6bUJKUjRVVGxIY0VtYllUdi9qOUhGUVZXLzZBNUxmMXdCSjdTK1dWSWhvOW1NQ0JQMnhzOWdCUUtjNmdoMjRnK1RZT0NmQ3c9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/483121576"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkp4Z2VXRDA3Qk4rZ0dMNEhHQUxpTlViN2Q0MmozMUJMNnFNM25ldVhCQnpkUFF4bmNwNDNucEtSakU1Ym4xOVY5bHFDZ0wvelVOK1hnK0cvQjg2RFFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjA1Njg3CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNy4wX3g2NC1zZXR1cC5leGUKZ3ZhdWNoMmhqQ1lVYmlHSWZiSmFDYlN0WDVSblEyeVlPazZzUllreVl0d2tJZmNIQng1aEs2MGhQTS9PRWN2OTJjTW9CbHd3SXYzL0ZXYVJ6UkpiREE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/484213473"
     }
   }
 }
