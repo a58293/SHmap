@@ -2,8 +2,8 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v007",
-  "semver": "0.7.0",
-  "frontend_base": "v070-static-overview-fog-river-blend",
+  "semver": "0.7.1",
+  "frontend_base": "v071-selection-exit-fix",
   "data_version": "v125-r0001",
   "object_count": 617,
   "original_library_records": 4120,
@@ -20,10 +20,12 @@
   "ux_bundle": "v0.6.0 object focus, research/display view, image manager and delete impact preview",
   "relation_interaction": "v0.6.1 click-to-explain cards, wider hit areas, edge routing and persistent relation focus",
   "toolbar_ux": "v0.6.1 responsive groups, More menu, delayed help tips and collapsible legend",
-  "visual_theme": "v0.7.0 玉简山海：地块地貌静态总览、雾幕遮边、总览水系融图与地块卡牌渐变",
-  "environment_layer": "v0.7.0 static overview art with four-edge feather mask and large atmospheric fog; runtime repeated mountain motifs disabled",
+  "visual_theme": "v0.7.1 玉简山海：地块选择、对象聚焦与区域聚焦统一退出修正",
+  "environment_layer": "v0.7.1 static shanshui overview with endless mist transition; 50% tile-card visibility threshold",
   "river_guidance": "all 79 existing water paths use muted ink-water rendering in overview and gradually return to functional lines while zooming in",
   "performance": "one reusable overview buffer canvas; cached overview image; no runtime mountain motif generation; CSS tile-card fade",
-  "asset_bundle": "v0.7.0 integrated ui and map-environment assets",
-  "brush_trace_fix": "upper overlay canvas, immediate pointer-move redraw, resize safety and visible red trace"
+  "asset_bundle": "v0.7.1 existing UI and map environment assets; no data changes",
+  "brush_trace_fix": "upper overlay canvas, immediate pointer-move redraw, resize safety and visible red trace",
+  "overview_geometry_fix": "single/double sparse groups show labels only; disconnected groups split; connected 100-li cells trace independent union boundaries",
+  "focus_logic": "right click or Esc clears range/region focus, selected tile/object, object-focus dimming and stale classes while preserving camera position"
 }

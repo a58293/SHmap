@@ -24,8 +24,8 @@
   const MAX_ZOOM = 30;
   const PRECISION_ENTER_ZOOM = 4.2;
   const PRECISION_EXIT_ZOOM = 3.8;
-  const REGION_OVERVIEW_ENTER_ZOOM = 0.42;
-  const REGION_OVERVIEW_EXIT_ZOOM = 0.52;
+  const REGION_OVERVIEW_ENTER_ZOOM = 0.46;
+  const REGION_OVERVIEW_EXIT_ZOOM = 0.50;
   const HOVER_LENS_DISABLE_ZOOM = PRECISION_ENTER_ZOOM;
   const HOVER_LENS_RESTORE_ZOOM = PRECISION_EXIT_ZOOM;
   const TERRAIN_PALETTE = {
@@ -236,6 +236,7 @@
     objectList:$("#objectList"), resultCount:$("#resultCount"), mapStats:$("#mapStats"), indexResultTitle:$("#indexResultTitle"), objectSortBar:$("#objectSortBar"), objectIndexModeBtn:$("#objectIndexModeBtn"), regionIndexModeBtn:$("#regionIndexModeBtn"),
     viewport:$("#mapViewport"), canvas:$("#worldCanvas"), overviewFogCanvas:$("#overviewFogCanvas"), brushTraceCanvas:$("#brushTraceCanvas"), tileLayer:$("#tileLayer"), coordStatus:$("#coordStatus"), cameraStatus:$("#cameraStatus"), zoomReadout:$("#zoomReadout"), precisionModeBadge:$("#precisionModeBadge"), precisionTerrainLegend:$("#precisionTerrainLegend"), mapGuide:$("#mapGuide"),
     zoomInBtn:$("#zoomInBtn"), zoomOutBtn:$("#zoomOutBtn"), originBtn:$("#originBtn"), jumpCoordBtn:$("#jumpCoordBtn"), fitAllBtn:$("#fitAllBtn"), closeFlipBtn:$("#closeFlipBtn"), clearSpatialFocusBtn:$("#clearSpatialFocusBtn"),
+    queryModeBtn:$("#queryModeBtn"), focusModeBtn:$("#focusModeBtn"), overviewModeBtn:$("#overviewModeBtn"), overviewModeMenu:$("#overviewModeMenu"),
     layerAreas:$("#layerAreas"), layerTerrain:$("#layerTerrain"), layerRivers:$("#layerRivers"), layerEnvironment:$("#layerEnvironment"), layerEmpty:$("#layerEmpty"), layerChanges:$("#layerChanges"),
     emptyDetail:$("#emptyDetail"), detailContent:$("#detailContent"), detailRef:$("#detailRef"), detailName:$("#detailName"), detailMeta:$("#detailMeta"), detailLocation:$("#detailLocation"), detailBody:$("#detailBody"), detailTabs:$("#detailTabs"), detailHeadActions:$("#detailHeadActions"), editTileBtn:$("#editTileBtn"), openDossierBtn:$("#openDossierBtn"), openRangeEditorBtn:$("#openRangeEditorBtn"), deleteTileBtn:$("#deleteTileBtn"),
     dossierWorkspace:$("#dossierWorkspace"), closeDossierBtn:$("#closeDossierBtn"), dossierPageTitle:$("#dossierPageTitle"), dossierPageMeta:$("#dossierPageMeta"), dossierCoordBadge:$("#dossierCoordBadge"), dossierCardTitle:$("#dossierCardTitle"), dossierBrief:$("#dossierBrief"), dossierStandard:$("#dossierStandard"), dossierBadges:$("#dossierBadges"), dossierCompletenessText:$("#dossierCompletenessText"), dossierCompletenessBar:$("#dossierCompletenessBar"), dossierCompletenessMeta:$("#dossierCompletenessMeta"), dossierObjectCount:$("#dossierObjectCount"), dossierObjectIndex:$("#dossierObjectIndex"), dossierLocateBtn:$("#dossierLocateBtn"), dossierChapterBadge:$("#dossierChapterBadge"), dossierHeroTitle:$("#dossierHeroTitle"), dossierContent:$("#dossierContent"), copyPromptBtn:$("#copyPromptBtn"), copyBriefBtn:$("#copyBriefBtn"), editDossierBtn:$("#editDossierBtn"), dossierModeBrief:$("#dossierModeBrief"), dossierModeFull:$("#dossierModeFull"),
@@ -313,6 +314,7 @@
 
     precisionMode:false,
     regionOverviewMode:false,
+    overviewMode:["region","domain","chapter","hydrology","civilization"].includes(saved?.overviewMode)?saved.overviewMode:"region",
     hoverLensSuppressed:false,
     precisionClusterOpen:null,
     precisionHoverGroupKey:null,
@@ -331,7 +333,8 @@
     importMode:"single",
     exampleTab:"correct",
     cameraAnimation:null,
-    spatialFocusArmed:false,
+    spatialFocusArmed:!!saved?.spatialFocusArmed,
+    spatialFocusAreaIds:Array.isArray(saved?.spatialFocusAreaIds)?saved.spatialFocusAreaIds:[],
     pendingRangeKind:null,
     objectRevision:1,
     profileRevision:1,
@@ -425,8 +428,8 @@
     const memberIds=new Set(region.memberObjectIds||[]),memberCells=new Set();memberIds.forEach(id=>{const o=indexedObject(id);if(o){const c=objectCell(o);memberCells.add(cellKey(c.gx,c.gy))}});const out={active:true,region,memberIds,memberCells,bounds:region.bounds};state.perf.regionFocusKey=key;state.perf.regionFocus=out;return out
   }
   function v052FitBounds(bounds,minZoom=.34,maxZoom=2.4){if(!v052FiniteBounds(bounds))return;const r=els.viewport.getBoundingClientRect(),w=Math.max(150,bounds.maxX-bounds.minX+180),h=Math.max(150,bounds.maxY-bounds.minY+180),zoom=Math.max(minZoom,Math.min(maxZoom,Math.min((r.width-100)*100/(BASE_CELL_PX*w),(r.height-100)*100/(BASE_CELL_PX*h))));animateCameraTo((bounds.minX+bounds.maxX)/2,(bounds.minY+bounds.maxY)/2,zoom,520)}
-  function v052SelectRegion(id,fit=true){const region=v052RegionById(id);if(!region)return;state.indexMode="regions";state.selectedRegionId=id;state.selectedHierarchyNode="region";state.selectedWaterPathId=null;state.selectedId=null;state.selectedCell=null;state.flippedCell=null;state.spatialFocusArmed=false;state.expandedRegionIds.add(region.parentRegionId);renderSidebar();renderDetails();scheduleRender();persist();if(fit)v052FitBounds(region.bounds,region.level===1 ? .28 : .56,region.level===1 ? .82 : 1.8)}
-  function v052SelectWorld(fit=true){state.indexMode="regions";state.selectedRegionId=null;state.selectedHierarchyNode="world";state.selectedWaterPathId=null;state.selectedId=null;state.selectedCell=null;state.flippedCell=null;state.spatialFocusArmed=false;renderSidebar();renderDetails();scheduleRender();persist();if(fit)fitAll()}
+  function v052SelectRegion(id,fit=true){const region=v052RegionById(id);if(!region)return;state.indexMode="regions";state.selectedRegionId=id;state.selectedHierarchyNode="region";state.selectedWaterPathId=null;state.selectedId=null;state.selectedCell=null;state.flippedCell=null;state.spatialFocusArmed=false;state.spatialFocusAreaIds=[];state.expandedRegionIds.add(region.parentRegionId);renderSidebar();renderDetails();scheduleRender();persist();if(fit)v052FitBounds(region.bounds,region.level===1 ? .28 : .56,region.level===1 ? .82 : 1.8)}
+  function v052SelectWorld(fit=true){state.indexMode="regions";state.selectedRegionId=null;state.selectedHierarchyNode="world";state.selectedWaterPathId=null;state.selectedId=null;state.selectedCell=null;state.flippedCell=null;state.spatialFocusArmed=false;state.spatialFocusAreaIds=[];renderSidebar();renderDetails();scheduleRender();persist();if(fit)fitAll()}
   function v052ClearRegionFocus({silent=false}={}){const had=!!state.selectedRegionId;state.selectedRegionId=null;state.selectedHierarchyNode="";state.perf.regionFocusKey="";state.perf.regionFocus=null;renderSidebar();renderDetails();scheduleRender();persist();if(had&&!silent)toast("已退出区域聚焦","地图恢复完整显示")}
   function v052SetIndexMode(mode){state.indexMode=mode==="regions"?"regions":"objects";if(state.indexMode==="objects"&&state.selectedHierarchyNode==="world")state.selectedHierarchyNode="";renderSidebar();renderDetails();scheduleRender();persist()}
   function v052ParentRegion(region){return region?.parentRegionId?v052RegionById(region.parentRegionId):null}
@@ -476,43 +479,100 @@
   })}
   function spatialCellKeys(o,cap=2600){const out=new Set();if(!o?.area)return out;const b=rangeBounds(o.area),eps=1e-7,gx0=cellIndex(b.west+eps),gx1=cellIndex(b.east-eps),gy0=cellIndex(b.south+eps),gy1=cellIndex(b.north-eps);let n=0;for(let gx=Math.min(gx0,gx1);gx<=Math.max(gx0,gx1);gx++){for(let gy=Math.min(gy0,gy1);gy<=Math.max(gy0,gy1);gy++){if(n++>cap)return out;const c=cellBounds(gx,gy);let include=true;if(o.area.shape==="circle"){const cx=Number(o.area.cx??o.x)||0,cy=Number(o.area.cy??o.y)||0,r=Number(o.area.radius)||0,px=Math.max(c.west,Math.min(cx,c.east)),py=Math.max(c.south,Math.min(cy,c.north));include=Math.hypot(px-cx,py-cy)<=r}else if(o.area.shape==="polygon"&&o.area.points?.length>=3){include=pointInPolygon(c.cx,c.cy,o.area.points)||o.area.points.some(p=>p[0]>=c.west&&p[0]<=c.east&&p[1]>=c.south&&p[1]<=c.north)}if(include)out.add(cellKey(gx,gy))}}return out}
   function getSpatialFocusContext(){
-    const cacheKey=[state.objectRevision,state.profileRevision,state.filters.q,state.spatialFocusArmed?1:0,state.selectedCell||"",state.selectedId||""].join("|");
+    const cacheKey=[state.objectRevision,state.profileRevision,state.filters.q,state.spatialFocusArmed?1:0,(state.spatialFocusAreaIds||[]).join(","),state.selectedCell||"",state.selectedId||""].join("|");
     if(state.perf.spatialKey===cacheKey&&state.perf.spatialContext)return state.perf.spatialContext;
     const finish=value=>{state.perf.spatialKey=cacheKey;state.perf.spatialContext=value;return value};
     if(state.filters.q.trim()||!state.spatialFocusArmed)return finish({active:false,areaIds:new Set(),memberCells:new Set(),areas:[]});
     const key=state.selectedCell;if(!key)return finish({active:false,areaIds:new Set(),memberCells:new Set(),areas:[]});
     const [gx,gy]=key.split(",").map(Number),cx=cellCenter(gx),cy=cellCenter(gy);
     const selected=indexedObject(state.selectedId),selectedInCell=selected&&cellKey(objectCell(selected).gx,objectCell(selected).gy)===key?selected:null;
-    let areas=[];
-    if(selectedInCell&&isSpatialObject(selectedInCell)&&selectedInCell.area)areas=[selectedInCell];
-    else areas=ensureObjectIndexes().areas.filter(o=>isSpatialObject(o)&&o.area).filter(o=>pointInSpatial(o,cx,cy)||(selectedInCell&&pointInSpatial(o,Number(selectedInCell.x)||0,Number(selectedInCell.y)||0)));
+    let areas=(state.spatialFocusAreaIds||[]).map(indexedObject).filter(o=>isSpatialObject(o)&&o.area);
+    if(!areas.length){
+      if(selectedInCell&&isSpatialObject(selectedInCell)&&selectedInCell.area)areas=[selectedInCell];
+      else areas=ensureObjectIndexes().areas.filter(o=>isSpatialObject(o)&&o.area).filter(o=>pointInSpatial(o,cx,cy)||(selectedInCell&&pointInSpatial(o,Number(selectedInCell.x)||0,Number(selectedInCell.y)||0)));
+      if(areas.length)state.spatialFocusAreaIds=areas.map(o=>o.id)
+    }
     if(!areas.length)return finish({active:false,areaIds:new Set(),memberCells:new Set(),areas:[]});
     const areaIds=new Set(areas.map(o=>o.id)),memberCells=new Set();areas.forEach(o=>spatialCellKeys(o).forEach(k=>memberCells.add(k)));
     return finish({active:true,areaIds,memberCells,areas,key});
   }
-  function clearSpatialFocus({keepSelection=false,silent=false,message="地图恢复完整显示"}={}){
-    const hadSpatial=getSpatialFocusContext().active,hadRegion=!!state.selectedRegionId;
-    state.spatialFocusArmed=false;state.selectedRegionId=null;state.selectedHierarchyNode="";state.perf.regionFocusKey="";state.perf.regionFocus=null;
-    if(!keepSelection){state.selectedCell=null;state.selectedId=null;state.flippedCell=null}
-    renderDetails();renderSidebar();scheduleRender();persist();
-    if(!silent&&(hadSpatial||hadRegion))toast("已退出区域聚焦",message);
+  function hasMapFocusState(){
+    return !!state.spatialFocusArmed
+      || !!(state.spatialFocusAreaIds||[]).length
+      || !!state.selectedRegionId
+      || !!state.perf?.spatialContext?.active
+      || !!state.perf?.regionFocus?.active;
   }
+  function removeStaleFocusClasses(){
+    document.querySelectorAll(".spatial-focus-member,.spatial-focus-dim,.hierarchy-region-member,.hierarchy-region-dim").forEach(el=>{
+      el.classList.remove("spatial-focus-member","spatial-focus-dim","hierarchy-region-member","hierarchy-region-dim");
+    });
+    els.viewport?.classList.remove("spatial-focus-active","hierarchy-region-focus-active");
+    document.documentElement.classList.remove("v060-object-focus");
+  }
+  function hasMapSelectionState(){
+    return !!state.selectedCell
+      || !!state.selectedId
+      || !!state.flippedCell
+      || !!state.selectedWaterPathId
+      || !!state.objectFocusMode;
+  }
+  function clearMapSelection({silent=false,message="已取消当前地块选择"}={}){
+    const hadSelection=hasMapSelectionState();
+    state.selectedCell=null;
+    state.selectedId=null;
+    state.flippedCell=null;
+    state.selectedWaterPathId=null;
+    state.hoverWaterPathId=null;
+    state.relationPinnedTargetId=null;
+    state.relationHoverId=null;
+    state.objectFocusMode=false;
+    state.selectedHierarchyNode="";
+    state.previewCell=null;
+    els.viewport?.classList.remove("water-path-hover");
+    hideTooltip();
+    if(els.dossierWorkspace&&!els.dossierWorkspace.classList.contains("hidden"))closeDossierWorkspace();
+    removeStaleFocusClasses();
+    renderDetails();renderSidebar();scheduleRender();persist();
+    if(typeof v060SyncUi==="function")v060SyncUi();
+    if(typeof v050UpdateModeBar==="function")v050UpdateModeBar();
+    if(typeof updateV029Breadcrumb==="function")updateV029Breadcrumb();
+    if(!silent&&hadSelection)toast("已退出地块选择",message);
+    return hadSelection;
+  }
+  function clearSpatialFocus({keepSelection=false,silent=false,message="地图恢复完整显示"}={}){
+    const hadFocus=hasMapFocusState()||getSpatialFocusContext().active||v052RegionFocusContext().active;
+    state.spatialFocusArmed=false;
+    state.spatialFocusAreaIds=[];
+    state.selectedRegionId=null;
+    state.selectedHierarchyNode="";
+    state.perf.spatialKey="";
+    state.perf.spatialContext=null;
+    state.perf.regionFocusKey="";
+    state.perf.regionFocus=null;
+    removeStaleFocusClasses();
+    if(!keepSelection){
+      clearMapSelection({silent:true});
+    }else{
+      renderDetails();renderSidebar();scheduleRender();persist();
+      if(typeof v060SyncUi==="function")v060SyncUi();
+      if(typeof v050UpdateModeBar==="function")v050UpdateModeBar();
+      if(typeof updateV029Breadcrumb==="function")updateV029Breadcrumb();
+    }
+    if(!silent&&hadFocus)toast("已退出区域聚焦",message);
+  }
+  // v0.7.1 聚焦规则：范围内选择保持聚焦；范围外选择才退出；空白点击不退出。
   function clickOutsideSpatialFocus(cellKeyValue=null){
     const spatial=getSpatialFocusContext(),hierarchy=v052RegionFocusContext(),focus=spatial.active?spatial:hierarchy;
-    if(!focus.active)return false;
-    if(cellKeyValue&&focus.memberCells.has(cellKeyValue)){
-      if(hierarchy.active){state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.perf.regionFocusKey="";state.perf.regionFocus=null}
-      else return false;
+    if(!focus.active||!cellKeyValue)return false;
+    if(focus.memberCells.has(cellKeyValue)){
+      // 区域聚焦继续有效，但右栏允许切换为当前地块详情。
+      if(hierarchy.active){state.indexMode="objects";state.selectedHierarchyNode=""}
+      return false;
     }
-    state.spatialFocusArmed=false;state.selectedRegionId=null;state.selectedHierarchyNode="";state.perf.regionFocusKey="";state.perf.regionFocus=null;
-    if(cellKeyValue){
-      state.indexMode="objects";state.selectedCell=cellKeyValue;
-      const items=objectsInCellKey(cellKeyValue);
-      state.selectedId=items[0]?.id||null;
-      state.flippedCell=state.flippedCell===cellKeyValue?null:cellKeyValue;
-      renderDetails();renderSidebar();scheduleRender();persist();
-      toast("已退出区域聚焦","已切换到聚焦范围外的地块");
-    }else clearSpatialFocus({message:"已点击地图空白区域"});
+    state.spatialFocusArmed=false;state.spatialFocusAreaIds=[];state.selectedRegionId=null;state.selectedHierarchyNode="";
+    state.perf.spatialKey="";state.perf.spatialContext=null;state.perf.regionFocusKey="";state.perf.regionFocus=null;
+    toast("已离开原聚焦区域","已切换到聚焦范围外的地块");
     return true;
   }
   function getSearchContext(){
@@ -890,10 +950,80 @@
     if (tokens.length) return [...new Set(tokens)];
     if (object?.geometryType === "area" && /(区域|国|野|海|林|山系|丘群|水网)/.test(String(object.type || "") + String(object.name || ""))) return [cleanRegionOverviewName(object.name)];
     return [];
-  } function regionOverviewGroups(){
-    const level=state.camera.zoom<=.27?1:2,cacheKey=[state.objectRevision,state.filters.q,state.filters.chapter,state.filters.type,level,state.selectedRegionId||""].join("|");if(state.perf.regionCache.has(cacheKey))return state.perf.regionCache.get(cacheKey);
-    const h=v052Hierarchy(),filterActive=!!(state.filters.q||state.filters.chapter||state.filters.type),list=h.regions.filter(r=>r.level===level).map(region=>{const result=filterActive?v052RegionFilterResult(region):{visible:true,members:v052RegionMembers(region)},items=result.members;if(!result.visible||!items.length)return null;const b=items.reduce((acc,o)=>v052ExtendBounds(acc,v052ObjectBounds(o)),{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity}),bounds=v052FiniteBounds(b)?b:region.bounds,x=(bounds.minX+bounds.maxX)/2,y=(bounds.minY+bounds.maxY)/2,count=items.length,priority=count+(region.id===state.selectedRegionId?1000:0)+(level===1?8:0)+(region.name.includes("都广")||region.name.includes("昆仑")||region.name.includes("北海")?3:0);return {key:region.id,regionId:region.id,name:region.name,items,count,priority,x,y,minX:bounds.minX,maxX:bounds.maxX,minY:bounds.minY,maxY:bounds.maxY}}).filter(Boolean).sort((a,b)=>b.priority-a.priority||a.name.localeCompare(b.name,"zh-CN"));
-    const maxLabels=level===1?12:24,accepted=[];for(const g of list){const duplicate=accepted.some(a=>Math.hypot(a.x-g.x,a.y-g.y)<150&&(a.name.includes(g.name)||g.name.includes(a.name)));if(!duplicate||g.regionId===state.selectedRegionId)accepted.push(g);if(accepted.length>=maxLabels)break}state.perf.regionCache.set(cacheKey,accepted);return accepted
+  } function v071OverviewBoundsFromItems(items,padding=36){
+    const bounds=items.reduce((acc,o)=>v052ExtendBounds(acc,v052ObjectBounds(o)),{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity});
+    if(!v052FiniteBounds(bounds))return null;
+    return {minX:bounds.minX-padding,maxX:bounds.maxX+padding,minY:bounds.minY-padding,maxY:bounds.maxY+padding}
+  }
+  function v071OverviewGroup(key,name,items,bounds,extra={}){
+    if(!bounds||!items?.length)return null;
+    const x=(bounds.minX+bounds.maxX)/2,y=(bounds.minY+bounds.maxY)/2,count=items.length;
+    return {key,name,items,count,x,y,minX:bounds.minX,maxX:bounds.maxX,minY:bounds.minY,maxY:bounds.maxY,priority:count+(extra.selected?1000:0)+(extra.boost||0),...extra}
+  }
+  function v071ChapterNames(value){
+    const text=String(value||"");
+    return CHAPTERS_18.filter(chapter=>text.includes(chapter))
+  }
+  function v071CivilizationTokens(object){
+    const out=[];
+    if(/国|族|部落|氏|民|人群|城|邑|都|邦/.test(`${object?.type||""}${object?.name||""}`))out.push(cleanRegionOverviewName(object.name));
+    const c=objectCell(object),profile=state.tileProfiles?.[cellKey(c.gx,c.gy)]||{};
+    for(const value of [profile.country,profile.faith,profile.ruler])String(value||"").split(/[／/、，,；;\n]+/).map(v=>cleanRegionOverviewName(v)).filter(v=>v&&v!=="未命名区域").forEach(v=>out.push(v));
+    return [...new Set(out)].slice(0,4)
+  }
+  function regionOverviewGroups(){
+    const mode=state.overviewMode||"region",cacheKey=[state.objectRevision,state.profileRevision,mode,state.filters.q,state.filters.chapter,state.filters.type,state.selectedRegionId||""].join("|");
+    if(state.perf.regionCache.has(cacheKey))return state.perf.regionCache.get(cacheKey);
+    const filtered=getSearchContext().filteredObjects,filteredSet=new Set(filtered.map(o=>o.id)),filterActive=!!(state.filters.q||state.filters.chapter||state.filters.type),groups=[];
+    if(mode==="region"){
+      const h=v052Hierarchy();
+      for(const region of h.regions.filter(r=>r.level===2)){
+        const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(o=>filteredSet.has(o.id)):rawItems;
+        if(!items.length)continue;
+        const bounds=v071OverviewBoundsFromItems(items,58)||region.bounds;
+        const name=cleanRegionOverviewName(region.name);
+        if(!name||/^(中央|东部|东北|北部|西北|西部|西南|南部|东南)地图区$/.test(name))continue;
+        const group=v071OverviewGroup(region.id,name,items,bounds,{regionId:region.id,selected:region.id===state.selectedRegionId,boost:/都广|昆仑|北海|大荒/.test(name)?5:0,meta:`${items.length}个对象`});
+        if(group)groups.push(group)
+      }
+    }else if(mode==="domain"){
+      for(const object of ensureObjectIndexes().areas.filter(o=>o.area&&(o.geometryType==="area"||o.geometryType==="field"))){
+        if(filterActive&&!filteredSet.has(object.id))continue;
+        const bounds=v052ObjectBounds(object),items=state.objects.filter(candidate=>{const a=objectAnchor(candidate);return pointInSpatial(object,a.x,a.y)});
+        const group=v071OverviewGroup(`domain:${object.id}`,cleanRegionOverviewName(object.name),items.length?items:[object],bounds,{domainObjectId:object.id,selected:object.id===state.selectedId,boost:object.geometryType==="field"?4:2,meta:`${object.geometryType==="field"?"作用域":"面积域"} · ${Math.max(1,items.length)}个对象`});
+        if(group)groups.push(group)
+      }
+    }else if(mode==="chapter"){
+      for(const chapter of CHAPTERS_18){
+        const items=filtered.filter(o=>v071ChapterNames(o.chapter).includes(chapter));
+        if(!items.length)continue;
+        const bounds=v071OverviewBoundsFromItems(items,64),group=v071OverviewGroup(`chapter:${chapter}`,chapter,items,bounds,{chapter,boost:items.length>20?5:0,meta:`${items.length}个对象 · 经书分布`});
+        if(group)groups.push(group)
+      }
+    }else if(mode==="hydrology"){
+      const byName=new Map();
+      for(const path of state.waterPaths||[]){const name=cleanRegionOverviewName(path.name||"未命名水系");if(!byName.has(name))byName.set(name,[]);byName.get(name).push(path)}
+      for(const [name,paths] of byName){
+        const objectIds=[...new Set(paths.flatMap(path=>path.objectIds||[]))],items=objectIds.map(indexedObject).filter(Boolean);
+        const b=paths.reduce((acc,path)=>{const x=path.bounds||{};if(Number.isFinite(x.minX)){acc.minX=Math.min(acc.minX,x.minX);acc.maxX=Math.max(acc.maxX,x.maxX);acc.minY=Math.min(acc.minY,x.minY);acc.maxY=Math.max(acc.maxY,x.maxY)}return acc},{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity});
+        if(!v052FiniteBounds(b))continue;
+        const bounds={minX:b.minX-55,maxX:b.maxX+55,minY:b.minY-55,maxY:b.maxY+55},fallback=items.length?items:[{id:`water-${name}`,name,type:"水系",x:(bounds.minX+bounds.maxX)/2,y:(bounds.minY+bounds.maxY)/2}];
+        const group=v071OverviewGroup(`water:${name}`,name,fallback,bounds,{waterName:name,waterPaths:paths,boost:paths.some(p=>p.isMain)?5:0,meta:`${paths.length}段水系`});if(group)groups.push(group)
+      }
+    }else if(mode==="civilization"){
+      const byName=new Map();
+      for(const object of filtered)for(const name of v071CivilizationTokens(object)){if(!byName.has(name))byName.set(name,[]);byName.get(name).push(object)}
+      for(const [name,raw] of byName){const items=[...new Map(raw.map(o=>[o.id,o])).values()];if(!items.length)continue;const bounds=v071OverviewBoundsFromItems(items,72),group=v071OverviewGroup(`civilization:${name}`,name,items,bounds,{civilizationKey:name,boost:items.length>8?5:0,meta:`${items.length}个相关对象`});if(group)groups.push(group)}
+    }
+    if(mode==="region"||mode==="chapter"||mode==="civilization"){
+      const split=[];
+      for(const group of groups){const clusters=v071ConnectedCellClusters(group.items||[]);if(clusters.length<=1){split.push(group);continue}clusters.forEach((cluster,index)=>{const keys=new Set(cluster.map(cell=>cell.key)),items=(group.items||[]).filter(object=>{const c=objectCell(object);return keys.has(cellKey(c.gx,c.gy))});if(!items.length)return;const bounds=v071OverviewBoundsFromItems(items,26)||{minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY};split.push({...group,key:`${group.key}:cluster:${index+1}`,items,count:items.length,x:(bounds.minX+bounds.maxX)/2,y:(bounds.minY+bounds.maxY)/2,minX:bounds.minX,maxX:bounds.maxX,minY:bounds.minY,maxY:bounds.maxY,priority:items.length+(group.selected?1000:0)+(group.boost||0),meta:`${items.length}个相关对象 · 分布 ${index+1}/${clusters.length}`})})}
+      groups.splice(0,groups.length,...split)
+    }
+    groups.sort((a,b)=>b.priority-a.priority||a.name.localeCompare(b.name,"zh-CN"));
+    const maxLabels=mode==="region"?28:mode==="chapter"?24:mode==="domain"?22:24,accepted=[];
+    for(const group of groups){const tooClose=accepted.some(other=>Math.hypot(other.x-group.x,other.y-group.y)<95&&(other.name.includes(group.name)||group.name.includes(other.name)));if(!tooClose||group.selected)accepted.push(group);if(accepted.length>=maxLabels)break}
+    state.perf.regionCache.set(cacheKey,accepted);return accepted
   }
   function updateHoverLensSuppression(){
     const before=state.hoverLensSuppressed;
@@ -920,7 +1050,7 @@
     }
     if (els.mapGuide && !state.precisionMode) {
       els.mapGuide.innerHTML = state.regionOverviewMode
-        ? "山水总览 · 底图依据当前地块与79段水系生成 · 放大后自然过渡为100里地块卡牌"
+        ? `总览：${V071_OVERVIEW_MODE_LABELS[state.overviewMode]||"地理区域"} · 50%开始始终显示100里地块`
         : "拖动地图 · 滚轮缩放 · 右键返回 · 放大至420%进入彩色精细地图";
     }
   } function regionOverviewLabelPlacement(groups){
@@ -932,73 +1062,35 @@
   function regionOverviewCategoryText(items) {
       const labels = { terrain: "地貌", plants: "草木", animals: "鸟兽", minerals: "矿物", people: "人群神祇", events: "事迹" };
       return [...new Set(items.map(objectCategory))].slice(0, 3).map(key => labels[key] || "").filter(Boolean).join(" / ");
-    } function ensureRegionOverviewNode(regionId) {
+    }
+  function v071ActivateOverviewGroup(group){
+    if(!group)return;
+    if(group.regionId){v052SelectRegion(group.regionId,true);return}
+    if(group.domainObjectId){selectObject(group.domainObjectId);const o=indexedObject(group.domainObjectId);if(o?.area){state.spatialFocusArmed=true;state.spatialFocusAreaIds=[group.domainObjectId];state.perf.spatialKey="";state.perf.spatialContext=null;renderDetails();renderSidebar();scheduleRender();persist();v052FitBounds(v052ObjectBounds(o),.54,1.8)}return}
+    if(group.chapter){state.filters.chapter=group.chapter;els.chapterFilter.value=group.chapter;renderSidebar();scheduleRender();persist();v052FitBounds({minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY},.42,1.5);toast(`经书总览：${group.chapter}`,`${group.count}个对象`);return}
+    if(group.waterPaths){state.viewPreset="hydrology";state.layers.rivers=true;state.selectedWaterPathId=group.waterPaths[0]?.id||null;updateV029ToolUI();v052FitBounds({minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY},.42,1.6);scheduleRender();persist();return}
+    const first=group.items?.find(o=>indexedObject(o.id));if(first)selectObject(first.id);v052FitBounds({minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY},.48,1.6)
+  }
+  function ensureRegionOverviewNode(groupKey) {
       if (!(state.perf.regionOverviewNodes instanceof Map)) state.perf.regionOverviewNodes = new Map();
-      let button = state.perf.regionOverviewNodes.get(regionId);
+      let button = state.perf.regionOverviewNodes.get(groupKey);
       if (button) return button;
-      button = document.createElement("button");
-      button.type = "button";
-      button.className = "region-overview-label";
-      button.dataset.regionKey = regionId;
-      const name = document.createElement("strong");
-      name.className = "region-overview-name";
-      const meta = document.createElement("span");
-      meta.className = "region-overview-meta";
-      button.append(name, meta);
-      button._v053NameNode = name;
-      button._v053MetaNode = meta;
+      button = document.createElement("button");button.type = "button";button.className = "region-overview-label";button.dataset.overviewKey = groupKey;
+      const name = document.createElement("strong");name.className = "region-overview-name";
+      const meta = document.createElement("span");meta.className = "region-overview-meta";
+      button.append(name, meta);button._v053NameNode = name;button._v053MetaNode = meta;
       button.addEventListener("pointerdown", event => event.stopPropagation());
-      button.addEventListener("click", event => {
-        event.stopPropagation();
-        v052SelectRegion(button.dataset.regionKey, true);
-      });
-      button.addEventListener("mouseenter", event => {
-        const group = state.perf.regionOverviewVisibleGroups?.get(button.dataset.regionKey);
-        if (!group) return;
-        els.tooltip.className = "map-tooltip lens region-overview-lens";
-        const sample = group.items.slice(0, 6).map(object => object.name).join(" / ");
-        els.tooltip.innerHTML = `<strong>${esc(group.name)}</strong><span>${group.count}个对象 · 点击进入${state.camera.zoom <= .27 ? "世界大区" : "地图区域"}</span>${sample ? `<small>${esc(sample)}${group.items.length > 6 ? "……" : ""}</small>` : ""}`;
-        els.tooltip.classList.remove("hidden");
-        moveTooltip(event.clientX, event.clientY);
-      });
-      button.addEventListener("mousemove", event => moveTooltip(event.clientX, event.clientY));
-      button.addEventListener("mouseleave", hideTooltip);
-      state.perf.regionOverviewNodes.set(regionId, button);
-      return button;
-    } function renderRegionOverviewLayer() {
-      const v = visibleWorld();
-      const groups = regionOverviewGroups().filter(group => group.maxX >= v.left - 150 && group.minX <= v.right + 150 && group.maxY >= v.bottom - 150 && group.minY <= v.top + 150);
-      const placed = regionOverviewLabelPlacement(groups);
-      if (!state.perf.regionOverviewLayerActive) {
-        els.tileLayer.replaceChildren();
-        state.perf.regionOverviewNodes = new Map();
-        state.perf.regionOverviewLayerActive = true;
-      }
-      const visible = new Map(placed.map(group => [group.regionId, group]));
-      state.perf.regionOverviewVisibleGroups = visible;
-      for (const group of placed) {
-        const button = ensureRegionOverviewNode(group.regionId);
-        const height = group.priority >= 7 ? 62 : 52;
-        button.classList.toggle("major", group.priority >= 7);
-        button.classList.toggle("selected", group.regionId === state.selectedRegionId);
-        const tx = Math.round(group.x - group.width / 2), ty = Math.round(group.y - height / 2);
-        const transform = `translate3d(${tx}px,${ty}px,0)`;
-        const width = `${Math.round(group.width)}px`;
-        if (button.style.left !== "0px") button.style.left = "0px";
-        if (button.style.top !== "0px") button.style.top = "0px";
-        if (button.style.transform !== transform) button.style.transform = transform;
-        if (button.style.width !== width) button.style.width = width;
-        if (button._v053NameNode.textContent !== group.name) button._v053NameNode.textContent = group.name;
-        const categories = regionOverviewCategoryText(group.items);
-        const metaText = `${group.count}项${categories ? ` · ${categories}` : ""}`;
-        if (button._v053MetaNode.textContent !== metaText) button._v053MetaNode.textContent = metaText;
-        if (button.parentNode !== els.tileLayer) els.tileLayer.appendChild(button);
-      }
-      for (const [regionId, node] of state.perf.regionOverviewNodes) {
-        if (visible.has(regionId)) continue;
-        node.remove();
-        state.perf.regionOverviewNodes.delete(regionId);
-      }
+      button.addEventListener("click", event => {event.stopPropagation();v071ActivateOverviewGroup(state.perf.regionOverviewVisibleGroups?.get(button.dataset.overviewKey))});
+      button.addEventListener("mouseenter", event => {const group=state.perf.regionOverviewVisibleGroups?.get(button.dataset.overviewKey);if(!group)return;els.tooltip.className="map-tooltip lens region-overview-lens";const sample=(group.items||[]).slice(0,6).map(object=>object.name).join(" / "),action=group.regionId||group.domainObjectId?"点击聚焦":"点击定位";els.tooltip.innerHTML=`<strong>${esc(group.name)}</strong><span>${esc(group.meta||`${group.count}个对象`)} · ${action}</span>${sample?`<small>${esc(sample)}${group.items.length>6?"……":""}</small>`:""}`;els.tooltip.classList.remove("hidden");moveTooltip(event.clientX,event.clientY)});
+      button.addEventListener("mousemove", event => moveTooltip(event.clientX, event.clientY));button.addEventListener("mouseleave", hideTooltip);
+      state.perf.regionOverviewNodes.set(groupKey, button);return button;
+    }
+  function renderRegionOverviewLayer() {
+      const v=visibleWorld(),groups=regionOverviewGroups().filter(group=>group.maxX>=v.left-150&&group.minX<=v.right+150&&group.maxY>=v.bottom-150&&group.minY<=v.top+150),placed=regionOverviewLabelPlacement(groups);
+      if(!state.perf.regionOverviewLayerActive){els.tileLayer.replaceChildren();state.perf.regionOverviewNodes=new Map();state.perf.regionOverviewLayerActive=true}
+      const visible=new Map(placed.map(group=>[group.key,group]));state.perf.regionOverviewVisibleGroups=visible;
+      for(const group of placed){const button=ensureRegionOverviewNode(group.key),height=group.priority>=7?62:52;button.classList.toggle("major",group.priority>=7);button.classList.toggle("selected",!!group.selected);button.dataset.overviewMode=state.overviewMode||"region";const tx=Math.round(group.x-group.width/2),ty=Math.round(group.y-height/2),transform=`translate3d(${tx}px,${ty}px,0)`,width=`${Math.round(group.width)}px`;if(button.style.left!=="0px")button.style.left="0px";if(button.style.top!=="0px")button.style.top="0px";if(button.style.transform!==transform)button.style.transform=transform;if(button.style.width!==width)button.style.width=width;if(button._v053NameNode.textContent!==group.name)button._v053NameNode.textContent=group.name;const categories=regionOverviewCategoryText(group.items||[]),metaText=group.meta||`${group.count}项${categories?` · ${categories}`:""}`;if(button._v053MetaNode.textContent!==metaText)button._v053MetaNode.textContent=metaText;if(button.parentNode!==els.tileLayer)els.tileLayer.appendChild(button)}
+      for(const [key,node] of state.perf.regionOverviewNodes){if(visible.has(key))continue;node.remove();state.perf.regionOverviewNodes.delete(key)}
     }
   const V053_REGION_RANGE_PALETTE = [
     "#447c6b", "#537d91", "#74805c", "#806d59", "#65798d",
@@ -1116,44 +1208,60 @@
     ctx.closePath();
     return true;
   }
-  function drawRegionOverviewBackdrops(ctx, v, s) {
-    const level = state.camera.zoom <= .27 ? 1 : 2;
-    const groups = regionOverviewGroups();
-    const selectedRegion = v052RegionById(state.selectedRegionId);
-    const selectedParent = selectedRegion?.level === 2 ? v052ParentRegion(selectedRegion) : null;
-    const regions = groups.map(group => v052RegionById(group.regionId)).filter(Boolean);
-    if (selectedRegion && selectedRegion.level !== level && !regions.some(region => region.id === selectedRegion.id)) regions.push(selectedRegion);
-    ctx.save();
-    for (const region of regions) {
-      const geometry = v053RegionRangeGeometry(region);
-      if (!geometry || geometry.bounds.maxX < v.left || geometry.bounds.minX > v.right || geometry.bounds.maxY < v.bottom || geometry.bounds.minY > v.top) continue;
-      const selected = region.id === state.selectedRegionId;
-      const parentSelected = level === 1 && selectedParent?.id === region.id;
-      const color = v053RegionRangeColor(region);
-      if (!v053TraceRegionRange(ctx, geometry)) continue;
-      const isMacro = region.level === 1;
-      const emphasized = selected || parentSelected;
-      ctx.fillStyle = emphasized
-        ? v053RegionRangeRgba(color, isMacro ? .145 : .12)
-        : v053RegionRangeRgba(color, isMacro ? .072 : .045);
-      ctx.strokeStyle = emphasized
-        ? (selected ? "rgba(173,77,61,.88)" : v053RegionRangeRgba(color, .82))
-        : v053RegionRangeRgba(color, isMacro ? .48 : .34);
-      ctx.lineWidth = emphasized ? 2.5 : (isMacro ? 1.65 : 1.15);
-      ctx.setLineDash(geometry.hard ? [] : (isMacro ? [11, 8] : [7, 7]));
-      ctx.fill();
-      ctx.stroke();
-      ctx.setLineDash([]);
+  function v071ConnectedCellClusters(items){
+    const cells=new Map();
+    for(const object of items||[]){const c=objectCell(object),key=cellKey(c.gx,c.gy);if(!cells.has(key))cells.set(key,{key,gx:c.gx,gy:c.gy})}
+    const pending=new Set(cells.keys()),clusters=[];
+    while(pending.size){const first=pending.values().next().value,queue=[first],cluster=[];pending.delete(first);
+      while(queue.length){const key=queue.pop(),cell=cells.get(key);if(!cell)continue;cluster.push(cell);for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const next=cellKey(cell.gx+dx,cell.gy+dy);if(pending.delete(next))queue.push(next)}}
+      clusters.push(cluster)
     }
-    ctx.restore();
+    return clusters
+  }
+  function v071CellBoundaryLoops(cluster){
+    const edges=new Map(),pointKey=(x,y)=>`${x},${y}`,edgeKey=(a,b)=>`${pointKey(a.x,a.y)}>${pointKey(b.x,b.y)}`;
+    const add=(a,b)=>{const reverse=edgeKey(b,a);if(edges.has(reverse))edges.delete(reverse);else edges.set(edgeKey(a,b),{a,b})};
+    for(const cell of cluster){const b=cellBounds(cell.gx,cell.gy),sw={x:b.west,y:b.south},se={x:b.east,y:b.south},ne={x:b.east,y:b.north},nw={x:b.west,y:b.north};add(sw,se);add(se,ne);add(ne,nw);add(nw,sw)}
+    const byStart=new Map();for(const edge of edges.values()){const key=pointKey(edge.a.x,edge.a.y);if(!byStart.has(key))byStart.set(key,[]);byStart.get(key).push(edge)}
+    const unused=new Set(edges.keys()),loops=[];
+    while(unused.size){const firstKey=unused.values().next().value,first=edges.get(firstKey);if(!first){unused.delete(firstKey);continue}const points=[first.a],start=pointKey(first.a.x,first.a.y);let edge=first,guard=0;
+      while(edge&&guard++<edges.size+4){unused.delete(edgeKey(edge.a,edge.b));points.push(edge.b);const endKey=pointKey(edge.b.x,edge.b.y);if(endKey===start)break;const next=(byStart.get(endKey)||[]).find(candidate=>unused.has(edgeKey(candidate.a,candidate.b)));edge=next||null}
+      if(points.length>=4&&pointKey(points.at(-1).x,points.at(-1).y)===start){points.pop();loops.push(points)}
+    }
+    return loops
+  }
+  function v071GeometryBounds(points){return points.reduce((acc,point)=>({minX:Math.min(acc.minX,point.x),maxX:Math.max(acc.maxX,point.x),minY:Math.min(acc.minY,point.y),maxY:Math.max(acc.maxY,point.y)}),{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity})}
+  function v071GroupGeometry(group){
+    if(group.domainObjectId){const object=indexedObject(group.domainObjectId);if(!object?.area)return[];const points=[],a=object.area;if(a.shape==="circle"){const cx=Number(a.cx??object.x)||0,cy=Number(a.cy??object.y)||0,r=Math.max(30,Number(a.radius)||60);for(let i=0;i<32;i++){const t=i/32*Math.PI*2;points.push({x:cx+Math.cos(t)*r,y:cy+Math.sin(t)*r})}}else if(a.shape==="polygon"&&a.points?.length>=3)for(const point of a.points)points.push({x:Number(point[0])||0,y:Number(point[1])||0});else{const b=v052ObjectBounds(object);points.push({x:b.minX,y:b.minY},{x:b.minX,y:b.maxY},{x:b.maxX,y:b.maxY},{x:b.maxX,y:b.minY})}return[{points,bounds:v071GeometryBounds(points),hard:/hard|original|原文/i.test(String(a.evidence||"")),source:"domain"}]}
+    // 水系总览直接使用真实河道，不再把分散节点强制圈成闭合区域。
+    if(group.waterPaths)return[];
+    const geometries=[];
+    for(const cluster of v071ConnectedCellClusters(group.items||[])){
+      // 单点、双点及不连续稀疏组只显示标签与位置，不制造闭合范围。
+      if(cluster.length<3)continue;
+      for(const points of v071CellBoundaryLoops(cluster))if(points.length>=4)geometries.push({points,bounds:v071GeometryBounds(points),hard:false,source:"connected-cells",cellCount:cluster.length})
+    }
+    return geometries
+  }
+  function v071OverviewColor(group,index){
+    if(state.overviewMode==="domain")return group.domainObjectId&&indexedObject(group.domainObjectId)?.geometryType==="field"?"#a45d50":"#9b7a3f";
+    if(state.overviewMode==="chapter")return ["#567b72","#71815d","#7b6d8b","#7b7658","#5e7c8b"][Math.floor(index/4)%5];
+    if(state.overviewMode==="hydrology")return "#3f8795";
+    if(state.overviewMode==="civilization")return "#8a6d43";
+    const region=group.regionId?v052RegionById(group.regionId):null;return v053RegionRangeColor(region||{id:group.key,level:2})
+  }
+  function drawRegionOverviewBackdrops(ctx,v,s){
+    const groups=regionOverviewGroups();ctx.save();
+    groups.forEach((group,index)=>{const geometries=v071GroupGeometry(group),color=v071OverviewColor(group,index),selected=!!group.selected,domain=state.overviewMode==="domain";for(const geometry of geometries){if(!geometry||geometry.bounds.maxX<v.left||geometry.bounds.minX>v.right||geometry.bounds.maxY<v.bottom||geometry.bounds.minY>v.top)continue;if(!v053TraceRegionRange(ctx,geometry))continue;ctx.fillStyle=v053RegionRangeRgba(color,selected?.16:domain?.085:.055);ctx.strokeStyle=v053RegionRangeRgba(color,selected?.92:domain?.72:.52);ctx.lineWidth=selected?2.8:domain?1.8:1.3;ctx.setLineDash(geometry.hard?[]:domain?[8,5]:[7,7]);ctx.fill();ctx.stroke();ctx.setLineDash([])}});
+    ctx.restore()
   }
   const V070_OVERVIEW_ART={
     url:"/assets/map/shanhaijing_overview_v070.webp",
     bounds:{minX:-5100,maxX:1400,minY:-500,maxY:2500},
     fullUntil:.28,
     goneAt:.98,
-    tilesBegin:.34,
-    tilesFull:.92
+    tilesBegin:.38,
+    tilesFull:.55
   };
   function v070Smoothstep(edge0,edge1,value){
     if(edge0===edge1)return value>=edge1?1:0;
@@ -1339,11 +1447,13 @@
       drawV044LocationWatermark(ctx, r);
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, true); drawPrecisionLines(ctx, v, s); }
     } else if (state.regionOverviewMode) {
+      drawRegionOverviewBackdrops(ctx,v,s);
+      if(state.overviewMode==="domain"&&state.layers.areas)drawAreas(ctx,v,s);
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, false); drawLines(ctx, v, s); }
     } else {
       const tilePhase=v070TileCardOpacity();
       ctx.save();ctx.globalAlpha=Math.max(.12,tilePhase);
-      if (state.layers.areas && state.camera.zoom >= .84) drawAreas(ctx, v, s);
+      if (state.layers.areas && state.camera.zoom >= .50) drawAreas(ctx, v, s);
       drawGrid(ctx, v, s, cellPx);ctx.restore();
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, false); drawLines(ctx, v, s); }
     }
@@ -1629,7 +1739,7 @@
   function bindTileEvents(){
     els.tileLayer.querySelectorAll(".tile:not([data-events-bound='1'])").forEach(tile=>{
       tile.dataset.eventsBound="1";
-      tile.addEventListener("click",e=>{if(Date.now()<state.suppressClickUntil)return;if(e.target.closest("button"))return;const items=objectsInCellKey(tile.dataset.cell);const exited=clickOutsideSpatialFocus(tile.dataset.cell);if(exited){if(state.camera.zoom<2&&items.length)openDossierWorkspace();return}state.selectedCell=tile.dataset.cell;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;if(state.camera.zoom<2&&items.length){state.flippedCell=null;renderDetails();scheduleRender();persist();openDossierWorkspace()}else{state.flippedCell=state.flippedCell===tile.dataset.cell?null:tile.dataset.cell;renderDetails();scheduleRender();persist()}});
+      tile.addEventListener("click",e=>{if(Date.now()<state.suppressClickUntil)return;if(e.target.closest("button"))return;const items=objectsInCellKey(tile.dataset.cell);clickOutsideSpatialFocus(tile.dataset.cell);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedCell=tile.dataset.cell;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;if(state.camera.zoom<2&&items.length){state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else{state.flippedCell=state.flippedCell===tile.dataset.cell?null:tile.dataset.cell;renderDetails();renderSidebar();scheduleRender();persist()}});
       tile.addEventListener("dblclick",e=>{if(Date.now()<state.suppressClickUntil)return;e.preventDefault();openDrill(Number(tile.dataset.gx),Number(tile.dataset.gy))});
       tile.addEventListener("mouseenter",e=>{const items=objectsInCellKey(tile.dataset.cell),names=items.slice(0,5).map(o=>o.name).join("、"),more=items.length>5?` 等${items.length}项`:"";showTooltip(items.length?`${names}${more} · ${state.camera.zoom<2?"单击打开地块博物志":"单击翻转"} / 双击下钻`:`空白地块 · 单击后可建档`,e.clientX,e.clientY)});
       tile.addEventListener("mousemove",e=>moveTooltip(e.clientX,e.clientY));tile.addEventListener("mouseleave",hideTooltip);
@@ -1649,9 +1759,9 @@
   }
   function moveTooltip(x,y){if(state.hoverLensSuppressed||state.pan.active||state.cameraAnimation){hideTooltip();return}const r=els.tooltip.getBoundingClientRect(),pad=12;let left=x+14,top=y+14;if(left+r.width>innerWidth-pad)left=x-r.width-14;if(top+r.height>innerHeight-pad)top=y-r.height-14;els.tooltip.style.left=Math.max(pad,left)+"px";els.tooltip.style.top=Math.max(pad,top)+"px"}
   function hideTooltip(){els.tooltip.classList.add("hidden")}
-  function selectObject(id){state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedWaterPathId=null;state.spatialFocusArmed=true;state.selectedId=id;const o=indexedObject(id);if(o){const c=objectCell(o);state.selectedCell=cellKey(c.gx,c.gy)}renderDetails();renderSidebar();scheduleRender();persist()}
-  function jumpToObject(id,flip=false,smooth=false){state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedWaterPathId=null;const o=state.objects.find(x=>x.id===id);if(!o)return;v050RememberLocation("跳转前位置");state.spatialFocusArmed=true;const pulseCell=cellKey(objectCell(o).gx,objectCell(o).gy);pulseSearchTarget(pulseCell,id);state.selectedId=id;const targetCell=objectCell(o);state.selectedCell=cellKey(targetCell.gx,targetCell.gy);renderDetails();renderSidebar();const targetZoom=Math.max(state.camera.zoom,.86),finish=()=>{if(flip){const c=objectCell(o);state.flippedCell=cellKey(c.gx,c.gy)}scheduleRender();persist();v050RememberLocation(o.name,true)};if(smooth)animateCameraTo(Number(o.x)||0,Number(o.y)||0,targetZoom,finish);else{state.camera.x=Number(o.x)||0;state.camera.y=Number(o.y)||0;state.camera.zoom=targetZoom;finish()}}
-  function jumpToCell(key,flip=false){state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedWaterPathId=null;v050RememberLocation("跳转前位置");state.spatialFocusArmed=true;pulseSearchTarget(key);const [gx,gy]=String(key).split(",").map(Number);state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;renderDetails();renderSidebar();animateCameraTo(cellCenter(gx),cellCenter(gy),Math.max(state.camera.zoom,.82),()=>{if(flip)state.flippedCell=key;scheduleRender();persist();v050RememberLocation(items[0]?.name||`地块 ${key}`,true)})}
+  function selectObject(id){const o=indexedObject(id);if(!o)return;const c=objectCell(o),key=cellKey(c.gx,c.gy);clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;state.selectedId=id;state.selectedCell=key;renderDetails();renderSidebar();scheduleRender();persist()}
+  function jumpToObject(id,flip=false,smooth=false){const o=state.objects.find(x=>x.id===id);if(!o)return;const targetCell=objectCell(o),key=cellKey(targetCell.gx,targetCell.gy);clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;v050RememberLocation("跳转前位置");const pulseCell=key;pulseSearchTarget(pulseCell,id);state.selectedId=id;state.selectedCell=key;renderDetails();renderSidebar();const targetZoom=Math.max(state.camera.zoom,.86),finish=()=>{if(flip)state.flippedCell=key;scheduleRender();persist();v050RememberLocation(o.name,true)};if(smooth)animateCameraTo(Number(o.x)||0,Number(o.y)||0,targetZoom,finish);else{state.camera.x=Number(o.x)||0;state.camera.y=Number(o.y)||0;state.camera.zoom=targetZoom;finish()}}
+  function jumpToCell(key,flip=false){clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;v050RememberLocation("跳转前位置");pulseSearchTarget(key);const [gx,gy]=String(key).split(",").map(Number);state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;renderDetails();renderSidebar();animateCameraTo(cellCenter(gx),cellCenter(gy),Math.max(state.camera.zoom,.82),()=>{if(flip)state.flippedCell=key;scheduleRender();persist();v050RememberLocation(items[0]?.name||`地块 ${key}`,true)})}
   function animateCameraTo(x,y,zoom,duration=680,done=null){
     if(typeof duration==="function"){done=duration;duration=680}
     if(state.cameraAnimation)cancelAnimationFrame(state.cameraAnimation);
@@ -1681,8 +1791,8 @@
   function dossierField(title,value){return `<section class="dossier-field ${value?'':'empty'}"><h4><span class="field-glyph">${fieldGlyph(title)}</span>${esc(title)}</h4><div>${value?esc(value):'尚未录入'}</div></section>`}
   function objectRibbon(items){if(!items.length)return `<div class="tile-dossier-intro"><strong>空白地块档案</strong><p>本格尚无地图对象，但可以先建立环境、文明与事件资料。</p></div>`;return `<div class="tile-dossier-intro"><strong>本格对象 · ${items.length}项</strong><p>地块档案用于汇总本格整体情况；各对象仍保留独立坐标、原典与考据记录。</p></div><div class="tile-object-ribbon">${items.map(o=>`<button class="tile-object-chip ${o.id===state.selectedId?'selected':''}" data-tile-object="${esc(o.id)}" title="单击选中；双击编辑对象">${geometryIcon(o)} ${esc(o.name)}</button>`).join("")}</div>`}
   function scriptureGroupsHTML(profile){return `<div class="scripture-groups">${CHAPTER_GROUPS.map(g=>`<div class="scripture-group-title">${esc(g.name)}</div>${g.chapters.map(ch=>{const value=profile.scriptureEvents?.[ch]||"";return `<details class="scripture-event ${value?'has-content':''}" ${value?'open':''}><summary>${esc(ch)}<span>${value?`${value.split(/\n+/).filter(Boolean).length}条`:'未录入'}</span></summary><div class="scripture-body">${value?esc(value):'本经篇尚未归档该地块事件。'}</div></details>`}).join("")}`).join("")}</div>`}
-  function renderDetails(){if(state.selectedHierarchyNode==="world"){v052RenderWorldDetails();return}if(state.selectedRegionId){const region=v052RegionById(state.selectedRegionId);if(region){v052RenderRegionDetails(region);return}}els.detailHeadActions?.classList.remove("hidden");els.detailTabs?.classList.remove("hidden");const tile=activeTile();if(!tile){els.emptyDetail.classList.remove("hidden");els.detailContent.classList.add("hidden");return}const {key,gx,gy,items}=tile,profile=tileProfileFor(key,items),b=cellBounds(gx,gy),main=items.find(o=>o.id===state.selectedId)||items.find(o=>o.geometryType==="area")||items[0];els.emptyDetail.classList.add("hidden");els.detailContent.classList.remove("hidden");els.detailRef.textContent=`TILE ${signed(gx)}, ${signed(gy)} · 100里主格`;els.detailName.textContent=main?`${main.name}所在地区`:`空白地块（${signed(gx)}, ${signed(gy)}）`;const populated=Object.values(profile.scriptureEvents||{}).filter(Boolean).length,spatialCount=items.filter(o=>o.geometryType==="area"||o.geometryType==="field").length;els.detailMeta.textContent=`${items.length}个对象 · ${populated}个经篇已有事件归档`;els.detailLocation.innerHTML=`<strong>主格中心 ${coordText(b.cx,b.cy)}</strong><br>范围 X ${signed(b.west)}～${signed(b.east)}里 · Y ${signed(b.south)}～${signed(b.north)}里<br>地块档案与格内对象资料分别保存`;els.openRangeEditorBtn.textContent=spatialCount?`▱ 编辑面积／作用域（${spatialCount}）`:`＋ 新建面积／作用域`;els.openRangeEditorBtn.classList.toggle("has-range",spatialCount>0);$$('.detail-tabs button').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.detailTab));renderDetailBody(profile,items)}
-  function renderDetailBody(profile,items){let html=objectRibbon(items);if(state.detailTab==="summary")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>地块简述</h3><span>环境 · 建筑 · 物种</span></div>${dossierField("地理环境",profile.geoEnvironment)}${dossierField("建筑群",profile.architecture)}${dossierField("生活物种",profile.livingSpecies)}</div>`;if(state.detailTab==="civilization")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>文明部落</h3><span>文明结构与资源生态</span></div><div class="dossier-grid">${dossierField("所属国度",profile.country)}${dossierField("信仰对象",profile.faith)}${dossierField("统治者",profile.ruler)}${dossierField("守护神",profile.guardian)}</div>${dossierField("奇珍异兽／栖息生物",profile.beasts)}<div class="dossier-grid">${dossierField("神木／神话植被",profile.divinePlants)}${dossierField("仙草药草",profile.herbs)}${dossierField("丰富矿产",profile.minerals)}${dossierField("特殊生命",profile.specialLife)}</div>${dossierField("当地风俗",profile.customs)}</div>`;if(state.detailTab==="encounters")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>文明与神话奇遇</h3><span>神迹 · 祭祀 · 文明异象 · 特殊空间</span></div>${dossierField("文明与神话奇遇",profile.mythicEncounters)}</div>`;if(state.detailTab==="story"){const reachable=profile.playerReachable==="yes"||profile.playerReachable==="conditional";html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>事件</h3><span>原典事件与研究记录</span></div><div class="status-line"><span class="status-pill ${statusClass(profile.timeNormal)}">${statusText(profile.timeNormal,"time")}</span><span class="status-pill ${statusClass(profile.playerReachable)}">${statusText(profile.playerReachable,"player")}</span></div>${dossierField("已发生事件（综合简述）",profile.occurredEvents)}${dossierField("其他事件说明",profile.storyOther)}${reachable?`<div class="player-story-box"><h3>旧版附加内容</h3>${dossierField("旧版对象字段",profile.playerEnemies)}${dossierField("旧版事件字段",profile.playerPlots)}${dossierField("旧版所得字段",profile.playerLoot)}</div>`:`<div class="player-story-box disabled"><h3>旧版附加内容不展示</h3><div>只有“可以抵达”或“满足条件后可抵达”时，才显示对象、触发事件与所得记录。</div></div>`}<div class="dossier-section-head"><h3>十八经篇事件归档</h3><span>原典事件</span></div>${scriptureGroupsHTML(profile)}</div>`}els.detailBody.innerHTML=html;els.detailBody.querySelectorAll('[data-water-focus]').forEach(button=>button.addEventListener('click',()=>focusWaterEndpoint(button.dataset.waterFocus)));els.detailBody.querySelectorAll('[data-tile-object]').forEach(btn=>{btn.addEventListener('click',()=>{state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.spatialFocusArmed=true;state.selectedId=btn.dataset.tileObject;renderDetails();renderSidebar();scheduleRender();persist()});btn.addEventListener('dblclick',()=>{const o=state.objects.find(x=>x.id===btn.dataset.tileObject);if(o)openObjectForm(o)})})}
+  function renderDetails(){if(state.selectedHierarchyNode==="world"){v052RenderWorldDetails();return}if(state.selectedHierarchyNode==="region"&&state.selectedRegionId){const region=v052RegionById(state.selectedRegionId);if(region){v052RenderRegionDetails(region);return}}els.detailHeadActions?.classList.remove("hidden");els.detailTabs?.classList.remove("hidden");const tile=activeTile();if(!tile){els.emptyDetail.classList.remove("hidden");els.detailContent.classList.add("hidden");return}const {key,gx,gy,items}=tile,profile=tileProfileFor(key,items),b=cellBounds(gx,gy),main=items.find(o=>o.id===state.selectedId)||items.find(o=>o.geometryType==="area")||items[0];els.emptyDetail.classList.add("hidden");els.detailContent.classList.remove("hidden");els.detailRef.textContent=`TILE ${signed(gx)}, ${signed(gy)} · 100里主格`;els.detailName.textContent=main?`${main.name}所在地区`:`空白地块（${signed(gx)}, ${signed(gy)}）`;const populated=Object.values(profile.scriptureEvents||{}).filter(Boolean).length,spatialCount=items.filter(o=>o.geometryType==="area"||o.geometryType==="field").length;els.detailMeta.textContent=`${items.length}个对象 · ${populated}个经篇已有事件归档`;els.detailLocation.innerHTML=`<strong>主格中心 ${coordText(b.cx,b.cy)}</strong><br>范围 X ${signed(b.west)}～${signed(b.east)}里 · Y ${signed(b.south)}～${signed(b.north)}里<br>地块档案与格内对象资料分别保存`;els.openRangeEditorBtn.textContent=spatialCount?`▱ 编辑面积／作用域（${spatialCount}）`:`＋ 新建面积／作用域`;els.openRangeEditorBtn.classList.toggle("has-range",spatialCount>0);$$('.detail-tabs button').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.detailTab));renderDetailBody(profile,items)}
+  function renderDetailBody(profile,items){let html=objectRibbon(items);if(state.detailTab==="summary")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>地块简述</h3><span>环境 · 建筑 · 物种</span></div>${dossierField("地理环境",profile.geoEnvironment)}${dossierField("建筑群",profile.architecture)}${dossierField("生活物种",profile.livingSpecies)}</div>`;if(state.detailTab==="civilization")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>文明部落</h3><span>文明结构与资源生态</span></div><div class="dossier-grid">${dossierField("所属国度",profile.country)}${dossierField("信仰对象",profile.faith)}${dossierField("统治者",profile.ruler)}${dossierField("守护神",profile.guardian)}</div>${dossierField("奇珍异兽／栖息生物",profile.beasts)}<div class="dossier-grid">${dossierField("神木／神话植被",profile.divinePlants)}${dossierField("仙草药草",profile.herbs)}${dossierField("丰富矿产",profile.minerals)}${dossierField("特殊生命",profile.specialLife)}</div>${dossierField("当地风俗",profile.customs)}</div>`;if(state.detailTab==="encounters")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>文明与神话奇遇</h3><span>神迹 · 祭祀 · 文明异象 · 特殊空间</span></div>${dossierField("文明与神话奇遇",profile.mythicEncounters)}</div>`;if(state.detailTab==="story"){const reachable=profile.playerReachable==="yes"||profile.playerReachable==="conditional";html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>事件</h3><span>原典事件与研究记录</span></div><div class="status-line"><span class="status-pill ${statusClass(profile.timeNormal)}">${statusText(profile.timeNormal,"time")}</span><span class="status-pill ${statusClass(profile.playerReachable)}">${statusText(profile.playerReachable,"player")}</span></div>${dossierField("已发生事件（综合简述）",profile.occurredEvents)}${dossierField("其他事件说明",profile.storyOther)}${reachable?`<div class="player-story-box"><h3>旧版附加内容</h3>${dossierField("旧版对象字段",profile.playerEnemies)}${dossierField("旧版事件字段",profile.playerPlots)}${dossierField("旧版所得字段",profile.playerLoot)}</div>`:`<div class="player-story-box disabled"><h3>旧版附加内容不展示</h3><div>只有“可以抵达”或“满足条件后可抵达”时，才显示对象、触发事件与所得记录。</div></div>`}<div class="dossier-section-head"><h3>十八经篇事件归档</h3><span>原典事件</span></div>${scriptureGroupsHTML(profile)}</div>`}els.detailBody.innerHTML=html;els.detailBody.querySelectorAll('[data-water-focus]').forEach(button=>button.addEventListener('click',()=>focusWaterEndpoint(button.dataset.waterFocus)));els.detailBody.querySelectorAll('[data-tile-object]').forEach(btn=>{btn.addEventListener('click',()=>selectObject(btn.dataset.tileObject));btn.addEventListener('dblclick',()=>{const o=state.objects.find(x=>x.id===btn.dataset.tileObject);if(o)openObjectForm(o)})})}
   function renderScriptureEditors(profile){els.scriptureEventFields.innerHTML=CHAPTER_GROUPS.map(g=>`<div class="scripture-group-title" style="grid-column:1/-1">${esc(g.name)}</div>${g.chapters.map(ch=>`<details class="scripture-editor-item" ${(profile.scriptureEvents?.[ch]||'')?'open':''}><summary>${esc(ch)}</summary><textarea data-scripture-chapter="${esc(ch)}" placeholder="录入本地块归入《${esc(ch)}》的原典事件">${esc(profile.scriptureEvents?.[ch]||'')}</textarea></details>`).join('')}`).join('')}
   function togglePlayerFields(){const show=els.tilePlayerReachable.value==="yes"||els.tilePlayerReachable.value==="conditional";els.playerFields.classList.toggle("hidden",!show)}
   function openTileProfileForm(){const tile=activeTile();if(!tile)return;const profile=tileProfileFor(tile.key,tile.items);els.tileProfileKey.value=tile.key;els.tileProfileTitle.textContent=`编辑地块（${signed(tile.gx)}, ${signed(tile.gy)}）`;els.tileBriefSummary.value=profile.briefSummary||"";els.tileBasicSummary.value=profile.basicSummary||"";els.tileDetailedSummary.value=profile.detailedSummary||"";els.tileGeoEnvironment.value=profile.geoEnvironment||"";els.tileArchitecture.value=profile.architecture||"";els.tileLivingSpecies.value=profile.livingSpecies||"";els.tileCountry.value=profile.country||"";els.tileFaith.value=profile.faith||"";els.tileRuler.value=profile.ruler||"";els.tileGuardian.value=profile.guardian||"";els.tileBeasts.value=profile.beasts||"";els.tileDivinePlants.value=profile.divinePlants||"";els.tileHerbs.value=profile.herbs||"";els.tileMinerals.value=profile.minerals||"";els.tileSpecialLife.value=profile.specialLife||"";els.tileCustoms.value=profile.customs||"";els.tileMythicEncounters.value=profile.mythicEncounters||"";els.tileOccurredEvents.value=profile.occurredEvents||"";els.tileTimeNormal.value=profile.timeNormal||"unknown";els.tilePlayerReachable.value=profile.playerReachable||"unknown";els.tileStoryOther.value=profile.storyOther||"";els.tilePlayerEnemies.value=profile.playerEnemies||"";els.tilePlayerPlots.value=profile.playerPlots||"";els.tilePlayerLoot.value=profile.playerLoot||"";renderScriptureEditors(profile);togglePlayerFields();openModal("tileProfileModal")}
@@ -2465,12 +2575,28 @@
     if(visibleElement("brushCollectionWorkspace")){closeBrushCollection();return true}
     if(visibleElement("dossierWorkspace")){closeDossierWorkspace();return true}
     if(state.precisionClusterOpen){state.precisionClusterOpen=null;scheduleRender();return true}
-    if(state.flippedCell){state.flippedCell=null;scheduleRender();return true}
-    if(getSpatialFocusContext().active){clearSpatialFocus({message:"已通过右键退出地块聚焦"});return true}
+    if(getSpatialFocusContext().active||v052RegionFocusContext().active||hasMapFocusState()){clearSpatialFocus({keepSelection:false,message:"已通过右键退出区域／范围聚焦并取消地块选择"});return true}
+    if(hasMapSelectionState()){clearMapSelection({message:"已通过右键取消当前地块／对象选择"});return true}
     if(state.filters.q){state.filters.q="";els.searchInput.value="";renderSidebar();scheduleRender();return true}
     return false
   }
   window.SHJ_APP_GO_BACK=appGoBack;
+  // v0.7.1：右键在地图中统一退出聚焦与地块选择。
+  // 范围聚焦优先退出；普通选择则清空 selectedCell / selectedId，并关闭“聚焦对象”灰暗状态。
+  document.addEventListener("contextmenu",e=>{
+    if(isEditableContextTarget(e.target))return;
+    const onMap=!!els.viewport?.contains(e.target);
+    if(!onMap)return;
+    const focusActive=hasMapFocusState()||getSpatialFocusContext().active||v052RegionFocusContext().active;
+    const selectionActive=hasMapSelectionState();
+    // 画笔、测量、对比保留各自的右键手势；但真实区域／面积域聚焦仍优先退出。
+    if(!focusActive&&(state.brushMode||state.measureMode||state.compareMode))return;
+    if(!focusActive&&!selectionActive)return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(focusActive)clearSpatialFocus({keepSelection:false,message:"已通过右键退出地块／区域／范围聚焦并取消选择"});
+    else clearMapSelection({message:"已通过右键取消当前地块／对象选择"});
+  },true);
   document.addEventListener("contextmenu",e=>{if(e.defaultPrevented||isEditableContextTarget(e.target))return;e.preventDefault();e.stopPropagation();appGoBack()},false);
 
   function bindEvents(){
@@ -2494,7 +2620,7 @@
     els.viewport.addEventListener("pointerleave",()=>{state.hoverWaterPathId=null;els.viewport.classList.remove("water-path-hover");if(els.tooltip.classList.contains("water-path-tooltip"))hideTooltip();scheduleRender()});
     els.viewport.addEventListener("pointerdown",e=>{if(e.button!==0||e.target.closest("button,input,select,textarea"))return;if(state.precisionClusterOpen&&!e.target.closest(".precision-object-group")){state.precisionClusterOpen=null;scheduleRender()}hideTooltip();const tile=e.target.closest(".tile");state.pan={active:true,moved:false,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,latestX:e.clientX,latestY:e.clientY,startCameraX:state.camera.x,startCameraY:state.camera.y,downTile:tile?{key:tile.dataset.cell,gx:Number(tile.dataset.gx),gy:Number(tile.dataset.gy)}:null,rebaseQueued:false};state.perf.panLastRebase=performance.now();state.perf.panRebaseCount=0;try{els.viewport.setPointerCapture(e.pointerId)}catch{}els.viewport.classList.add("dragging")});
     let finishingPan=false;
-    const endPan=(e,forced=false)=>{if(!state.pan.active||finishingPan)return;finishingPan=true;const pointerId=e?.pointerId??state.pan.pointerId,clientX=Number.isFinite(e?.clientX)?e.clientX:state.pan.latestX,clientY=Number.isFinite(e?.clientY)?e.clientY:state.pan.latestY;updateLivePan(clientX,clientY);const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(!forced&&!wasMoved&&downTile){state.selectedWaterPathId=null;const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;const exitedFocus=clickOutsideSpatialFocus(downTile.key);if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();persist();openDossierWorkspace()}else if(exitedFocus){state.lastTileTap={key:null,time:0}}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.spatialFocusArmed=true;state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails()}}else if(!forced&&!wasMoved&&clickOutsideSpatialFocus(null)){state.suppressClickUntil=Date.now()+160}else if(wasMoved){state.suppressClickUntil=Date.now()+160}
+    const endPan=(e,forced=false)=>{if(!state.pan.active||finishingPan)return;finishingPan=true;const pointerId=e?.pointerId??state.pan.pointerId,clientX=Number.isFinite(e?.clientX)?e.clientX:state.pan.latestX,clientY=Number.isFinite(e?.clientY)?e.clientY:state.pan.latestY;updateLivePan(clientX,clientY);const wasMoved=state.pan.moved,downTile=state.pan.downTile;if(!forced&&!wasMoved&&downTile){state.selectedWaterPathId=null;const now=Date.now(),isDouble=state.lastTileTap.key===downTile.key&&now-state.lastTileTap.time<330,items=objectsInCellKey(downTile.key);state.suppressClickUntil=now+180;clickOutsideSpatialFocus(downTile.key);state.indexMode="objects";state.selectedHierarchyNode="";if(state.camera.zoom<2&&items.length){state.lastTileTap={key:null,time:0};state.selectedCell=downTile.key;if(!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=null;renderDetails();renderSidebar();persist();openDossierWorkspace()}else if(isDouble){state.lastTileTap={key:null,time:0};openDrill(downTile.gx,downTile.gy)}else{state.lastTileTap={key:downTile.key,time:now};state.selectedCell=downTile.key;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;state.flippedCell=state.flippedCell===downTile.key?null:downTile.key;renderDetails();renderSidebar()}}else if(!forced&&!wasMoved){state.flippedCell=null;scheduleRender()}else if(wasMoved){state.suppressClickUntil=Date.now()+160}
       state.pan.active=false;state.pan.rebaseQueued=false;resetLivePanTransform();els.viewport.classList.remove("dragging","light-camera-motion");try{if(pointerId!=null&&els.viewport.hasPointerCapture?.(pointerId))els.viewport.releasePointerCapture(pointerId)}catch{};
       // 松手、丢失捕获或窗口失焦时立即完成一次全量绘制，不留下平移残影。
       renderMap();persist();finishingPan=false;
@@ -2504,7 +2630,7 @@
     els.viewport.addEventListener("pointerup",e=>endPan(e,false));els.viewport.addEventListener("pointercancel",e=>endPan(e,true));els.viewport.addEventListener("lostpointercapture",e=>endPan(e,true));
     window.addEventListener("blur",()=>endPan(null,true));document.addEventListener("visibilitychange",()=>{if(document.hidden)endPan(null,true)});
     els.viewport.addEventListener("dblclick",e=>{if(!state.precisionMode||e.target.closest(".precision-object-group,button,input,select,textarea"))return;e.preventDefault();const w=screenToWorld(e.clientX,e.clientY),x=Math.round(w.x*10)/10,y=Math.round(w.y*10)/10;openObjectForm(null,{x,y})});
-    document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(state.selectedWaterPathId){state.selectedWaterPathId=null;state.hoverWaterPathId=null;els.viewport.classList.remove("water-path-hover");hideTooltip();scheduleRender();renderDetails();return}if(visibleElement("identityTagExplorer")){closeTagExplorer();return}if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(state.selectedWaterPathId){state.selectedWaterPathId=null;state.hoverWaterPathId=null;els.viewport.classList.remove("water-path-hover");hideTooltip();scheduleRender();renderDetails();return}if(visibleElement("identityTagExplorer")){closeTagExplorer();return}if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}if(getSpatialFocusContext().active||v052RegionFocusContext().active){clearSpatialFocus({keepSelection:false,message:"已通过 Esc 退出区域／范围聚焦并取消选择"});return}if(hasMapSelectionState()){clearMapSelection({message:"已通过 Esc 取消当前地块／对象选择"});return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
   }
 
 
@@ -2538,7 +2664,7 @@
     state.relationConsumeClickUntil=0;
     state.relationDisplayMode=saved?.relationDisplayMode==="all"?"all":"compact";
     state.relationBundleMode=saved?.relationBundleMode!==false;
-    state.objectFocusMode=!!saved?.objectFocusMode;
+    state.objectFocusMode=false; // 临时聚焦工具不跨启动恢复，避免下一次选地块时全图意外变暗。
     state.presentationMode=saved?.presentationMode==="display"?"display":"research";
     state.relationExpandedSectors={};
     state.relationPinnedTargetId=saved?.relationPinnedTargetId||null;
@@ -2553,7 +2679,7 @@
   function workspaceSnapshot(){return {
     uiSchemaVersion:52,
     objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,viewedRemotePatches:state.viewedRemotePatches,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter,dossierMode:state.dossierMode,layers:state.layers,brushKeys:[...(state.brushKeys||[])],brushStrokes:state.brushStrokes||[],brushHistory:state.brushHistory||[],viewPreset:state.viewPreset,relationEvidenceFilter:state.relationEvidenceFilter,objectSort:state.objectSort,compareKeys:[...(state.compareKeys||[])],indexMode:state.indexMode,selectedRegionId:state.selectedRegionId,selectedHierarchyNode:state.selectedHierarchyNode,expandedRegionIds:[...(state.expandedRegionIds||[])],
-    workspaceUi:state.workspaceUi,relationDepth:state.relationDepth,relationDisplayMode:state.relationDisplayMode,relationBundleMode:state.relationBundleMode,objectFocusMode:state.objectFocusMode,presentationMode:state.presentationMode,relationPinnedTargetId:state.relationPinnedTargetId,relationLegendCollapsed:state.relationLegendCollapsed,navigationHistory:state.navigationHistory,navigationIndex:state.navigationIndex,researchBookmarks:state.researchBookmarks,undoStack:(state.undoStack||[]).slice(-40),redoStack:(state.redoStack||[]).slice(-40)
+    workspaceUi:state.workspaceUi,overviewMode:state.overviewMode,spatialFocusArmed:state.spatialFocusArmed,spatialFocusAreaIds:[...(state.spatialFocusAreaIds||[])],relationDepth:state.relationDepth,relationDisplayMode:state.relationDisplayMode,relationBundleMode:state.relationBundleMode,objectFocusMode:state.objectFocusMode,presentationMode:state.presentationMode,relationPinnedTargetId:state.relationPinnedTargetId,relationLegendCollapsed:state.relationLegendCollapsed,navigationHistory:state.navigationHistory,navigationIndex:state.navigationIndex,researchBookmarks:state.researchBookmarks,undoStack:(state.undoStack||[]).slice(-40),redoStack:(state.redoStack||[]).slice(-40)
 
   }}
   function flushPersist(){
@@ -2684,7 +2810,7 @@
   function researchField(title,value){if(!hasText(value))return "";return `<section class="dossier-field"><h4><span class="field-glyph">${fieldGlyph(title)}</span>${esc(title)}</h4><div>${esc(value)}</div></section>`}
   function objectRibbon(items){if(!items.length)return `<div class="tile-dossier-intro"><strong>空白地块档案</strong><p>本格尚无地图对象，可以先建立地理和证据档案。</p></div>`;return `<div class="tile-dossier-intro"><strong>本格对象 · ${items.length}项</strong><p>${esc(items.map(o=>o.name).join(" / "))}</p></div><div class="tile-object-ribbon">${items.map(o=>`<button class="tile-object-chip ${o.id===state.selectedId?'selected':''}" data-tile-object="${esc(o.id)}">${geometryIcon(o)} ${esc(o.name)}</button>`).join("")}</div>`}
 
-  function renderDetails(){if(state.selectedHierarchyNode==="world"){v052RenderWorldDetails();return}if(state.selectedRegionId){const region=v052RegionById(state.selectedRegionId);if(region){v052RenderRegionDetails(region);return}}els.detailHeadActions?.classList.remove("hidden");els.detailTabs?.classList.remove("hidden");
+  function renderDetails(){if(state.selectedHierarchyNode==="world"){v052RenderWorldDetails();return}if(state.selectedHierarchyNode==="region"&&state.selectedRegionId){const region=v052RegionById(state.selectedRegionId);if(region){v052RenderRegionDetails(region);return}}els.detailHeadActions?.classList.remove("hidden");els.detailTabs?.classList.remove("hidden");
     const tile=activeTile();if(!tile){els.emptyDetail.classList.remove("hidden");els.detailContent.classList.add("hidden");return}const {key,gx,gy,items}=tile,main=selectedTileMain(items),profile=mergeImportedDossierProfile(tileProfileFor(key,items),main),b=cellBounds(gx,gy);
     els.emptyDetail.classList.add("hidden");els.detailContent.classList.remove("hidden");els.detailRef.textContent=`TILE ${signed(gx)}, ${signed(gy)} · 100里主格`;els.detailName.textContent=main?`${main.name}所在地区`:`空白地块（${signed(gx)}, ${signed(gy)}）`;const populated=Object.values(profile.scriptureEvents||{}).filter(Boolean).length,spatialCount=items.filter(o=>o.geometryType==="area"||o.geometryType==="field").length;els.detailMeta.textContent=`${items.length}个对象 · ${populated}个经篇已有事件归档`;els.detailLocation.innerHTML=`<strong>主格中心 ${coordText(b.cx,b.cy)}</strong><br>范围 X ${signed(b.west)}～${signed(b.east)}里 · Y ${signed(b.south)}～${signed(b.north)}里<br>${esc(profile.oneLineSummary||profile.briefSummary||"地块档案与对象资料分别保存")}`;els.openRangeEditorBtn.textContent=spatialCount?`▱ 编辑面积／作用域（${spatialCount}）`:`＋ 新建面积／作用域`;els.openRangeEditorBtn.classList.toggle("has-range",spatialCount>0);$$('.detail-tabs button').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.detailTab));renderDetailBody(profile,items)
   }
@@ -2694,7 +2820,7 @@
     if(state.detailTab==="summary")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>地块简述</h3><span>地理 · 水文 · 建筑 · 生物</span></div>${researchField("地理环境",profile.geoEnvironment)}${researchField("水文特征",profile.hydrology)}${researchField("建筑与遗迹",profile.architecture)}${researchField("生活物种",profile.livingSpecies)}</div>`;
     if(state.detailTab==="civilization")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>文明、神祇与资源</h3><span>原典与研究资料</span></div><div class="dossier-grid">${researchField("所属国度／部族",profile.country)}${researchField("信仰对象",profile.faith)}${researchField("统治者",profile.ruler)}${researchField("守护神",profile.guardian)}</div>${researchField("奇珍异兽",profile.beasts)}<div class="dossier-grid">${researchField("神木／神话植被",profile.divinePlants)}${researchField("仙草药草",profile.herbs)}${researchField("金玉矿物",profile.minerals)}${researchField("特殊生命",profile.specialLife)}</div>${researchField("当地风俗",profile.customs)}</div>`;
     if(state.detailTab==="story")html+=`<div class="dossier-section"><div class="dossier-section-head"><h3>事件、现象与证据</h3><span>神话事件 · 经篇归档 · 定位依据</span></div>${researchField("神话事件与现象",profile.mythicEncounters)}${researchField("已发生事件",profile.occurredEvents)}${researchField("地块原文摘录",profile.tileOriginalExcerpt)}${researchField("资料证据链",profile.evidenceChain)}${researchField("当前定位结论",profile.locationConclusion)}${researchField("待核对问题",profile.pendingQuestions)}${scriptureGroupsHTML(profile)}</div>`;
-    els.detailBody.innerHTML=html||`<div class="dossier-empty">本栏尚未录入。</div>`;els.detailBody.querySelectorAll('[data-water-focus]').forEach(button=>button.addEventListener('click',()=>focusWaterEndpoint(button.dataset.waterFocus)));els.detailBody.querySelectorAll('[data-tile-object]').forEach(btn=>{btn.addEventListener('click',()=>{state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.spatialFocusArmed=true;state.selectedId=btn.dataset.tileObject;renderDetails();renderSidebar();scheduleRender();persist()});btn.addEventListener('dblclick',()=>{const o=state.objects.find(x=>x.id===btn.dataset.tileObject);if(o)openObjectForm(o)})})
+    els.detailBody.innerHTML=html||`<div class="dossier-empty">本栏尚未录入。</div>`;els.detailBody.querySelectorAll('[data-water-focus]').forEach(button=>button.addEventListener('click',()=>focusWaterEndpoint(button.dataset.waterFocus)));els.detailBody.querySelectorAll('[data-tile-object]').forEach(btn=>{btn.addEventListener('click',()=>selectObject(btn.dataset.tileObject));btn.addEventListener('dblclick',()=>{const o=state.objects.find(x=>x.id===btn.dataset.tileObject);if(o)openObjectForm(o)})})
   }
 
   function normalizeDisplayCategory(value){
@@ -2840,7 +2966,7 @@
 
   function activeDossierTile(){const tile=activeTile();if(!tile)return null;const group=state.dossierPrecisionGroup?ensureObjectIndexes().anchorGroupByKey.get(state.dossierPrecisionGroup):null;if(!group)return {...tile,precision:null};const items=(group.items||[]).filter(o=>{const c=objectCell(o);return cellKey(c.gx,c.gy)===tile.key});if(!items.length){state.dossierPrecisionGroup=null;return {...tile,precision:null}}return {...tile,items,precision:{key:group.key,x:group.x,y:group.y}}}
   function openDossierWorkspace(){const tile=activeTile();if(!tile){toast("尚未选择地块","请先在地图中选择一个地块。","error");return}state.dossierCollectionMode=false;state.dossierPrecisionGroup=null;state.dossierCategoryFilter="all";state.dossierMode="brief";state.dossierTab="overview";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
-  function openPrecisionDossier(objectId,groupKey){const o=indexedObject(objectId);if(!o)return;const c=objectCell(o);state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.spatialFocusArmed=true;state.selectedId=o.id;state.selectedCell=cellKey(c.gx,c.gy);state.precisionClusterOpen=null;state.dossierCollectionMode=false;state.dossierPrecisionGroup=groupKey||`${objectAnchor(o).x.toFixed(1)},${objectAnchor(o).y.toFixed(1)}`;state.dossierCategoryFilter="all";state.dossierMode="brief";state.dossierTab="overview";renderDetails();renderSidebar();scheduleRender();persist();els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
+  function openPrecisionDossier(objectId,groupKey){const o=indexedObject(objectId);if(!o)return;const c=objectCell(o),key=cellKey(c.gx,c.gy);clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedId=o.id;state.selectedCell=key;state.precisionClusterOpen=null;state.dossierCollectionMode=false;state.dossierPrecisionGroup=groupKey||`${objectAnchor(o).x.toFixed(1)},${objectAnchor(o).y.toFixed(1)}`;state.dossierCategoryFilter="all";state.dossierMode="brief";state.dossierTab="overview";renderDetails();renderSidebar();scheduleRender();persist();els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
   function closeDossierWorkspace(){state.dossierCollectionMode=false;state.dossierPrecisionGroup=null;els.dossierWorkspace.classList.remove("collection-mode","precision-focus-mode");els.dossierWorkspace.classList.add("hidden")}
   function renderBriefDossier(profile,items,tile,main,b){return renderIdentityBoard(profile,items,tile,main,{prefix:"dossier"})}
   function resetDossierTopbarForTile(){
@@ -3392,13 +3518,21 @@
   function v050HistoryForward(){if(state.navigationIndex>=state.navigationHistory.length-1){toast("没有更后的位置","当前已是浏览历史终点。","error");return}state.navigationIndex++;v050ApplyLocation(state.navigationHistory[state.navigationIndex])}
   function v050AddBookmark(){const point=v050CurrentLocation(),name=prompt("书签名称",point.label||"研究位置");if(!name)return;state.researchBookmarks.unshift({...point,id:`BM-${Date.now()}`,label:name.trim()});state.researchBookmarks=state.researchBookmarks.slice(0,80);persist(true);v050RenderBookmarks();toast("已保存研究书签",name.trim())}
   function v050RemoveBookmark(id){state.researchBookmarks=state.researchBookmarks.filter(x=>x.id!==id);persist();v050RenderBookmarks()}
-  function v050ActiveMode(){if(state.brushMode)return {key:"brush",label:"画笔采集",hint:`已采集${state.brushKeys?.size||0}个地块 · 右键撤回 · 双击右键清空 · Esc退出`};if(state.measureMode)return {key:"measure",label:"测量",hint:"按住左键拖出测量线 · 右键清除 · Esc退出"};if(state.compareMode)return {key:"compare",label:"地块对比",hint:`已选${state.compareKeys?.size||0}/4 · 点击地块加入 · 右键移除`};if(state.relationMode)return {key:"relation",label:"关系查看",hint:`${V029_PRESETS[state.viewPreset]||"全部关系"} · ${V050_RELATION_DEPTH_LABELS[state.relationDepth]||"直接关系"} · ${state.relationDisplayMode==="all"?"完整网络":"精简网络"}`};if(state.spatialFocusArmed)return {key:"focus",label:"区域聚焦",hint:"单击空白区域或右键退出聚焦"};return {key:"browse",label:"普通浏览",hint:"拖动地图 · 滚轮缩放 · Ctrl+K全局检索"}}
+  function v050ActiveMode(){if(state.brushMode)return {key:"brush",label:"画笔采集",hint:`已采集${state.brushKeys?.size||0}个地块 · 右键撤回 · 双击右键清空 · Esc退出`};if(state.measureMode)return {key:"measure",label:"测量",hint:"按住左键拖出测量线 · 右键清除 · Esc退出"};if(state.compareMode)return {key:"compare",label:"地块对比",hint:`已选${state.compareKeys?.size||0}/4 · 点击地块加入 · 右键移除`};if(state.relationMode)return {key:"relation",label:"关系查看",hint:`${V029_PRESETS[state.viewPreset]||"全部关系"} · ${V050_RELATION_DEPTH_LABELS[state.relationDepth]||"直接关系"} · ${state.relationDisplayMode==="all"?"完整网络":"精简网络"}`};if(state.spatialFocusArmed||v052RegionFocusContext().active)return {key:"focus",label:"区域聚焦",hint:"范围内选地块保持聚焦 · 右键、Esc或退出聚焦按钮结束"};return {key:"browse",label:"普通浏览",hint:"拖动地图 · 滚轮缩放 · Ctrl+K全局检索"}}
   function v050ExitMode(){
     if(state.brushMode){setBrushMode(false);clearBrushTraces?.();}
-    state.measureMode=false;state.measure={active:false,start:null,current:null,final:null};state.compareMode=false;state.relationMode=false;state.relationHoverId=null;state.spatialFocusArmed=false;state.flippedCell=null;updateV029ToolUI();updateBrushUI();scheduleRender();v050UpdateModeBar();toast("已退出当前模式","恢复普通地图浏览")
+    const hadMapFocus=hasMapFocusState()||getSpatialFocusContext().active||v052RegionFocusContext().active;
+    const hadSelection=hasMapSelectionState();
+    state.measureMode=false;state.measure={active:false,start:null,current:null,final:null};state.compareMode=false;state.relationMode=false;state.relationHoverId=null;state.flippedCell=null;
+    if(hadMapFocus)clearSpatialFocus({keepSelection:false,silent:true});
+    else if(hadSelection)clearMapSelection({silent:true});
+    state.objectFocusMode=false;
+    if(typeof v060SyncUi==="function")v060SyncUi();
+    updateV029ToolUI();updateBrushUI();scheduleRender();v050UpdateModeBar();persist();toast("已退出当前模式","已取消地块选择并恢复普通地图浏览")
   }
   function v050ExclusiveBefore(key){if(key!=="brush"&&state.brushMode)setBrushMode(false);if(key!=="measure")state.measureMode=false;if(key!=="compare")state.compareMode=false;if(key!=="relation")state.relationMode=false;state.measure={active:false,start:null,current:null,final:null}}
-  function v050ApplyWorkspaceClasses(){const workspace=document.querySelector(".workspace");if(!workspace)return;workspace.classList.toggle("left-collapsed",!!state.workspaceUi.leftCollapsed);workspace.classList.toggle("right-collapsed",!!state.workspaceUi.rightCollapsed);workspace.classList.toggle("focus-map",!!state.workspaceUi.focusMap);document.getElementById("v050LeftToggle")?.classList.toggle("active",!state.workspaceUi.leftCollapsed);document.getElementById("v050RightToggle")?.classList.toggle("active",!state.workspaceUi.rightCollapsed);document.getElementById("v050FocusToggle")?.classList.toggle("active",state.workspaceUi.focusMap);setTimeout(()=>{resizeCanvas();scheduleRender()},80)}
+  function v050ApplyWorkspaceClasses(){const workspace=document.querySelector(".workspace");if(!workspace)return;workspace.classList.toggle("left-collapsed",!!state.workspaceUi.leftCollapsed);workspace.classList.toggle("right-collapsed",!!state.workspaceUi.rightCollapsed);workspace.classList.toggle("focus-map",!!state.workspaceUi.focusMap);document.getElementById("v050LeftToggle")?.classList.toggle("active",!state.workspaceUi.leftCollapsed);document.getElementById("v050RightToggle")?.classList.toggle("active",!state.workspaceUi.rightCollapsed);document.getElementById("v050FocusToggle")?.classList.toggle("active",state.workspaceUi.focusMap);els.queryModeBtn?.classList.toggle("active",!state.workspaceUi.focusMap);els.focusModeBtn?.classList.toggle("active",!!state.workspaceUi.focusMap);document.documentElement.dataset.workspaceMode=state.workspaceUi.focusMap?"focus":"query";setTimeout(()=>{resizeCanvas();scheduleRender()},80)}
+  function v071SetWorkspaceMode(mode){const focus=mode==="focus";if(focus){state.workspaceUi.previous={leftCollapsed:state.workspaceUi.leftCollapsed,rightCollapsed:state.workspaceUi.rightCollapsed};state.workspaceUi.leftCollapsed=true;state.workspaceUi.rightCollapsed=true;state.workspaceUi.focusMap=true}else{state.workspaceUi.leftCollapsed=false;state.workspaceUi.rightCollapsed=false;state.workspaceUi.focusMap=false}v050ApplyWorkspaceClasses();persist()}
   function v050TogglePanel(which){if(which==="focus"){state.workspaceUi.focusMap=!state.workspaceUi.focusMap;if(state.workspaceUi.focusMap){state.workspaceUi.leftCollapsed=true;state.workspaceUi.rightCollapsed=true}}else if(which==="left"){state.workspaceUi.leftCollapsed=!state.workspaceUi.leftCollapsed;state.workspaceUi.focusMap=false}else{state.workspaceUi.rightCollapsed=!state.workspaceUi.rightCollapsed;state.workspaceUi.focusMap=false}v050ApplyWorkspaceClasses();persist()}
   function v050EvidenceLabel(o){const ev=v029Evidence(o),source=hasText(o?.original)?"原典原文":hasText(o?.annotations)?"古注支持":hasText(o?.modernResearch)?"现代考证":"待补证据";return {ev,source}}
   function v050UpdateDetailEvidence(){const host=els.detailLocation,o=indexedObject(state.selectedId);if(!host||!o||els.detailContent.classList.contains("hidden"))return;if(host.querySelector(".v050-evidence-strip"))return;const {ev,source}=v050EvidenceLabel(o),time=objectUpdatedAt(o);host.insertAdjacentHTML("beforeend",`<div class="v050-evidence-strip"><span class="${ev.level}">${esc(ev.label)}</span><b>${esc(source)}</b><em>${time?`更新 ${esc(new Date(time).toLocaleString("zh-CN"))}`:"尚无更新时间"}</em></div>`)}
@@ -3487,13 +3621,13 @@
   }
   function setupV050Features(){
     document.documentElement.dataset.uiTextScale=v050SavedTextScale();v050InjectUi();v050OrganizeControls();v050SetupRelationMenuPortal();const observer=new MutationObserver(v050OrganizeControls);observer.observe(document.querySelector(".top-actions"),{childList:true,subtree:true});
-    document.getElementById("v050ExitMode")?.addEventListener("click",v050ExitMode);document.getElementById("v050NavBack")?.addEventListener("click",v050HistoryBack);document.getElementById("v050NavForward")?.addEventListener("click",v050HistoryForward);document.getElementById("v050BookmarkAdd")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkAddInside")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkOpen")?.addEventListener("click",()=>v050OpenDrawer("v050BookmarkPanel"));document.getElementById("v050HistoryOpen")?.addEventListener("click",()=>v050OpenDrawer("v050HistoryPanel"));document.getElementById("v050Undo")?.addEventListener("click",v050Undo);document.getElementById("v050Redo")?.addEventListener("click",v050Redo);document.getElementById("v050UndoInside")?.addEventListener("click",v050Undo);document.getElementById("v050RedoInside")?.addEventListener("click",v050Redo);document.getElementById("v050GlobalSearchOpen")?.addEventListener("click",v050OpenGlobalSearch);document.getElementById("v050LeftToggle")?.addEventListener("click",()=>v050TogglePanel("left"));document.getElementById("v050RightToggle")?.addEventListener("click",()=>v050TogglePanel("right"));document.getElementById("v050FocusToggle")?.addEventListener("click",()=>v050TogglePanel("focus"));
+    document.getElementById("v050ExitMode")?.addEventListener("click",v050ExitMode);document.getElementById("v050NavBack")?.addEventListener("click",v050HistoryBack);document.getElementById("v050NavForward")?.addEventListener("click",v050HistoryForward);document.getElementById("v050BookmarkAdd")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkAddInside")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkOpen")?.addEventListener("click",()=>v050OpenDrawer("v050BookmarkPanel"));document.getElementById("v050HistoryOpen")?.addEventListener("click",()=>v050OpenDrawer("v050HistoryPanel"));document.getElementById("v050Undo")?.addEventListener("click",v050Undo);document.getElementById("v050Redo")?.addEventListener("click",v050Redo);document.getElementById("v050UndoInside")?.addEventListener("click",v050Undo);document.getElementById("v050RedoInside")?.addEventListener("click",v050Redo);document.getElementById("v050GlobalSearchOpen")?.addEventListener("click",v050OpenGlobalSearch);document.getElementById("v050LeftToggle")?.addEventListener("click",()=>v050TogglePanel("left"));document.getElementById("v050RightToggle")?.addEventListener("click",()=>v050TogglePanel("right"));document.getElementById("v050FocusToggle")?.addEventListener("click",()=>v071SetWorkspaceMode(state.workspaceUi.focusMap?"query":"focus"));
     document.querySelectorAll("[data-relation-depth]").forEach(b=>b.addEventListener("click",()=>{state.relationDepth=b.dataset.relationDepth;state.relationHoverId=null;scheduleRender();persist();v050UpdateModeBar();toast(`关系层级：${V050_RELATION_DEPTH_LABELS[state.relationDepth]}`,state.relationDepth==="direct"?"仅显示明确直接关系":state.relationDepth==="spatial"?"同时显示空间推定关系":"同时显示同篇与弱关联") }));
     const beforeMap={relationModeBtn:"relation",compareModeBtn:"compare",measureModeBtn:"measure",brushModeBtn:"brush"};Object.entries(beforeMap).forEach(([id,key])=>document.getElementById(id)?.addEventListener("click",()=>v050ExclusiveBefore(key),true));
     document.getElementById("v050GlobalSearchInput")?.addEventListener("input",v050RenderGlobalSearch);document.getElementById("v050GlobalSearch")?.addEventListener("click",e=>{if(e.target.closest("[data-v050-search-close]")){v050CloseGlobalSearch();return}const o=e.target.closest("[data-v050-search-object]");if(o){v050CloseGlobalSearch();jumpToObject(o.dataset.v050SearchObject,true,true);return}const c=e.target.closest("[data-v050-search-cell]");if(c?.dataset.v050SearchCell){v050CloseGlobalSearch();jumpToCell(c.dataset.v050SearchCell,true)}});
     document.getElementById("v050BookmarkPanel")?.addEventListener("click",e=>{if(e.target.closest("[data-v050-bookmark-close]")){e.currentTarget.classList.add("hidden");return}const open=e.target.closest("[data-v050-open-bookmark]"),remove=e.target.closest("[data-v050-remove-bookmark]");if(open){const b=state.researchBookmarks.find(x=>x.id===open.dataset.v050OpenBookmark);e.currentTarget.classList.add("hidden");v050RememberLocation("打开书签前");v050ApplyLocation(b)}if(remove)v050RemoveBookmark(remove.dataset.v050RemoveBookmark)});
     document.getElementById("v050HistoryPanel")?.addEventListener("click",e=>{if(e.target.closest("[data-v050-history-close]"))e.currentTarget.classList.add("hidden")});
-    document.addEventListener("keydown",e=>{const editing=e.target.matches?.("input,textarea,select,[contenteditable=true]");if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();v050OpenGlobalSearch();return}if((e.ctrlKey||e.metaKey)&&!editing&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?v050Redo():v050Undo();return}if((e.ctrlKey||e.metaKey)&&!editing&&e.key.toLowerCase()==="y"){e.preventDefault();v050Redo();return}if(e.key==="Escape"){if(!document.getElementById("v050GlobalSearch")?.classList.contains("hidden")){e.preventDefault();e.stopImmediatePropagation();v050CloseGlobalSearch();return}const drawer=document.querySelector(".v050-side-drawer:not(.hidden)");if(drawer){e.preventDefault();e.stopImmediatePropagation();drawer.classList.add("hidden");return}const mode=v050ActiveMode();if(mode.key!=="browse"){e.preventDefault();e.stopImmediatePropagation();v050ExitMode()}}},true);
+    document.addEventListener("keydown",e=>{const editing=e.target.matches?.("input,textarea,select,[contenteditable=true]");if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();v050OpenGlobalSearch();return}if((e.ctrlKey||e.metaKey)&&!editing&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?v050Redo():v050Undo();return}if((e.ctrlKey||e.metaKey)&&!editing&&e.key.toLowerCase()==="y"){e.preventDefault();v050Redo();return}if(e.key==="Escape"){if(!document.getElementById("v050GlobalSearch")?.classList.contains("hidden")){e.preventDefault();e.stopImmediatePropagation();v050CloseGlobalSearch();return}const drawer=document.querySelector(".v050-side-drawer:not(.hidden)");if(drawer){e.preventDefault();e.stopImmediatePropagation();drawer.classList.add("hidden");return}const mode=v050ActiveMode();if(mode.key!=="browse"){e.preventDefault();e.stopImmediatePropagation();v050ExitMode();return}if(hasMapSelectionState()){e.preventDefault();e.stopImmediatePropagation();clearMapSelection({message:"已通过 Esc 取消当前地块／对象选择"})}}},true);
     let cameraTimer=null;const rememberCamera=()=>{clearTimeout(cameraTimer);cameraTimer=setTimeout(()=>v050RememberLocation(v050LocationLabel()),650)};els.viewport.addEventListener("pointerup",rememberCamera);els.viewport.addEventListener("wheel",rememberCamera,{passive:true});
     if(!state.navigationHistory.length)v050RememberLocation("启动位置",true);v050ApplyWorkspaceClasses();v050RenderBookmarks();v050UpdateHistoryUi();v050UpdateModeBar();state.v050ModeTimer=setInterval(v050UpdateModeBar,900)
   }
@@ -3514,14 +3648,14 @@
   async function v060PersistEmbeddedImage(objectId){const o=indexedObject(objectId);if(!o?.imageUrl?.startsWith("data:image/")||!window.SHJ_DESKTOP?.active||!window.SHJ_DESKTOP?.saveObjectImage)return;try{const base64=o.imageUrl.split(",")[1]||"",binary=atob(base64),bytes=Array.from(binary,ch=>ch.charCodeAt(0)),url=await window.SHJ_DESKTOP.saveObjectImage({objectId,bytes,extension:"webp"});o.imageUrl=url;persist(true);renderDetails();scheduleRender()}catch(err){console.warn("新对象图片迁移失败",err)}}
   function v060InjectImageManager(){const input=document.getElementById("formImageUrl");if(!input||document.getElementById("v060ImageManager"))return;const host=document.createElement("section");host.id="v060ImageManager";host.className="v060-image-manager";host.innerHTML=`<div class="v060-image-preview" data-v060-image-preview><span>待补图</span></div><div class="v060-image-actions"><input id="v060ImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden><button type="button" id="v060ChooseImage">选择图片</button><button type="button" id="v060RemoveImage">移除图片</button></div><label class="field"><span>图片来源</span><input id="formImageSource" placeholder="例如：自制设定图／文献扫描／授权素材"></label><label class="field"><span>版权与使用备注</span><input id="formImageCopyright" placeholder="作者、授权范围或仅供内部研究"></label><p>图片会压缩为 WebP；桌面版自动保存到程序数据目录，浏览器预览则随对象资料临时保存。</p>`;input.closest("label")?.after(host);document.getElementById("v060ChooseImage")?.addEventListener("click",()=>document.getElementById("v060ImageFile")?.click());document.getElementById("v060RemoveImage")?.addEventListener("click",async()=>{const id=document.getElementById("formObjectId")?.value;if(id&&window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.removeObjectImage){try{await window.SHJ_DESKTOP.removeObjectImage({objectId:id})}catch{}}input.value="";v060SyncImageManager()});document.getElementById("v060ImageFile")?.addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;try{const processed=await v060ImageFileToDataUrl(file),id=document.getElementById("formObjectId")?.value;if(id&&window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.saveObjectImage){input.value=await window.SHJ_DESKTOP.saveObjectImage({objectId:id,bytes:processed.bytes,extension:processed.extension})}else input.value=processed.dataUrl;v060SyncImageManager();toast("图片已写入对象资料",`${file.name} · ${id&&window.SHJ_DESKTOP?.active?"已保存到程序数据目录":"保存对象后生效"}`)}catch(err){toast("图片处理失败",String(err),"error")}});input.addEventListener("input",v060SyncImageManager)}
   function v060SyncImageManager(populateMeta=false){v060InjectImageManager();const input=document.getElementById("formImageUrl"),preview=document.querySelector("[data-v060-image-preview]"),id=document.getElementById("formObjectId")?.value,o=id?indexedObject(id):null,source=document.getElementById("formImageSource"),copyright=document.getElementById("formImageCopyright");if(populateMeta&&source)source.value=o?.imageSource||"";if(populateMeta&&copyright)copyright.value=o?.imageCopyright||"";if(!preview)return;const url=input?.value?.trim();preview.innerHTML=url?`<img src="${esc(url)}" alt="对象图片预览">`:`<span>待补图</span>`}
-  function v060InjectUi(){const bar=document.getElementById("v050ModeBar");if(bar&&!document.getElementById("v060RelationDisplay")){const node=document.createElement("div");node.id="v060RelationDisplay";node.className="v060-relation-display";node.innerHTML=`<button data-v060-relation="compact">精简关系</button><button data-v060-relation="all">全部关系</button><button id="v060BundleToggle">同向合流</button><button id="v060ObjectFocus">聚焦对象</button><button id="v060ViewMode">研究视图</button>`;bar.querySelector(".v050-relation-depth")?.after(node);node.querySelectorAll("[data-v060-relation]").forEach(b=>b.addEventListener("click",()=>{state.relationDisplayMode=b.dataset.v060Relation;state.perf.relationContextKey="";state.relationHoverId=null;scheduleRender();persist();v060SyncUi();toast(state.relationDisplayMode==="all"?"已展开全部关系":"已切换精简关系",state.relationDisplayMode==="all"?"显示更多关系，标签仍按需出现":"优先显示6—8条高价值关系")}));node.querySelector("#v060BundleToggle")?.addEventListener("click",()=>{state.relationBundleMode=!state.relationBundleMode;scheduleRender();persist();v060SyncUi()});node.querySelector("#v060ObjectFocus")?.addEventListener("click",()=>{state.objectFocusMode=!state.objectFocusMode;persist();v060SyncUi()});node.querySelector("#v060ViewMode")?.addEventListener("click",()=>{state.presentationMode=state.presentationMode==="display"?"research":"display";persist();v060SyncUi()})}v060InjectImageManager()}
+  function v060InjectUi(){const bar=document.getElementById("v050ModeBar");if(bar&&!document.getElementById("v060RelationDisplay")){const node=document.createElement("div");node.id="v060RelationDisplay";node.className="v060-relation-display";node.innerHTML=`<button data-v060-relation="compact">精简关系</button><button data-v060-relation="all">全部关系</button><button id="v060BundleToggle">同向合流</button><button id="v060ObjectFocus">聚焦对象</button><button id="v060ViewMode">研究视图</button>`;bar.querySelector(".v050-relation-depth")?.after(node);node.querySelectorAll("[data-v060-relation]").forEach(b=>b.addEventListener("click",()=>{state.relationDisplayMode=b.dataset.v060Relation;state.perf.relationContextKey="";state.relationHoverId=null;scheduleRender();persist();v060SyncUi();toast(state.relationDisplayMode==="all"?"已展开全部关系":"已切换精简关系",state.relationDisplayMode==="all"?"显示更多关系，标签仍按需出现":"优先显示6—8条高价值关系")}));node.querySelector("#v060BundleToggle")?.addEventListener("click",()=>{state.relationBundleMode=!state.relationBundleMode;scheduleRender();persist();v060SyncUi()});node.querySelector("#v060ObjectFocus")?.addEventListener("click",()=>{state.objectFocusMode=!state.objectFocusMode;persist();v060SyncUi();scheduleRender();toast(state.objectFocusMode?"已开启对象聚焦":"已退出对象聚焦",state.objectFocusMode?"右键地图或按 Esc 可同时取消选择并恢复全部地块":"地图已恢复完整显示")});node.querySelector("#v060ViewMode")?.addEventListener("click",()=>{state.presentationMode=state.presentationMode==="display"?"research":"display";persist();v060SyncUi()})}v060InjectImageManager()}
   function v060SyncUi(){v060InjectUi();document.querySelectorAll("[data-v060-relation]").forEach(b=>b.classList.toggle("active",b.dataset.v060Relation===(state.relationDisplayMode||"compact")));document.getElementById("v060BundleToggle")?.classList.toggle("active",state.relationBundleMode!==false);document.getElementById("v060ObjectFocus")?.classList.toggle("active",!!state.objectFocusMode);const view=document.getElementById("v060ViewMode");if(view){view.classList.toggle("active",state.presentationMode==="display");view.textContent=state.presentationMode==="display"?"展示视图":"研究视图"}document.documentElement.classList.toggle("v060-object-focus",!!state.objectFocusMode&&!!state.selectedId);document.documentElement.classList.toggle("v060-display-view",state.presentationMode==="display");document.documentElement.dataset.v060SelectedCell=state.selectedCell||""}
   function setupV060Features(){v060InjectUi();v060SyncUi();const observer=new MutationObserver(()=>v060SyncUi());observer.observe(document.getElementById("detailContent")||document.body,{childList:true,subtree:true});setInterval(v060SyncUi,1200)}
 
 
   // v0.6.1 · 关系说明、工具栏可用性与关系图整理
   const V061_HELP_TEXT={
-    zoomOutBtn:["缩小地图","降低地图缩放级别。"],zoomReadout:["当前缩放","单击恢复100%；地图最高可放大至3000%。"],zoomInBtn:["放大地图","提高地图缩放级别。"],originBtn:["回到都广","定位到全局原点都广之野。"],jumpCoordBtn:["输入坐标","按里坐标直接跳转到指定位置。"],viewPresetBtn:["关系主题","筛选地理、水系、文明、神话、事件或异名关系。"],relationModeBtn:["关系高亮","以当前对象为中心显示关系网络；再次点击可关闭。"],compareModeBtn:["地块对比","选择2—4个地块并排核对资料。"],measureModeBtn:["测量","在地图上拖动，测量两点的距离与方向。"],isolatedObjectsBtn:["孤立对象","查找缺少空间关系或未接入地图网络的对象。"],brushModeBtn:["画笔采集","拖动画笔收集经过的地块，便于集中查看。"],cancelBrushModeBtn:["退出画笔","清除笔迹并退出画笔状态，已采集地块仍保留。"],brushCollectionBtn:["地块集合","查看画笔已经收集的地块。"],v060BundleToggle:["同向合流","方向相近的关系先共享主干，再分叉到目标，减少线条拥挤。"],v060ObjectFocus:["聚焦对象","降低无关对象透明度，只突出当前对象及关系目标。"],v060ViewMode:["研究／展示视图","研究视图保留证据与技术标记；展示视图减少研究性信息。"],v050NavBack:["上一个位置","返回最近一次地图定位。"],v050NavForward:["下一个位置","前往导航历史中的下一处位置。"],v050BookmarkAdd:["收藏当前位置","保存当前坐标、缩放与选中对象。"],v050BookmarkOpen:["打开书签","查看并跳转到收藏的位置。"],v050Undo:["撤销","撤销最近一次可恢复的编辑。"],v050Redo:["重做","恢复刚刚撤销的编辑。"],v050HistoryOpen:["本轮修改","查看当前编辑轮次中的变更记录。"],v050GlobalSearchOpen:["全局检索","搜索对象、地块档案、标签、原文与关系字段。"],v050LeftToggle:["左侧索引","显示或收起检索与对象索引。"],v050RightToggle:["右侧档案","显示或收起当前对象详情。"],v050FocusToggle:["专注地图","同时收起左右栏，扩大地图浏览空间。"],v050ExitMode:["退出当前模式","退出关系、测量、对比或画笔模式，恢复普通浏览。"],v061MoreButton:["更多工具","打开书签、撤销、侧栏和专注地图等低频操作。"],v061LegendToggle:["折叠关系图例","收起或展开左上角的关系线说明。"],layerEnvironment:["山水环境纹理","依据周边山、丘、林、泽等地块与真实河流路径生成淡墨背景；不会改变地图数据。"]
+    queryModeBtn:["查询模式","显示左侧检索与右侧详情。"],focusModeBtn:["专注模式","同时收起左右栏并扩大地图。快捷键 Ctrl+\。"],overviewModeBtn:["总览模式","按地理区域、地块域、经书、水系或文明组织地图。"],zoomOutBtn:["缩小地图","降低地图缩放级别。"],zoomReadout:["当前缩放","单击恢复100%；地图最高可放大至3000%。"],zoomInBtn:["放大地图","提高地图缩放级别。"],originBtn:["回到都广","定位到全局原点都广之野。"],jumpCoordBtn:["输入坐标","按里坐标直接跳转到指定位置。"],viewPresetBtn:["关系主题","筛选地理、水系、文明、神话、事件或异名关系。"],relationModeBtn:["关系高亮","以当前对象为中心显示关系网络；再次点击可关闭。"],compareModeBtn:["地块对比","选择2—4个地块并排核对资料。"],measureModeBtn:["测量","在地图上拖动，测量两点的距离与方向。"],isolatedObjectsBtn:["孤立对象","查找缺少空间关系或未接入地图网络的对象。"],brushModeBtn:["画笔采集","拖动画笔收集经过的地块，便于集中查看。"],cancelBrushModeBtn:["退出画笔","清除笔迹并退出画笔状态，已采集地块仍保留。"],brushCollectionBtn:["地块集合","查看画笔已经收集的地块。"],v060BundleToggle:["同向合流","方向相近的关系先共享主干，再分叉到目标，减少线条拥挤。"],v060ObjectFocus:["聚焦对象","降低无关对象透明度，只突出当前对象及关系目标。"],v060ViewMode:["研究／展示视图","研究视图保留证据与技术标记；展示视图减少研究性信息。"],v050NavBack:["上一个位置","返回最近一次地图定位。"],v050NavForward:["下一个位置","前往导航历史中的下一处位置。"],v050BookmarkAdd:["收藏当前位置","保存当前坐标、缩放与选中对象。"],v050BookmarkOpen:["打开书签","查看并跳转到收藏的位置。"],v050Undo:["撤销","撤销最近一次可恢复的编辑。"],v050Redo:["重做","恢复刚刚撤销的编辑。"],v050HistoryOpen:["本轮修改","查看当前编辑轮次中的变更记录。"],v050GlobalSearchOpen:["全局检索","搜索对象、地块档案、标签、原文与关系字段。"],v050LeftToggle:["左侧索引","显示或收起检索与对象索引。"],v050RightToggle:["右侧档案","显示或收起当前对象详情。"],v050FocusToggle:["专注地图","同时收起左右栏，扩大地图浏览空间。"],v050ExitMode:["退出当前模式","退出关系、测量、对比或画笔模式，恢复普通浏览。"],v061MoreButton:["更多工具","打开书签、撤销、侧栏和专注地图等低频操作。"],v061LegendToggle:["折叠关系图例","收起或展开左上角的关系线说明。"],layerEnvironment:["山水环境纹理","依据周边山、丘、林、泽等地块与真实河流路径生成淡墨背景；不会改变地图数据。"]
   };
   function v061Hash(text){let h=2166136261;for(const ch of String(text||"")){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
   function v061ViewportRect(){return els.viewport.getBoundingClientRect()}
@@ -3820,13 +3954,31 @@
     for(const wetland of model.wetlands){if(v071Visible(wetland,v,260))v071DrawWetland(ctx,wetland,s,opacity)}
     ctx.restore();
   }
+  const V071_OVERVIEW_MODE_LABELS={region:"地理区域",domain:"地块域",chapter:"经书",hydrology:"水系",civilization:"文明／族群"};
+  function v071UpdateOverviewModeUi(){
+    const label=V071_OVERVIEW_MODE_LABELS[state.overviewMode]||V071_OVERVIEW_MODE_LABELS.region;if(els.overviewModeBtn)els.overviewModeBtn.textContent=`总览：${label}`;
+    els.overviewModeMenu?.querySelectorAll("[data-overview-mode]").forEach(button=>button.classList.toggle("active",button.dataset.overviewMode===state.overviewMode));
+    els.viewport.dataset.overviewMode=state.overviewMode;
+  }
+  function v071SetOverviewMode(mode){
+    if(!V071_OVERVIEW_MODE_LABELS[mode])return;state.overviewMode=mode;state.perf.regionCache.clear();state.perf.regionRangeCache.clear();state.perf.regionOverviewLayerActive=false;state.perf.regionOverviewNodes=new Map();state.perf.regionOverviewVisibleGroups=new Map();els.tileLayer.replaceChildren();v071UpdateOverviewModeUi();scheduleRender();persist();toast(`总览模式：${V071_OVERVIEW_MODE_LABELS[mode]}`,mode==="region"?"按真实区域名合并地块":mode==="domain"?"显示面积域与作用域":mode==="chapter"?"按十八经篇查看分布":mode==="hydrology"?"按水系查看河网":"查看国度、部落与族群分布")
+  }
+  function setupV071Features(){
+    els.queryModeBtn?.addEventListener("click",()=>v071SetWorkspaceMode("query"));els.focusModeBtn?.addEventListener("click",()=>v071SetWorkspaceMode("focus"));
+    els.overviewModeBtn?.addEventListener("click",event=>{event.stopPropagation();els.overviewModeMenu?.classList.toggle("hidden")});
+    els.overviewModeMenu?.querySelectorAll("[data-overview-mode]").forEach(button=>button.addEventListener("click",event=>{event.stopPropagation();els.overviewModeMenu.classList.add("hidden");v071SetOverviewMode(button.dataset.overviewMode)}));
+    document.addEventListener("click",event=>{if(!event.target.closest(".overview-tool-wrap"))els.overviewModeMenu?.classList.add("hidden")});
+    document.addEventListener("keydown",event=>{if(event.ctrlKey&&event.key==="\\"){event.preventDefault();v071SetWorkspaceMode(state.workspaceUi.focusMap?"query":"focus")}});
+    v071UpdateOverviewModeUi();v050ApplyWorkspaceClasses()
+  }
+
   function setupV062Features(){
     document.documentElement.classList.add("v062-yujian-theme");
     if(els.layerEnvironment){els.layerEnvironment.checked=state.layers.environment!==false;els.layerEnvironment.closest("label")?.setAttribute("data-v062-layer","environment")}
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.0",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.1",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",bootGuard:true};
   setupV027State();
   init();
   setupV027Features();
@@ -3835,6 +3987,7 @@
   setupV060Features();
   setupV061Features();
   setupV062Features();
+  setupV071Features();
   function v053NormalizeHierarchyAssignments() {
   const hierarchy = window.SHJ_WORLD_HIERARCHY;
   if (!hierarchy || !Array.isArray(hierarchy.regions) || !Array.isArray(state?.objects)) return;

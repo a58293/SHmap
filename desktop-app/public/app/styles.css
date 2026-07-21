@@ -1854,3 +1854,27 @@ html.v062-yujian-theme .tile-face{
 #brushTraceCanvas,.brush-trace-canvas{z-index:32!important}
 .map-tooltip,.precision-mode-badge,.precision-terrain-legend,.map-guide,.coord-status,.camera-status,.high-zoom-locator,
 .spatial-focus-clear,.close-flip,.compare-status-bar,.measure-readout,.research-minimap,.relation-legend{z-index:48!important}
+
+
+/* v0.7.1：多总览模式、50%地块可读性、查询／专注切换 */
+.workspace-mode-switch{display:inline-flex;align-items:center;padding:3px;border:1px solid rgba(163,137,91,.44);border-radius:11px;background:rgba(232,224,205,.76);box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
+.workspace-mode-switch button{height:31px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:#4f584e;font:800 12px/1 inherit;cursor:pointer;transition:.16s ease}
+.workspace-mode-switch button:hover{background:rgba(255,252,244,.72)}
+.workspace-mode-switch button.active{background:linear-gradient(180deg,#28584e,#173d37);color:#fff;box-shadow:0 3px 8px rgba(28,63,55,.19),inset 0 0 0 1px rgba(216,194,141,.24)}
+.overview-tool-wrap{position:relative;display:inline-flex;z-index:232}
+.overview-mode-menu{position:absolute;left:0;top:calc(100% + 8px);width:230px;padding:7px;border:1px solid rgba(163,137,91,.54);border-radius:12px;background:linear-gradient(180deg,rgba(255,253,247,.99),rgba(239,231,215,.99));box-shadow:0 15px 35px rgba(40,46,41,.22);z-index:320}
+.overview-mode-menu button{display:flex;width:100%;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:#314a42;text-align:left;cursor:pointer}
+.overview-mode-menu button:hover{background:rgba(39,83,73,.08)}
+.overview-mode-menu button.active{background:linear-gradient(90deg,rgba(38,86,75,.15),rgba(38,86,75,.04));box-shadow:inset 3px 0 0 #285b50}
+.overview-mode-menu strong{font-size:12px}.overview-mode-menu small{font-size:10px;color:#7b796d}
+.region-overview-label[data-overview-mode="domain"]{border-color:rgba(157,117,55,.65)}
+.region-overview-label[data-overview-mode="chapter"]{border-color:rgba(105,96,134,.55)}
+.region-overview-label[data-overview-mode="hydrology"]{border-color:rgba(45,127,151,.62)}
+.region-overview-label[data-overview-mode="civilization"]{border-color:rgba(139,101,53,.58)}
+.map-viewport[data-overview-mode="domain"] .region-overview-label{background:linear-gradient(180deg,rgba(255,250,236,.97),rgba(239,227,199,.95))}
+.map-viewport[data-overview-mode="hydrology"] .region-overview-label{background:linear-gradient(180deg,rgba(245,253,252,.97),rgba(217,237,237,.95))}
+.map-viewport:not(.region-overview-mode) .tile{opacity:var(--v070-tile-card-opacity,1)}
+#v050LeftToggle,#v050RightToggle,#v050FocusToggle{display:none!important}
+html[data-workspace-mode="focus"] .workspace-mode-switch #focusModeBtn,
+html[data-workspace-mode="query"] .workspace-mode-switch #queryModeBtn{pointer-events:none}
+@media(max-width:1450px){.workspace-mode-switch button{padding:0 8px}.overview-mode-menu{left:auto;right:0}.map-controls{gap:6px}}

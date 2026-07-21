@@ -67,7 +67,9 @@ if(!app.includes("setupV044RelationNavigation")||!app.includes("v029RelationHit"
 if(!css.includes("v0.4.4 · 博物志可读排版与可点击关系线")||!css.includes(".relation-legend")||!css.includes(".relation-line-tooltip")||!fs.readFileSync(path.join(root,"index.html"),"utf8").includes("relationLegend")){console.error("v0.4.4关系图例或博物志排版样式缺失");failed=true}
 const indexHtml=fs.readFileSync(path.join(root,"index.html"),"utf8");
 if(!app.includes("updateV044HighZoomLocator")||!app.includes("drawV044LocationWatermark")||!indexHtml.includes("highZoomLocator")||!css.includes(".high-zoom-locator")){console.error("v0.4.4高倍缩放定位辅助缺失");failed=true}
-if(!indexHtml.includes('id="layerEmpty" />')||!(/uiSchemaVersion:\s*\d+/.test(app))||!app.includes('message:"已点击地图空白区域"')||!app.includes('message:"已通过右键退出地块聚焦"')){console.error("v0.4.4空白地块默认关闭或聚焦退出逻辑缺失");failed=true}
+const blankClickKeepsFocus=app.includes('if(!focus.active||!cellKeyValue)return false')||app.includes('message:"已点击地图空白区域"');
+const explicitFocusExit=app.includes('message:"已通过右键退出区域／范围聚焦"')||app.includes('message:"已通过右键退出地块聚焦"')||app.includes('右键在地图中统一退出聚焦与地块选择')||app.includes('已通过右键退出地块／区域／范围聚焦并取消选择');
+if(!indexHtml.includes('id="layerEmpty" />')||!(/uiSchemaVersion:\s*\d+/.test(app))||!blankClickKeepsFocus||!explicitFocusExit){console.error("v0.4.4空白地块默认关闭或聚焦退出逻辑缺失");failed=true}
 if(!app.includes("undoLastBrushAction")||!app.includes("queueBrushRightClick")||!app.includes("cancelBrushModeAndClearTraces")||!indexHtml.includes("cancelBrushModeBtn")||!app.includes('scopeLabel:`画笔采集 ${entries.length} 个地块`')){console.error("v0.4.4画笔撤回、清空、取消或分类博物志逻辑缺失");failed=true}
 if(!app.includes("v045RelationThemes")||!app.includes("v045RelationCatalog")||!app.includes("v045RelationCounts")||!app.includes("relationEvidenceFilter")||!indexHtml.includes("data-relation-count")||!indexHtml.includes("data-relation-evidence")){console.error("v0.4.5关系多标签分类或证据筛选逻辑缺失");failed=true}
 if(!app.includes("openIdentityTagExplorer")||!app.includes("findIdentityTagMatches")||!app.includes("data-identity-tag-value")||!css.includes(".identity-tag-explorer")||!css.includes(".identity-tag-button")){console.error("v0.4.5可点击标签与同标签检索逻辑缺失");failed=true}

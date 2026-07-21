@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v007 · 0.7.0</title>
+  <title>山海经原典地图研究台 · 桌面版 v007 · 0.7.1</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v007 · 0.7.0</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v007 · 0.7.1</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -98,6 +98,20 @@
             <nav id="mapBreadcrumb" class="map-breadcrumb" aria-label="当前位置"><button data-breadcrumb="origin">都广之野</button></nav>
           </div>
           <div class="map-controls">
+            <div class="workspace-mode-switch" id="workspaceModeSwitch" role="group" aria-label="工作区模式">
+              <button type="button" id="queryModeBtn" class="active" title="显示检索栏与详情栏">查询</button>
+              <button type="button" id="focusModeBtn" title="同时收起两侧栏，专注地图">专注</button>
+            </div>
+            <div class="overview-tool-wrap">
+              <button class="btn secondary compact" id="overviewModeBtn" title="切换地图总览的组织方式">总览：地理区域</button>
+              <div id="overviewModeMenu" class="overview-mode-menu hidden" role="menu">
+                <button type="button" data-overview-mode="region"><strong>地理区域</strong><small>按真实命名区域合并地块</small></button>
+                <button type="button" data-overview-mode="domain"><strong>地块域</strong><small>面积域与作用域覆盖</small></button>
+                <button type="button" data-overview-mode="chapter"><strong>经书总览</strong><small>按十八经篇分布</small></button>
+                <button type="button" data-overview-mode="hydrology"><strong>水系总览</strong><small>按河流与水脉组织</small></button>
+                <button type="button" data-overview-mode="civilization"><strong>文明／族群</strong><small>国度、部落与人群分布</small></button>
+              </div>
+            </div>
             <button class="icon-btn" id="zoomOutBtn" title="缩小">−</button>
             <button class="zoom-readout" id="zoomReadout" title="当前缩放；单击回到100%，最大可放大至3000%">100%</button>
             <button class="icon-btn" id="zoomInBtn" title="放大">＋</button>
