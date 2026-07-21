@@ -1,15 +1,15 @@
 {
-  "version": "0.7.1",
-  "notes": "## v0.7.1 区域轮廓与聚焦修正\r\n\r\n- 稀疏单点／双点分组不再生成跨图细长凸包。\r\n- 连续100里地块改为按外缘生成联合轮廓，不连续分布自动拆分。\r\n- 水系总览不再生成额外闭合范围。\r\n- 普通选择不自动开启范围聚焦；范围内选择保持聚焦，范围外选择退出。\r\n- 空白点击不退出聚焦；右键、Esc与退出按钮统一结束聚焦。\r\n\r\n# v0.6.1 · 关系说明与工具栏可用性修复\r\n\r\n- 单击关系线不再立即跳转，而是在关系线上打开说明卡。\r\n- 说明卡展示起点、终点、关系类型、线型、方向、证据与推导说明，并提供跳转按钮。\r\n- 关系线命中范围扩大，细线更容易点击。\r\n- 关系线优先从对象卡片边缘出发，并进行轻量障碍避让。\r\n- 同坐标对象使用分散接口，减少中心标签与线路堆叠。\r\n- 屏外聚合端点显示“方向＋数量”，不再只显示裸数字。\r\n- 顶部关系工具分组，低频操作收纳到“更多”，避免右侧按钮被裁切。\r\n- 工具按钮停留约0.8秒显示用途说明。\r\n- 关系图例可以折叠；退出关系模式入口更明确。\r\n- 地块文字缩放设置上限，地图继续放大时名称不会无限变大。\r\n\r\n# SHmap v0.6.0｜关系网络与浏览体验整合版\r\n\r\n- 关系网络提供“精简关系／全部关系”双模式。\r\n- 同方向关系先合流再分叉，减少中心放射状拥挤。\r\n- 屏幕外目标按方向聚合，点击数量端点查看目标列表。\r\n- 默认只保留少量关系标签，悬停显示完整关系说明。\r\n- 新增对象聚焦、研究视图／展示视图切换。\r\n- 对象编辑器新增图片选择、WebP压缩、本地程序数据目录存储、来源与版权备注。\r\n- 删除前显示关系、水系、区域及文本提及影响。\r\n- 保留0.5.4关系拖动稳定、区域范围与白块隔离修复。\r\n\r\n## v0.7.1 右键退出聚焦修正\r\n\r\n- 右键在捕获阶段优先退出面积域、作用域与命名区域聚焦。\r\n- 清理残留灰暗类与区域缓存，保留当前选择和镜头。\r\n- Esc 与“退出模式”统一使用完整清焦逻辑。",
-  "pub_date": "2026-07-21T05:19:06.231Z",
+  "version": "0.7.2",
+  "notes": "## v0.7.2 · 安全补充导入模式\r\n\r\n- Markdown导入默认锁定为“只补充已有内容”。\r\n- 九段式对象博物志采用非破坏性合并，不再整份覆盖旧博物志。\r\n- 禁止补充模式创建新对象、空地块、坐标、路径、面积或作用域。\r\n- 支持粗体01—09章节标题；批量上限提升至300个文件、50MB。\r\n- 保留手动“完整结构导入”模式。\r\n\r\n## v0.7.1 区域轮廓与聚焦修正\r\n\r\n- 稀疏单点／双点分组不再生成跨图细长凸包。\r\n- 连续100里地块改为按外缘生成联合轮廓，不连续分布自动拆分。\r\n- 水系总览不再生成额外闭合范围。\r\n- 普通选择不自动开启范围聚焦；范围内选择保持聚焦，范围外选择退出。\r\n- 空白点击不退出聚焦；右键、Esc与退出按钮统一结束聚焦。\r\n\r\n# v0.6.1 · 关系说明与工具栏可用性修复\r\n\r\n- 单击关系线不再立即跳转，而是在关系线上打开说明卡。\r\n- 说明卡展示起点、终点、关系类型、线型、方向、证据与推导说明，并提供跳转按钮。\r\n- 关系线命中范围扩大，细线更容易点击。\r\n- 关系线优先从对象卡片边缘出发，并进行轻量障碍避让。\r\n- 同坐标对象使用分散接口，减少中心标签与线路堆叠。\r\n- 屏外聚合端点显示“方向＋数量”，不再只显示裸数字。\r\n- 顶部关系工具分组，低频操作收纳到“更多”，避免右侧按钮被裁切。\r\n- 工具按钮停留约0.8秒显示用途说明。\r\n- 关系图例可以折叠；退出关系模式入口更明确。\r\n- 地块文字缩放设置上限，地图继续放大时名称不会无限变大。\r\n\r\n# SHmap v0.6.0｜关系网络与浏览体验整合版\r\n\r\n- 关系网络提供“精简关系／全部关系”双模式。\r\n- 同方向关系先合流再分叉，减少中心放射状拥挤。\r\n- 屏幕外目标按方向聚合，点击数量端点查看目标列表。\r\n- 默认只保留少量关系标签，悬停显示完整关系说明。\r\n- 新增对象聚焦、研究视图／展示视图切换。\r\n- 对象编辑器新增图片选择、WebP压缩、本地程序数据目录存储、来源与版权备注。\r\n- 删除前显示关系、水系、区域及文本提及影响。\r\n- 保留0.5.4关系拖动稳定、区域范围与白块隔离修复。\r\n\r\n## v0.7.1 右键退出聚焦修正\r\n\r\n- 右键在捕获阶段优先退出面积域、作用域与命名区域聚焦。\r\n- 清理残留灰暗类与区域缓存，保留当前选择和镜头。\r\n- Esc 与“退出模式”统一使用完整清焦逻辑。",
+  "pub_date": "2026-07-21T07:44:19.575Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkJRMkJQZ3NhVjluYTZqWFlOcjMwR0dPM2p6dTd5QkJLTkJ1M3F1aVNEK3RNZ3JEYW9OY1BVNTNlMnhpOWsrZFRJVm5FRXE1dm9iRnpvYmxOaXFQK0FRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjExMTQzCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNy4xX3g2NC1zZXR1cC5leGUKRnM5bHhVQUlUSWRibzg5ZTg2d3M5bUtrcHFKdmdteFd4c0FDMkhPeUdGbEUyS21PTy9BUUlXRmxWNzFkazRIWXQxRzliWnJ1dnZLM0NJL3ZCbWlrQ3c9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/484283344"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkZPL3ZTbW8vR09jZmFqcnlyaVliNXZNci85OUFENHZHVGlWbDdPdmlCeFdxaWJGT0VDcnI3Y2dvMnhlMFRqN2tGM0htVkE1OVlYNEk2dlBGT0h6bGc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjE5ODU1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNy4yX3g2NC1zZXR1cC5leGUKenBsQmdmTHd2d3NXMTJUUVR4SnFURFdhQ0RNdllDZXhIc0N6U3FrKzRua0pvcG1PWnU0TzNWYmFBZ3VZSUN0cG4ybmpJZUdTWXhFUm9KSnpuK3k2Q2c9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/484400716"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkJRMkJQZ3NhVjluYTZqWFlOcjMwR0dPM2p6dTd5QkJLTkJ1M3F1aVNEK3RNZ3JEYW9OY1BVNTNlMnhpOWsrZFRJVm5FRXE1dm9iRnpvYmxOaXFQK0FRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjExMTQzCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNy4xX3g2NC1zZXR1cC5leGUKRnM5bHhVQUlUSWRibzg5ZTg2d3M5bUtrcHFKdmdteFd4c0FDMkhPeUdGbEUyS21PTy9BUUlXRmxWNzFkazRIWXQxRzliWnJ1dnZLM0NJL3ZCbWlrQ3c9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/484283344"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkZPL3ZTbW8vR09jZmFqcnlyaVliNXZNci85OUFENHZHVGlWbDdPdmlCeFdxaWJGT0VDcnI3Y2dvMnhlMFRqN2tGM0htVkE1OVlYNEk2dlBGT0h6bGc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjE5ODU1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuNy4yX3g2NC1zZXR1cC5leGUKenBsQmdmTHd2d3NXMTJUUVR4SnFURFdhQ0RNdllDZXhIc0N6U3FrKzRua0pvcG1PWnU0TzNWYmFBZ3VZSUN0cG4ybmpJZUdTWXhFUm9KSnpuK3k2Q2c9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/484400716"
     }
   }
 }
