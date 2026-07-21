@@ -10,6 +10,19 @@ const app=read("public/app/app.js");
 const css=read("public/app/styles.css");
 const asset="public/assets/map/shanhaijing_overview_v070.webp";
 const meta=JSON.parse(read("public/assets/map/shanhaijing_overview_v070.json"));
+// 不再依赖换行符和固定缩进。Windows 本地文件可能是 CRLF，GitHub Actions
+// checkout 后也可能因格式化产生缩进差异；专项校验应检查语义结构，而不是逐字匹配。
+const overviewBranchStart=app.search(/else\s+if\s*\(\s*state\.regionOverviewMode\s*\)\s*\{/);
+const normalMapStart=app.search(/const\s+tilePhase\s*=\s*v070TileCardOpacity\s*\(\s*\)/);
+const overviewBranch=overviewBranchStart>=0&&normalMapStart>overviewBranchStart
+  ? app.slice(overviewBranchStart,normalMapStart)
+  : "";
+const overviewHasNoAreaCircles=Boolean(
+  overviewBranch
+  && overviewBranch.includes("drawWaterPaths")
+  && !overviewBranch.includes("drawAreas")
+);
+
 const checks=[
  ["package 版本",pkg.version==="0.7.0"],
  ["Tauri 版本",tauri.version==="0.7.0"],
@@ -18,7 +31,7 @@ const checks=[
  ["静态总览底图",fs.existsSync(path.join(root,asset))&&meta.objectCount===617&&meta.waterPathCount===79],
  ["世界坐标绑定",app.includes("V070_OVERVIEW_ART")&&app.includes("drawV070OverviewArt")],
  ["地块渐变",app.includes("v070TileCardOpacity")&&css.includes("--v070-tile-card-opacity")],
- ["最大地图取消区域圈",app.includes("else if (state.regionOverviewMode) {\n      if (state.layers.rivers)")],
+ ["最大地图取消区域圈",overviewHasNoAreaCircles],
  ["实时小山停用",app.includes("if (!state.precisionMode) drawV070OverviewArt(ctx)")],
  ["关系线保留",app.includes("drawV029RelationOverlay")&&css.includes("#brushTraceCanvas")],
  ["画笔轨迹实时绘制",app.includes("stroke.push({x:w.x,y:w.y});drawBrushTraceCanvas()")&&css.includes("brush-trace-active")],
