@@ -1878,3 +1878,15 @@ html.v062-yujian-theme .tile-face{
 html[data-workspace-mode="focus"] .workspace-mode-switch #focusModeBtn,
 html[data-workspace-mode="query"] .workspace-mode-switch #queryModeBtn{pointer-events:none}
 @media(max-width:1450px){.workspace-mode-switch button{padding:0 8px}.overview-mode-menu{left:auto;right:0}.map-controls{gap:6px}}
+
+
+/* v0.7.2 · Markdown安全补充导入模式 */
+.import-policy-control{display:flex;align-items:center;gap:6px;padding:4px 6px 4px 9px;border:1px solid #b8c9c1;border-radius:9px;background:#edf4f0;white-space:nowrap}
+.import-policy-control>span{font-size:8px;font-weight:900;color:#355e50;letter-spacing:.06em}
+.import-policy-control select{min-width:142px;border:0;background:transparent;color:#244f41;font-size:10px;font-weight:900;outline:none;cursor:pointer}
+.import-policy-hint{max-width:260px;padding:6px 8px;border-left:2px solid #6f9d8a;color:#52645c;font-size:8px;line-height:1.35}
+.import-workspace.supplement-import-mode .import-topbar{border-top-color:#2f6f5a}
+.import-workspace.supplement-import-mode #importApplyBtn{background:#2f6f5a;border-color:#2f6f5a}
+.import-workspace.supplement-import-mode .import-drop-zone{background:#eaf3ee;border-color:#8eb3a3}
+@media(max-width:1500px){.import-policy-hint{display:none}.import-policy-control select{min-width:124px}.import-top-actions{gap:6px}}
+@media(max-width:1180px){.import-policy-control>span{display:none}.import-policy-control{padding-left:5px}.import-top-actions .format-badge{display:none}}

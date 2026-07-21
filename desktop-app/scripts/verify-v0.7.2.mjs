@@ -11,10 +11,10 @@ const app = read("public/app/app.js");
 const css = read("public/app/styles.css");
 
 const checks = [
-  ["package 版本", pkg.version === "0.7.1"],
-  ["Tauri 版本", tauri.version === "0.7.1"],
-  ["VERSION 版本", version.semver === "0.7.1" && version.app_version === "v007"],
-  ["界面版本", html.includes("DESKTOP v007 · 0.7.1")],
+  ["package 版本", pkg.version === "0.7.2"],
+  ["Tauri 版本", tauri.version === "0.7.2"],
+  ["VERSION 版本", version.semver === "0.7.2" && version.app_version === "v007"],
+  ["界面版本", html.includes("DESKTOP v007 · 0.7.2")],
   ["查询／专注按钮", html.includes('id="queryModeBtn"') && html.includes('id="focusModeBtn"') && app.includes("v071SetWorkspaceMode")],
   ["多总览模式", html.includes('data-overview-mode="region"') && html.includes('data-overview-mode="domain"') && html.includes('data-overview-mode="chapter"') && html.includes('data-overview-mode="hydrology"') && html.includes('data-overview-mode="civilization"')],
   ["真实区域总览", app.includes('h.regions.filter(r=>r.level===2)') && app.includes("cleanRegionOverviewName(region.name)")],
@@ -49,4 +49,4 @@ for (const [name, ok] of checks) {
   if (!ok) bad = true;
 }
 if (bad) process.exit(1);
-console.log("v0.7.1 专项校验通过：区域轮廓、聚焦退出、安全补充导入、九段式兼容与非破坏性资料合并。");
+console.log("v0.7.2 专项校验通过：区域轮廓、聚焦退出、安全补充导入、九段式兼容与非破坏性资料合并。");
