@@ -3,7 +3,7 @@
   "edition": "desktop",
   "app_version": "v007",
   "semver": "0.7.5",
-  "frontend_base": "v075-tile-dossier-internal-entry-import-fix",
+  "frontend_base": "v075-detail-category-max-three-columns-final",
   "data_version": "v125-r0001",
   "object_count": 617,
   "original_library_records": 4120,
@@ -28,13 +28,14 @@
   "brush_trace_fix": "upper overlay canvas, immediate pointer-move redraw, resize safety and visible red trace",
   "overview_geometry_fix": "single/double sparse groups show labels only; disconnected groups split; connected 100-li cells trace independent union boundaries",
   "focus_logic": "right click or Esc clears range/region focus, selected tile/object, object-focus dimming and stale classes while preserving camera position",
-  "import_policy": "safe supplement mode by default; existing objects/tiles only; uniquely identified parent object may receive non-spatial child-location records; no coordinate/geometry/area/path creation",
+  "import_policy": "安全补充模式可直接读取补充资料匹配与安全导入表.xlsx中的approved行；同时支持SHMAP_AUDIT_V1 Markdown。对象ID、母表行号、文件名和坐标不作为永久绑定依据。",
   "markdown_compatibility": "nine-section headings support ##/###/plain/bold forms, 01/1 numbering, Chinese or Western punctuation, blank-line-separated entry fields and category aliases; up to 300 files / 50MB per batch",
   "object_hierarchy": "any unique existing parent object may contain nested non-spatial child locations/segments; explicit create/bind/skip resolution in Markdown inspector; legacy v0.7.3 water segments remain readable",
-  "museum_display": "non-empty categories only; maximum three columns per row; additional categories wrap below; long category lists use vertical wheel scrolling; no horizontal scrolling",
+  "museum_display": "地块详细页按分类栏目布局：每行最多3个等宽分类，第4个分类自动换行；分类内部卡片纵向排列并使用滚轮，无横向卡片列",
   "markdown_parser": "v0.7.4 mixed-heading-punctuation-v2 + canonical-name alias binding + category-safe candidate filtering + section-07 original quote matching",
   "startup_recovery": "v0.7.4 database bootstrap timeout protection, local-cache read-only recovery, main-script retry, no automatic overwrite of SQLite during degraded startup",
   "museum_interaction": "detail-page categories remain expanded; empty categories are hidden; long lists scroll vertically; image preview and layered right-click return remain unchanged",
   "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
-  "markdown_import": "九段式 Markdown 以文件名匹配唯一已有地块；第06节所有条目均作为该地块内部博物志内容，不要求匹配独立对象，不创建对象、坐标、面积或路径。"
+  "markdown_import": "审核表内嵌145份已审核Markdown；客户端先校验正文指纹，再按目标对象非空间语义字段指纹唯一匹配。0个或多个候选均阻止写入。",
+  "audit_binding": "v0.7.5 direct XLSX audited import + semantic fingerprint binding + source body fingerprint verification"
 }

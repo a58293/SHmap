@@ -3048,3 +3048,139 @@ body.museum-image-viewer-open{overflow:hidden}
     grid-template-columns:1fr;
   }
 }
+
+
+/* v0.7.5 · 详细页分类内每列3个卡片，超出后另起一列
+   目标：在地块详细页中，每个分类内部每列最多显示3个卡片；
+   第4个及之后的卡片自动排到新的内部列，而不是继续向下堆叠。 */
+.reading-layout .brief-museum-static .brief-museum-list{
+  display:grid;
+  grid-auto-flow:column;
+  grid-template-rows:repeat(3,156px);
+  grid-auto-columns:minmax(250px,1fr);
+  align-content:start;
+  align-items:start;
+  justify-content:start;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:8px;
+  gap:8px;
+  scrollbar-gutter:stable both-edges;
+}
+.reading-layout .brief-museum-static .brief-museum-list::-webkit-scrollbar{
+  height:8px;
+}
+.reading-layout .brief-museum-static .brief-museum-list::-webkit-scrollbar-track{
+  background:rgba(224,224,214,.55);
+  border-radius:999px;
+}
+.reading-layout .brief-museum-static .brief-museum-list::-webkit-scrollbar-thumb{
+  background:#9db2a9;
+  border:2px solid rgba(248,246,239,.92);
+  border-radius:999px;
+}
+.reading-layout .brief-museum-static .brief-museum-list::-webkit-scrollbar-thumb:hover{
+  background:#698f80;
+}
+.reading-layout .brief-museum-static .brief-museum-object,
+.reading-layout .brief-museum-static .brief-museum-object.has-imported-details{
+  width:min(100%,340px);
+  align-self:start;
+}
+
+
+/* v0.7.5 · 详细页分类每行最多3列最终修正
+   修正对象是“山 / 木 / 兽 / 神 / 事”等分类栏目，而不是分类内部的卡片。
+   每行最多显示3个等宽分类；第4个分类自动换到下一行。
+   分类内部恢复纵向卡片列表和滚轮，不再横向另起卡片列。 */
+.reading-layout .brief-museum-static .brief-museum-static-grid,
+.reading-layout .brief-museum-static .brief-museum-static-grid.count-3,
+.reading-layout .brief-museum-static .brief-museum-static-grid.count-4,
+.reading-layout .brief-museum-static .brief-museum-static-grid.count-5,
+.reading-layout .brief-museum-static .brief-museum-static-grid.count-6,
+.reading-layout .brief-museum .brief-museum-grid,
+.reading-layout .brief-museum .brief-museum-grid.count-3,
+.reading-layout .brief-museum .brief-museum-grid.count-4,
+.reading-layout .brief-museum .brief-museum-grid.count-5,
+.reading-layout .brief-museum .brief-museum-grid.count-6{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  grid-auto-columns:auto!important;
+  align-items:start!important;
+  gap:14px!important;
+  width:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:visible!important;
+  padding:0!important;
+}
+.reading-layout .brief-museum-static .brief-museum-static-grid.count-1,
+.reading-layout .brief-museum .brief-museum-grid.count-1{
+  grid-template-columns:minmax(0,1fr)!important;
+}
+.reading-layout .brief-museum-static .brief-museum-static-grid.count-2,
+.reading-layout .brief-museum .brief-museum-grid.count-2{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.reading-layout .brief-museum-static .brief-museum-static-category,
+.reading-layout .brief-museum .brief-museum-category{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+.reading-layout .brief-museum-static .brief-museum-list,
+.reading-layout .brief-museum .brief-museum-list{
+  display:flex!important;
+  flex-direction:column!important;
+  grid-auto-flow:unset!important;
+  grid-template-rows:none!important;
+  grid-auto-columns:auto!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  gap:9px!important;
+  scrollbar-gutter:stable!important;
+}
+.reading-layout .brief-museum-static .brief-museum-object,
+.reading-layout .brief-museum-static .brief-museum-object.has-imported-details,
+.reading-layout .brief-museum .brief-museum-object,
+.reading-layout .brief-museum .brief-museum-object.has-imported-details{
+  width:100%!important;
+  max-width:none!important;
+}
+@media(max-width:1180px){
+  .reading-layout .brief-museum-static .brief-museum-static-grid,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-2,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-3,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-4,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-5,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-6,
+  .reading-layout .brief-museum .brief-museum-grid,
+  .reading-layout .brief-museum .brief-museum-grid.count-2,
+  .reading-layout .brief-museum .brief-museum-grid.count-3,
+  .reading-layout .brief-museum .brief-museum-grid.count-4,
+  .reading-layout .brief-museum .brief-museum-grid.count-5,
+  .reading-layout .brief-museum .brief-museum-grid.count-6{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:760px){
+  .reading-layout .brief-museum-static .brief-museum-static-grid,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-1,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-2,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-3,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-4,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-5,
+  .reading-layout .brief-museum-static .brief-museum-static-grid.count-6,
+  .reading-layout .brief-museum .brief-museum-grid,
+  .reading-layout .brief-museum .brief-museum-grid.count-1,
+  .reading-layout .brief-museum .brief-museum-grid.count-2,
+  .reading-layout .brief-museum .brief-museum-grid.count-3,
+  .reading-layout .brief-museum .brief-museum-grid.count-4,
+  .reading-layout .brief-museum .brief-museum-grid.count-5,
+  .reading-layout .brief-museum .brief-museum-grid.count-6{
+    grid-template-columns:1fr!important;
+  }
+}
