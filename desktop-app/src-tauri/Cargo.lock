@@ -3070,7 +3070,7 @@ dependencies = [
 
 [[package]]
 name = "shj-map-desktop"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "chrono",
  "hex",

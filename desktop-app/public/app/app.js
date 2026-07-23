@@ -1744,11 +1744,11 @@
   function bindTileEvents(){
     els.tileLayer.querySelectorAll(".tile:not([data-events-bound='1'])").forEach(tile=>{
       tile.dataset.eventsBound="1";
-      tile.addEventListener("click",e=>{if(Date.now()<state.suppressClickUntil)return;if(e.target.closest("button"))return;const items=objectsInCellKey(tile.dataset.cell);clickOutsideSpatialFocus(tile.dataset.cell);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedCell=tile.dataset.cell;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;if(state.camera.zoom<2&&items.length){state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else{state.flippedCell=state.flippedCell===tile.dataset.cell?null:tile.dataset.cell;renderDetails();renderSidebar();scheduleRender();persist()}});
+      tile.addEventListener("click",e=>{if(Date.now()<state.suppressClickUntil)return;if(e.target.closest("button"))return;const items=objectsInCellKey(tile.dataset.cell);clickOutsideSpatialFocus(tile.dataset.cell);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedCell=tile.dataset.cell;if(items.length&&!items.some(o=>o.id===state.selectedId))state.selectedId=items[0].id;if(items.length){state.flippedCell=null;renderDetails();renderSidebar();scheduleRender();persist();openDossierWorkspace()}else{state.flippedCell=state.flippedCell===tile.dataset.cell?null:tile.dataset.cell;renderDetails();renderSidebar();scheduleRender();persist()}});
       tile.addEventListener("dblclick",e=>{if(Date.now()<state.suppressClickUntil)return;e.preventDefault();openDrill(Number(tile.dataset.gx),Number(tile.dataset.gy))});
-      tile.addEventListener("mouseenter",e=>{const items=objectsInCellKey(tile.dataset.cell),names=items.slice(0,5).map(o=>o.name).join("、"),more=items.length>5?` 等${items.length}项`:"";showTooltip(items.length?`${names}${more} · ${state.camera.zoom<2?"单击打开地块博物志":"单击翻转"} / 双击下钻`:`空白地块 · 单击后可建档`,e.clientX,e.clientY)});
+      tile.addEventListener("mouseenter",e=>{const items=objectsInCellKey(tile.dataset.cell),names=items.slice(0,5).map(o=>o.name).join("、"),more=items.length>5?` 等${items.length}项`:"";showTooltip(items.length?`${names}${more} · 单击打开地块博物志 / 双击下钻`:`空白地块 · 单击后可建档`,e.clientX,e.clientY)});
       tile.addEventListener("mousemove",e=>moveTooltip(e.clientX,e.clientY));tile.addEventListener("mouseleave",hideTooltip);
-      tile.querySelectorAll("[data-object-id]").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();state.selectedCell=tile.dataset.cell;selectObject(btn.dataset.objectId)}));
+      tile.querySelectorAll("[data-object-id]").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();state.selectedCell=tile.dataset.cell;selectObject(btn.dataset.objectId);openDossierWorkspace()}));
       tile.querySelectorAll("[data-action='drill']").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();state.selectedCell=tile.dataset.cell;renderDetails();openDrill(Number(tile.dataset.gx),Number(tile.dataset.gy))}));
       tile.querySelectorAll("[data-action='add']").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();state.selectedCell=tile.dataset.cell;renderDetails();openObjectForm(null,{x:cellCenter(Number(tile.dataset.gx)),y:cellCenter(Number(tile.dataset.gy))})}));
       tile.querySelectorAll("[data-action='delete']").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();state.selectedCell=tile.dataset.cell;renderDetails();openDeleteModal("tile")}));
@@ -2599,8 +2599,15 @@
       if(!meta.targetFingerprint)return {...base,matchReason:"audit-target-missing",auditError:"审核头缺少目标语义指纹，已阻止写入。"};
       const fingerprintMatches=state.objects.filter(object=>dossierAuditObjectFingerprint(object)===meta.targetFingerprint);
       if(fingerprintMatches.length===1)return {...base,target:fingerprintMatches[0],matches:fingerprintMatches,matchReason:"audit-fingerprint",auditVerified:true};
-      const reason=fingerprintMatches.length?`当前客户端中出现 ${fingerprintMatches.length} 个相同语义指纹对象，无法唯一绑定。`:`当前客户端对象与审核时母表不再一致，未找到语义指纹 ${meta.targetFingerprint}。`;
-      return {...base,matches:fingerprintMatches,matchReason:"audit-target-mismatch",auditError:`${reason} 请使用最新母表重新生成审核包。`}
+      if(!fingerprintMatches.length){
+        const nameNeedle=normalizeDossierImportName(meta.targetNameSnapshot||targetName),chapterNeedle=normalizeDossierImportName(meta.targetChapterSnapshot||""),typeNeedle=normalizeDossierImportName(meta.targetTypeSnapshot||"");
+        let snapshotMatches=state.objects.filter(object=>normalizeDossierImportName(object?.name)===nameNeedle);
+        if(chapterNeedle)snapshotMatches=snapshotMatches.filter(object=>{const value=normalizeDossierImportName(object?.chapter);return value===chapterNeedle||value.includes(chapterNeedle)||chapterNeedle.includes(value)});
+        if(snapshotMatches.length>1&&typeNeedle){const typed=snapshotMatches.filter(object=>normalizeDossierImportName(object?.type)===typeNeedle);if(typed.length)snapshotMatches=typed}
+        if(snapshotMatches.length===1)return {...base,target:snapshotMatches[0],matches:snapshotMatches,matchReason:"audit-snapshot-fallback",auditVerified:true,auditTargetChanged:true,auditWarning:"目标对象的完整字段与审核母表已有变化；已按审核快照中的名称、经篇和类型唯一定位。导入只补充博物志，不改名称、坐标、经篇、类型或几何。"}
+      }
+      const reason=fingerprintMatches.length?`当前客户端中出现 ${fingerprintMatches.length} 个相同语义指纹对象，无法唯一绑定。`:`当前客户端对象与审核时母表不再一致，且名称、经篇、类型快照无法唯一定位。`;
+      return {...base,matches:fingerprintMatches,matchReason:"audit-target-mismatch",auditError:`${reason} 请使用当前数据库重新核对目标后再生成审核包。`}
     }
     const targetName=fileTargetName,needle=normalizeDossierImportName(targetName),exact=state.objects.filter(o=>normalizeDossierImportName(o.name)===needle);
     if(importPolicyValue()==="supplement")return {targetName,target:null,matches:exact,parentObject:null,child:null,childMatches:[],qualified:null,matchReason:"audit-required",auditRequired:true};
@@ -2690,14 +2697,14 @@
       3:["本地标签","地点标签","标签"],
       4:["地块属性","地点属性","对象属性"],
       5:["数据关系","关系数据","对象关系"],
-      6:["分别整理以下六类","分类整理以下六类","分类整理","分类条目","六类整理","这里有什么"],
+      6:["分别整理以下六类","分别整理以下七类","分别整理以下类目","分类整理以下六类","分类整理以下七类","分类整理以下类目","分类整理","分类条目","六类整理","七类整理","详细整理","这里有什么"],
       7:["原文摘录","原典摘录","原文"],
       8:["其他典故","古注补充","典故补充"],
       9:["详细描述","详细说明","完整描述"]
     };
     const value=trimNineHeadingDecorators(line),m=value.match(/^0?([1-9])\s*(?:[.．,，、:：\-—–]|[)）])?\s*(.*?)\s*$/);
     if(!m)return null;const number=Number(m[1]),title=String(m[2]||"").replace(/[：:]\s*$/,"").replace(/\s+/g,"").trim(),candidates=aliases[number]||[];
-    const matched=candidates.some(alias=>title===alias||(number===6&&title.startsWith(alias)));
+    const matched=candidates.some(alias=>title===alias||title.startsWith(alias));
     return matched?{number,title:titles[number]}:null
   }
   function normalizeNineCategoryName(value){
@@ -2728,9 +2735,16 @@
     const value=stripNineListPrefix(stripInlineMarkdown(line)),m=value.match(/^([^：:]{1,24})\s*[：:]\s*(.*)\s*$/);
     return m?{key:stripInlineMarkdown(m[1]),value:stripInlineMarkdown(m[2])}:null
   }
+  function compactDossierPlaceholderName(value){
+    let key=stripInlineMarkdown(String(value||"")).normalize("NFKC").replace(/[\s，,。；;：:、\-—–_\[\]【】()（）]/g,"");
+    key=key.replace(/^(?:(?:山水地貌|地貌|山川|山地|水系|河流|水域|草木|植物|木类|鸟兽|兽类|动物|金玉矿物|矿物|金玉|人群神祇|人群|神祇|人物|事件与遗迹|事件遗迹|事件|遗迹)(?:名称|条目|内容)?|名称|条目|内容)/,"");
+    return key
+  }
   function isNinePlaceholderEntryName(value){
-    const key=String(value||"").normalize("NFKC").replace(/[\s，,。；;：:、\-—–]/g,"");
-    return /^(?:原文)?(?:未载明确|未载|无明确记载|未明确记载|暂无明确记载|暂无相关记载|无相关记载|资料待补充|待补充)$/.test(key)
+    const key=compactDossierPlaceholderName(value);
+    if(!key)return true;
+    const residue=key.replace(/(?:(?:原文)?(?:未载明确|未载|无明确记载|未明确记载|暂无明确记载|暂无相关记载|无相关记载)|资料待补充|待补充|暂无|无)/g,"");
+    return !residue
   }
   function normalizedDossierCategoryLabel(value){
     return normalizeNineCategoryName(value)||String(value||"").trim().replace(/^事件与遗迹$/,"事件遗迹")
@@ -2796,7 +2810,8 @@
     if(!doc.sourceFile)issues.push({level:"error",message:"九段式博物志必须通过“选择单个/批量 Markdown”导入。",line:doc.startLine});
     else if(targetInfo.auditError)issues.push({level:"error",message:targetInfo.auditError,line:doc.startLine});
     else if(targetInfo.auditRequired)issues.push({level:"error",message:"安全补充模式只接受经过最新母表匹配审核的 Markdown。请使用“补充资料匹配与安全导入表”重新生成安全导入包。",line:doc.startLine});
-    else if(targetInfo.child){childLocationMode="existing";childAction="bind";childTargetId=targetInfo.child.id;issues.push({level:"warn",message:`已匹配“${targetInfo.parentObject.name}”下属记录“${targetInfo.child.name}”；只更新该子项资料，不改变父级对象的地图结构。`,line:doc.startLine})}
+    else if(targetInfo.auditWarning)issues.push({level:"warn",message:targetInfo.auditWarning,line:doc.startLine});
+    if(targetInfo.child){childLocationMode="existing";childAction="bind";childTargetId=targetInfo.child.id;issues.push({level:"warn",message:`已匹配“${targetInfo.parentObject.name}”下属记录“${targetInfo.child.name}”；只更新该子项资料，不改变父级对象的地图结构。`,line:doc.startLine})}
     else if(targetInfo.parentObject){childLocationMode="candidate";childAction="create";const kind=childHierarchyKind(targetInfo.parentObject);issues.push({level:"warn",message:`检测到父级对象“${targetInfo.parentObject.name}”。可将“${targetInfo.targetName}”建立为其${kind.childLabel}；只建立资料层级，不生成新地块或地图坐标。`,line:doc.startLine})}
     else if(!targetInfo.target){const sameNameCount=targetInfo.matches?.length||0,message=sameNameCount>1?`客户端中存在 ${sameNameCount} 个同名“${targetInfo.targetName}”地块，但文件中的经名、原文和关联地名仍不足以唯一定位；为避免写错地块，本次阻止写入。请保留第04节典籍出处和第07节原文摘录。`:`客户端中没有与文件名“${targetInfo.targetName}”完全同名的地块，也没有可唯一识别的父级对象，不会自动新建地图对象或猜测坐标。`;issues.push({level:"error",message,line:doc.startLine})}
     // 九段式 Markdown 的唯一地图目标由文件名决定。
@@ -2849,12 +2864,14 @@
   function importedMuseumObjects(items){
     const main=selectedTileMain(items),entries=main?.dossier?.museumEntries,profileOriginal=main?.dossier?.profile?.tileOriginalExcerpt||"";
     if(!Array.isArray(entries)||!entries.length)return null;
-    return entries.map((e,index)=>{
+    const visibleEntries=entries.map((entry,index)=>({entry,index})).filter(({entry})=>!isNinePlaceholderEntryName(entry?.name));
+    if(!visibleEntries.length)return null;
+    return visibleEntries.map(({entry:e,index})=>{
       const linked=resolvedDossierEntryObject(e,main),originalExcerpt=originalExcerptForEntry(profileOriginal,e.name,e.localRelation);
       // 九段式卡片正文必须以 Markdown 第06节为唯一来源。
       // 独立地图对象只提供图片、对象ID与跳转能力，不能用母表字段替换或污染导入文案。
-      // 旧数据中未保存 linkedObjectId 的别名条目，会在显示时重新按“同类型＋专名别名”解析。
-      return {...(linked||{}),id:linked?.id||"",name:e.name||linked?.name||`资料条目${index+1}`,type:e.sourceCategory||linked?.type||"博物志条目",displayCategory:dossierCategoryKey(e.sourceCategory),localRelation:e.localRelation||"",coreFeatures:e.coreFeatures||"",efficacy:e.efficacy||"",evidence:e.evidence||"",originalExcerpt,imageUrl:e.imageUrl||objectImageSource(linked)||"",dossierOnly:!linked?.id,dossierIndex:index,importedFromDossier:true,sourceCategory:e.sourceCategory||"",linkReason:e.linkReason||"runtime-resolved"}
+      // 地块内部资料保留所属地块与原始条目序号，用于打开统一的详情抽屉。
+      return {...(linked||{}),id:linked?.id||"",name:e.name||linked?.name||`资料条目${index+1}`,type:e.sourceCategory||linked?.type||"博物志条目",displayCategory:dossierCategoryKey(e.sourceCategory),localRelation:e.localRelation||"",coreFeatures:e.coreFeatures||"",efficacy:e.efficacy||"",evidence:e.evidence||"",originalExcerpt,imageUrl:e.imageUrl||objectImageSource(linked)||"",dossierOnly:!linked?.id,dossierOwnerId:main?.id||"",dossierIndex:index,importedFromDossier:true,sourceCategory:e.sourceCategory||"",linkReason:e.linkReason||"runtime-resolved"}
     })
   }
   function renderImportAnalysis(a){
@@ -3317,8 +3334,8 @@
   }
   function museumObjectHasVisibleDetails(o){
     // 第06节条目是地块内部内容，名称本身就是有效资料。
-    // “原文未载明确”等占位在解析阶段已经过滤，不应再因缺少四项详情而隐藏真实条目。
-    return !!o?.name
+    // 兼容旧数据库：分类名称＋“原文未载明确”等占位变体也必须在显示层过滤。
+    return !!o?.name&&!isNinePlaceholderEntryName(o.name)
   }
   function briefMuseumObjectHTML(o,cat){
     const imported=!!o.importedFromDossier,source=cardScriptureSource(o),directOriginal=imported&&isDirectOriginalRelation(o.localRelation)&&hasText(o.originalExcerpt),relationRow=directOriginal?["原文",o.originalExcerpt]:["与本地关系",displayLocalRelation(o.localRelation)],rows=[
@@ -3326,7 +3343,7 @@
       ["核心特征",imported?o.coreFeatures:(o.coreFeatures||objectCoreText(o))],
       ["出自",source],
       ["功效",o.efficacy]
-    ].filter(([,v])=>hasText(v)&&!/原文未载明确/.test(String(v))).slice(0,4),src=objectImageSource(o),detail=o.id?` data-object-detail="${esc(o.id)}"`:"",tab=o.id?' tabindex="0"':"",hasImportedDetails=imported&&rows.length;
+    ].filter(([,v])=>hasText(v)&&!/原文未载明确/.test(String(v))).slice(0,4),src=objectImageSource(o),objectDetail=o.id?` data-object-detail="${esc(o.id)}"`:"",dossierDetail=!o.id&&o.dossierOwnerId?` data-dossier-detail-owner="${esc(o.dossierOwnerId)}" data-dossier-detail-index="${Number(o.dossierIndex)||0}"`:"",detail=objectDetail||dossierDetail,tab=detail?' tabindex="0"':"",hasImportedDetails=imported&&rows.length;
     const note=o.dossierOnly&&!rows.length?`<p class="brief-object-empty dossier-only-note">地块内部资料</p>`:"";
     return `<article class="brief-museum-object ${o.dossierOnly?'dossier-only':''} ${hasImportedDetails?'has-imported-details':''}"${detail}${tab}><div class="brief-object-image ${src?'has-image':'is-placeholder'}"${src?` data-museum-image-preview="${esc(src)}" data-museum-image-name="${esc(o.name)}" role="button" tabindex="0" title="点击查看完整图片"`:""}>${src?`<img src="${esc(src)}" alt="${esc(o.name)}" loading="lazy" decoding="async">`:""}<div class="brief-image-placeholder"><i>${cat.glyph}</i><span>待补图</span></div></div><div class="brief-object-copy" tabindex="0" aria-label="${esc(o.name)}完整资料"><div class="brief-object-title"><strong>${esc(o.name)}</strong><small>${esc(o.sourceCategory||o.type||cat.label)}</small></div>${rows.length?`<div class="brief-object-rows">${rows.map(([k,v],index)=>`<div><b><em>${index+1}.</em>${esc(k)}</b><span title="${esc(v)}">${chapterReferenceHTML(shortText(v,220))}</span></div>`).join("")}</div>`:""}${note}</div></article>`
   }
@@ -3459,6 +3476,34 @@
     const drawerBody=overlay.querySelector('#identityDrawerBody');drawerBody.innerHTML=rows.length?rows.map(([k,v])=>`<section><h3>${esc(k)}</h3><p>${["出自","所属经篇","原文","古注","其他古籍","异文","资料来源"].includes(k)?chapterReferenceHTML(v):esc(v).replace(/\n/g,"<br>")}</p></section>`).join(""):`<div class="dossier-empty">该对象尚未录入更多资料。</div>`;bindIdentityBoardEvents(drawerBody);overlay.classList.remove('hidden')
   }
 
+  function openIdentityDossierEntryDrawer(ownerId,index){
+    const owner=state.objects.find(x=>x.id===ownerId),entry=owner?.dossier?.museumEntries?.[Number(index)];
+    if(!owner||!entry||isNinePlaceholderEntryName(entry.name))return;
+    let overlay=document.getElementById("identityObjectDrawer");
+    if(!overlay){
+      overlay=document.createElement("section");overlay.id="identityObjectDrawer";overlay.className="identity-object-drawer hidden";
+      overlay.innerHTML=`<div class="identity-drawer-backdrop" data-close-identity-drawer></div><aside><header><div><span class="eyebrow">OBJECT MONOGRAPH</span><h2 id="identityDrawerTitle"></h2><p id="identityDrawerMeta"></p></div><button class="icon-btn" data-close-identity-drawer>×</button></header><div id="identityDrawerBody"></div></aside>`;
+      document.body.appendChild(overlay);
+      overlay.querySelectorAll("[data-close-identity-drawer]").forEach(x=>x.addEventListener("click",()=>overlay.classList.add("hidden")))
+    }
+    const profileOriginal=owner?.dossier?.profile?.tileOriginalExcerpt||"",originalExcerpt=originalExcerptForEntry(profileOriginal,entry.name,entry.localRelation),source=dossierEvidenceSourceText(entry.evidence),sourceFiles=[...(owner?.dossier?.sourceFiles||[]),owner?.dossier?.sourceFile].filter(Boolean);
+    overlay.querySelector("#identityDrawerTitle").textContent=entry.name;
+    overlay.querySelector("#identityDrawerMeta").textContent=`${entry.sourceCategory||"博物志条目"} · 地块内部资料 · ${owner.name}`;
+    const rows=[
+      ["资料属性","地块内部资料，不是独立地图对象"],
+      ["所属地块",owner.name],
+      ["与本地关系",entry.localRelation],
+      ["核心特征",entry.coreFeatures],
+      ["功效／性质",entry.efficacy],
+      ["出自",source],
+      ["原文",originalExcerpt],
+      ["来源文件",sourceFiles.join(" / ")]
+    ].filter(([,value])=>hasText(value)&&!isNinePlaceholderEntryName(value));
+    const drawerBody=overlay.querySelector("#identityDrawerBody");
+    drawerBody.innerHTML=rows.length?rows.map(([key,value])=>`<section><h3>${esc(key)}</h3><p>${["出自","原文"].includes(key)?chapterReferenceHTML(value):esc(value).replace(/\n/g,"<br>")}</p></section>`).join(""):`<div class="dossier-empty">该条目尚未录入更多资料。</div>`;
+    bindIdentityBoardEvents(drawerBody);overlay.classList.remove("hidden")
+  }
+
   function renderIdentityBoard(profile,items,tile,main,{prefix="dossier"}={}){
     const complete=profileCompleteness(profile),name=main?.name||profile.tileType||`地块 ${tile.key}`,type=profile.tileType||main?.type||"未分类地块",oneLine=profile.oneLineSummary||profile.briefSummary||shortText(profile.geoEnvironment||main?.derivation||"尚未形成一句话摘要",150),chapters=CHAPTERS_18.filter(ch=>items.some(o=>String(o.chapter||"").includes(ch))),tags=splitTags(profile.localTags).slice(0,10),sourcePercent=Math.max(0,Math.min(100,Number(String(profile.relationCompleteness||"").replace("%",""))||complete.percent));
     const identityRows=[["区域定位",profile.regionPosition],["地貌类型",profile.tileType||type],["水文特征",profile.hydrology],["方位范围",profile.orientation],["典籍出处",profile.sourceCitation],["所属经篇",chapters.join(" / ")],["主格坐标",tileCoordCode(tile.gx,tile.gy)]].filter(([,v])=>hasText(v));
@@ -3577,7 +3622,9 @@
       requestAnimationFrame(()=>{const reading=els.dossierContent?.querySelector('[data-category-reading]');if(reading){const paneRect=pane?.getBoundingClientRect(),readRect=reading.getBoundingClientRect();if(pane&&paneRect)pane.scrollTo({top:pane.scrollTop+readRect.top-paneRect.top-14,behavior:changed?'smooth':'auto'});else reading.scrollIntoView({behavior:'smooth',block:'start'})}})
     }));
     root.querySelectorAll('[data-category-jump]').forEach(btn=>btn.addEventListener('dblclick',()=>{const target=root.querySelector(`#${CSS.escape(btn.dataset.categoryJump)}`);target?.scrollIntoView({behavior:'smooth',block:'start'})}));
-    root.querySelectorAll('[data-object-detail]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();openIdentityObjectDrawer(btn.dataset.objectDetail)}));root.querySelectorAll('.brief-object-image img').forEach(img=>img.addEventListener('error',()=>{const frame=img.closest('.brief-object-image');frame?.classList.remove('has-image');frame?.classList.add('image-error','is-placeholder');frame?.removeAttribute('data-museum-image-preview');frame?.removeAttribute('role');frame?.removeAttribute('tabindex');frame?.removeAttribute('title');img.remove()}));
+    root.querySelectorAll('[data-object-detail]').forEach(btn=>{const open=e=>{e.preventDefault();e.stopPropagation();openIdentityObjectDrawer(btn.dataset.objectDetail)};btn.addEventListener('click',open);btn.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')open(e)})});
+    root.querySelectorAll('[data-dossier-detail-owner]').forEach(btn=>{const open=e=>{e.preventDefault();e.stopPropagation();openIdentityDossierEntryDrawer(btn.dataset.dossierDetailOwner,btn.dataset.dossierDetailIndex)};btn.addEventListener('click',open);btn.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')open(e)})});
+    root.querySelectorAll('.brief-object-image img').forEach(img=>img.addEventListener('error',()=>{const frame=img.closest('.brief-object-image');frame?.classList.remove('has-image');frame?.classList.add('image-error','is-placeholder');frame?.removeAttribute('data-museum-image-preview');frame?.removeAttribute('role');frame?.removeAttribute('tabindex');frame?.removeAttribute('title');img.remove()}));
     root.querySelectorAll('[data-museum-image-preview]').forEach(frame=>{const open=event=>{event.preventDefault();event.stopPropagation();openMuseumImageViewer(frame.dataset.museumImagePreview,frame.dataset.museumImageName)};frame.addEventListener('click',open);frame.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){open(event)}})});
     // 滚轮由全局博物志滚动路由统一处理，避免重复绑定导致卡片或栏目无法继续下滚。
     root.querySelectorAll('[data-overlap-flip]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const id=btn.dataset.overlapFlip,current=state.overlapViews[id]||{flipped:false,index:0};state.overlapViews[id]={...current,flipped:!current.flipped};rerenderActiveBoard()}));
@@ -3893,9 +3940,21 @@
       entry.status=(entry.issues||[]).some(i=>i.level==="error")?"error":(entry.issues||[]).some(i=>i.level==="warn")?"warn":"ok"
     });return analysis
   }
-  function analyzeImportText(){updateImportCharCount();const text=els.importText.value;if(!text.trim()){state.importAnalysis=null;renderImportAnalysis(null);return}state.importAnalysis=applyImportPolicyToAnalysis(parseMarkdown(normalizeNineSectionMarkdown(text)));const entries=state.importAnalysis.entries||[];state.importSelectedIndex=Math.min(state.importSelectedIndex,Math.max(0,entries.length-1));renderImportAnalysis(state.importAnalysis)}
+  function analyzeImportText(){
+    updateImportCharCount();
+    const text=els.importText.value;
+    if(!text.trim()){
+      state.importAnalysis=null;
+      renderImportAnalysis(null);
+      return;
+    }
+    state.importAnalysis=applyImportPolicyToAnalysis(parseMarkdown(text));
+    const entries=state.importAnalysis.entries||[];
+    state.importSelectedIndex=Math.min(state.importSelectedIndex,Math.max(0,entries.length-1));
+    renderImportAnalysis(state.importAnalysis);
+  }
   function compactSupplementText(value){return String(value||"").normalize("NFKC").replace(/\s+/g,"").replace(/[，。；：、,.!?！？;:\-—–]/g,"")}
-  function isSupplementPlaceholderText(value){const key=compactSupplementText(value);return /^(?:资料待补充|待补充|原文未载明确|原文未载|未载明确|暂无明确记载|无明确记载|原文未明确记载|暂无相关记载|无相关记载|—|-)$/.test(key)}
+  function isSupplementPlaceholderText(value){return isNinePlaceholderEntryName(value)}
   function mergeSupplementText(current,incoming){const a=String(current||"").trim(),b=String(incoming||"").trim();if(!b||isSupplementPlaceholderText(b))return a;if(!a||isSupplementPlaceholderText(a))return b;const ak=compactSupplementText(a),bk=compactSupplementText(b);if(!bk||ak===bk||ak.includes(bk))return a;if(bk.includes(ak))return b;return `${a}\n\n${b}`}
   function mergeSupplementTags(current,incoming){const out=[],seen=new Set();`${current||""}/${incoming||""}`.split(/[\/／#，,\n]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>{const k=normalizeDossierImportName(x);if(!seen.has(k)){seen.add(k);out.push(x)}});return out.join(" / ")}
   function mergeSupplementScalar(current,incoming){return hasText(current)?current:(incoming??current)}
@@ -3906,8 +3965,8 @@
   function mergeSupplementDossier(previous,incoming){
     const old=structuredClone(previous||{}),next=structuredClone(incoming||{}),profile={...old.profile};
     Object.entries(next.profile||{}).forEach(([key,value])=>{if(hasText(value))profile[key]=key==="localTags"?mergeSupplementTags(profile[key],value):mergeSupplementText(profile[key],value)});
-    const museum=Array.isArray(old.museumEntries)?old.museumEntries.map(x=>({...structuredClone(x),sourceCategory:normalizedDossierCategoryLabel(x.sourceCategory)})):[],index=new Map(museum.map((e,i)=>[`${normalizedDossierCategoryLabel(e.sourceCategory)}|${normalizeDossierImportName(e.name)}`,i]));
-    (next.museumEntries||[]).forEach(item=>{const normalizedItem={...structuredClone(item),sourceCategory:normalizedDossierCategoryLabel(item.sourceCategory)},key=`${normalizedItem.sourceCategory}|${normalizeDossierImportName(normalizedItem.name)}`,at=index.get(key);if(at===undefined){index.set(key,museum.length);museum.push(normalizedItem);return}const merged={...museum[at]};["localRelation","coreFeatures","evidence","efficacy"].forEach(field=>{merged[field]=mergeSupplementText(merged[field],normalizedItem[field])});if(normalizedItem.linkReason==="tile-content"){merged.linkedObjectId="";merged.linkReason="tile-content"}else{merged.linkedObjectId=merged.linkedObjectId||normalizedItem.linkedObjectId||"";merged.linkReason=merged.linkReason||normalizedItem.linkReason||""}merged.imageUrl=merged.imageUrl||normalizedItem.imageUrl||"";museum[at]=merged});
+    const museum=Array.isArray(old.museumEntries)?old.museumEntries.filter(x=>!isNinePlaceholderEntryName(x?.name)).map(x=>({...structuredClone(x),sourceCategory:normalizedDossierCategoryLabel(x.sourceCategory)})):[],index=new Map(museum.map((e,i)=>[`${normalizedDossierCategoryLabel(e.sourceCategory)}|${normalizeDossierImportName(e.name)}`,i]));
+    (next.museumEntries||[]).filter(item=>!isNinePlaceholderEntryName(item?.name)).forEach(item=>{const normalizedItem={...structuredClone(item),sourceCategory:normalizedDossierCategoryLabel(item.sourceCategory)},key=`${normalizedItem.sourceCategory}|${normalizeDossierImportName(normalizedItem.name)}`,at=index.get(key);if(at===undefined){index.set(key,museum.length);museum.push(normalizedItem);return}const merged={...museum[at]};["localRelation","coreFeatures","evidence","efficacy"].forEach(field=>{merged[field]=mergeSupplementText(merged[field],normalizedItem[field])});if(normalizedItem.linkReason==="tile-content"){merged.linkedObjectId="";merged.linkReason="tile-content"}else{merged.linkedObjectId=merged.linkedObjectId||normalizedItem.linkedObjectId||"";merged.linkReason=merged.linkReason||normalizedItem.linkReason||""}merged.imageUrl=merged.imageUrl||normalizedItem.imageUrl||"";museum[at]=merged});
     const sources=[];[...(old.sourceFiles||[]),old.sourceFile,...(next.sourceFiles||[]),next.sourceFile].filter(Boolean).forEach(v=>{if(!sources.includes(v))sources.push(v)});
     return {...old,format:old.format||next.format||"nine-section-v1",sourceFile:next.sourceFile||old.sourceFile||"",sourceFiles:sources,profile,museumEntries:museum}
   }
@@ -4718,7 +4777,7 @@
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.5",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.6",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();

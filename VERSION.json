@@ -2,8 +2,8 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v007",
-  "semver": "0.7.5",
-  "frontend_base": "v075-version-synchronized-semantic-binding-detail-grid",
+  "semver": "0.7.6",
+  "frontend_base": "v076-safe-import-semantic-fallback-detail-grid",
   "data_version": "v125-r0001",
   "object_count": 617,
   "original_library_records": 4120,
@@ -31,9 +31,11 @@
   "import_policy": "safe supplement mode by default; existing objects/tiles only; uniquely identified parent object may receive non-spatial child-location records; no coordinate/geometry/area/path creation",
   "markdown_compatibility": "nine-section headings support ##/###/plain/bold forms, 01/1 numbering, Chinese or Western punctuation, blank-line-separated entry fields and category aliases; up to 300 files / 50MB per batch",
   "object_hierarchy": "any unique existing parent object may contain nested non-spatial child locations/segments; explicit create/bind/skip resolution in Markdown inspector; legacy v0.7.3 water segments remain readable",
-  "museum_display": "详细页分类每行最多3个，第4个自动换行；分类内部卡片纵向排列",
-  "markdown_parser": "v0.7.5 mixed-heading-punctuation-v2 + filename-to-existing-tile semantic binding + section-06 internal entries + section-07 original quote matching",
+  "museum_display": "max 3 categories per row; category 4 wraps; cards remain vertical",
+  "markdown_parser": "v0.7.6 audited nine-section parser; content-hash hard validation; exact snapshot binding; unique semantic fallback; section 06 internal-only",
   "startup_recovery": "v0.7.5 database bootstrap timeout protection, local-cache read-only recovery, main-script retry, no automatic overwrite of SQLite during degraded startup",
   "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
-  "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering"
+  "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
+  "safe_import_policy": "审核正文指纹仍为硬校验；完整目标指纹变化时仅在名称、经篇、类型唯一匹配后允许补充，并显示警告；不修改坐标、名称、经篇、类型、几何或对象数量",
+  "release_scope": "145 audited Markdown safe-import recognition and semantic fallback"
 }
