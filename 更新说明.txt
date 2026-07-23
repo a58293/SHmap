@@ -1,15 +1,26 @@
-SHmap v0.7.4｜GitHub Actions 校验修复
+SHmap v0.7.4｜GitHub构建校验格式兼容修复
 
-本次仅修复：
-desktop-app/scripts/verify-v0.7.4-museum-accordion.mjs
+本次截图中的失败项为：
+- 审计信息下沉详细
+- 对象详情核心特征优先Markdown
+- 对象详情显示Markdown出处
 
-处理内容：
-1. 恢复博物志折叠菜单的正确校验脚本。
-2. 增加一行无功能影响的版本注释，使 GitHub Desktop 能明确识别本次文件变更。
-3. 不修改客户端功能、地图数据或版本号。
+实际客户端代码中这三项功能已经存在。
+失败原因是 verify-v0.7.4-card-fields.mjs 依赖固定换行和缩进提取函数；
+GitHub仓库中的 app.js 格式被压缩后，校验脚本无法截取对象详情函数，
+因此产生误报并以退出码1终止构建。
+
+本次修改：
+1. 改为按函数名称和下一个函数边界提取代码。
+2. 不再依赖换行、缩进或代码是否压缩。
+3. 不修改客户端功能、地图数据、样式和版本号。
 
 覆盖目录：
 F:\SHmap\SHmap
 
-覆盖后回到 GitHub Desktop：
-Changes → Commit to main → Push origin
+本地完整校验结果：
+- 617个对象
+- 79段水系
+- 118个箭头格
+- npm run verify：通过
+- 单行压缩格式模拟校验：通过

@@ -1,8 +1,14 @@
 import fs from "node:fs";
 const app=fs.readFileSync(new URL("../public/app/app.js",import.meta.url),"utf8");
 const css=fs.readFileSync(new URL("../public/app/styles.css",import.meta.url),"utf8");
-const cardBlock=(app.match(/function briefMuseumObjectHTML\(o,cat\)\{[\s\S]*?\n  \}/)||[""])[0];
-const drawerBlock=(app.match(/function openIdentityObjectDrawer\(id\)\{[\s\S]*?overlay\.classList\.remove\('hidden'\)\n  \}/)||[""])[0];
+function functionBlock(source,name,nextName){
+  const start=source.indexOf(`function ${name}(`);
+  if(start<0)return "";
+  const next=nextName?source.indexOf(`function ${nextName}(`,start+1):-1;
+  return source.slice(start,next>start?next:Math.min(source.length,start+30000));
+}
+const cardBlock=functionBlock(app,"briefMuseumObjectHTML","categoryEmptyText");
+const drawerBlock=functionBlock(app,"openIdentityObjectDrawer","renderIdentityBoard");
 const checks=[
   ["Markdown字段不回退母表",/localRelation:e\.localRelation\|\|"",coreFeatures:e\.coreFeatures\|\|""/.test(app)&&/evidence:e\.evidence\|\|""/.test(app)],
   ["空分类过滤",/filter\(cat=>cat\.objects\.length\)/.test(app)&&/if\(!total\)return ""/.test(app)],
