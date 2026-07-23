@@ -13,25 +13,30 @@ vm.runInNewContext(dataSource, context, { filename: dataPath });
 const objects = context.window.SHJ_INITIAL_DATA?.objects || [];
 
 assert.equal(objects.length, 617, '对象数量应保持617');
-assert.ok(objects.some(o => o.name === '九嶷山' && /^山/.test(String(o.type || ''))), '客户端应包含山地对象“九嶷山”');
-const emperorShunNamed = objects.filter(o => String(o.name || '').includes('帝舜'));
-assert.ok(emperorShunNamed.length >= 1, '应存在帝舜相关地点对象');
-assert.ok(emperorShunNamed.every(o => /台|迹|区域/.test(String(o.type || ''))), '现有帝舜相关对象应为地点／遗迹，而非独立人物对象');
 
 for (const token of [
-  'function dossierAliasTargetNames(name)',
-  '"九疑山":["九嶷山"]',
-  'function dossierObjectAliasNames(object)',
-  'function dossierUnlinkedEntryMessage(entry,linked)',
-  '"category-mismatch"',
-  '地点、祭台或遗迹不会被误绑定为人物',
-  'function resolvedDossierEntryObject(entry,owner)',
-  'resolvedDossierEntryObject(e,main)',
+  '九段式地块补充语义：文件名匹配唯一已有地块',
+  'linkReason:"tile-content"',
+  'linkedObjectId:""',
+  'if(entry?.linkReason==="tile-content")return null',
+  'if(normalizedItem.linkReason==="tile-content")',
+  '地块内部资料',
+  '第06节分类条目直接作为该地块内部资料显示，不需要匹配独立地图对象。',
 ]) {
-  assert.ok(app.includes(token), `缺少条目绑定修正：${token}`);
+  assert.ok(app.includes(token), `缺少地块博物志内部条目语义：${token}`);
 }
 
-assert.ok(!app.includes('"九疑山":"九嶷山/九疑山"'), '不得保留无法命中真实对象名的旧别名');
-assert.ok(!app.includes('（存在多个可能对象）'), '不得继续使用不区分类型的歧义提示');
+const parseStart = app.indexOf('function parseNineSectionDocument(doc)');
+const parseEnd = app.indexOf('function parseMarkdown(text)', parseStart);
+assert.ok(parseStart >= 0 && parseEnd > parseStart, '应能定位九段式解析函数');
+const parser = app.slice(parseStart, parseEnd);
+assert.ok(!parser.includes('resolveDossierEntryLink(e.name'), '第06节条目不得再尝试匹配独立地图对象');
+assert.ok(!parser.includes('只识别到名称，没有识别到'), '名称本身应是有效的地块内部条目，不得报详情字段缺失');
+assert.ok(!parser.includes('dossierUnlinkedEntryMessage(e,linked)'), '地块内部条目不得产生未绑定对象警告');
 
-console.log('v0.7.4 条目别名与类型安全绑定校验通过：九疑山→九嶷山；帝舜台不误绑为人物。');
+const visibleStart = app.indexOf('function museumObjectHasVisibleDetails(o)');
+const visibleEnd = app.indexOf('function briefMuseumObjectHTML', visibleStart);
+const visibleBlock = app.slice(visibleStart, visibleEnd);
+assert.ok(visibleBlock.includes('return !!o?.name'), '只有名称的地块内部条目也必须显示');
+
+console.log('v0.7.5 九段式地块补充校验通过：文件名匹配地块，第06节仅作为地块内部内容，不要求独立对象绑定。');

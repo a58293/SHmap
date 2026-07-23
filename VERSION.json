@@ -2,8 +2,8 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v007",
-  "semver": "0.7.4",
-  "frontend_base": "v074-collapsible-museum-category-menu-patch",
+  "semver": "0.7.5",
+  "frontend_base": "v075-tile-dossier-internal-entry-import-fix",
   "data_version": "v125-r0001",
   "object_count": 617,
   "original_library_records": 4120,
@@ -20,7 +20,7 @@
   "ux_bundle": "v0.6.0 object focus, research/display view, image manager and delete impact preview",
   "relation_interaction": "v0.6.1 click-to-explain cards, wider hit areas, edge routing and persistent relation focus",
   "toolbar_ux": "v0.6.1 responsive groups, More menu, delayed help tips and collapsible legend",
-  "visual_theme": "v0.7.4 原文直载条目直接显示 Markdown 第07节《山海经》原文摘录，不再只显示“原文”二字",
+  "visual_theme": "v0.7.5 地块详细页每行固定三等分，三类铺满整行，超出自动换行",
   "environment_layer": "v0.7.4 existing saved dossier entries are re-resolved at display time using exact name, canonical alias and matching object category",
   "river_guidance": "all 79 existing water paths use muted ink-water rendering in overview and gradually return to functional lines while zooming in",
   "performance": "startup database read has an 8-second watchdog; SQLite busy timeout is 3 seconds; main script retries once; map falls back to local cache instead of remaining blank",
@@ -31,9 +31,10 @@
   "import_policy": "safe supplement mode by default; existing objects/tiles only; uniquely identified parent object may receive non-spatial child-location records; no coordinate/geometry/area/path creation",
   "markdown_compatibility": "nine-section headings support ##/###/plain/bold forms, 01/1 numbering, Chinese or Western punctuation, blank-line-separated entry fields and category aliases; up to 300 files / 50MB per batch",
   "object_hierarchy": "any unique existing parent object may contain nested non-spatial child locations/segments; explicit create/bind/skip resolution in Markdown inspector; legacy v0.7.3 water segments remain readable",
-  "museum_display": "compact 96px full-image thumbnails; non-empty categories use vertical collapsible menus; no horizontal category scrolling; click image for contain preview",
+  "museum_display": "non-empty categories only; maximum three columns per row; additional categories wrap below; long category lists use vertical wheel scrolling; no horizontal scrolling",
   "markdown_parser": "v0.7.4 mixed-heading-punctuation-v2 + canonical-name alias binding + category-safe candidate filtering + section-07 original quote matching",
   "startup_recovery": "v0.7.4 database bootstrap timeout protection, local-cache read-only recovery, main-script retry, no automatic overwrite of SQLite during degraded startup",
-  "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
-  "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering"
+  "museum_interaction": "detail-page categories remain expanded; empty categories are hidden; long lists scroll vertically; image preview and layered right-click return remain unchanged",
+  "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
+  "markdown_import": "九段式 Markdown 以文件名匹配唯一已有地块；第06节所有条目均作为该地块内部博物志内容，不要求匹配独立对象，不创建对象、坐标、面积或路径。"
 }
