@@ -240,6 +240,7 @@
     layerAreas:$("#layerAreas"), layerTerrain:$("#layerTerrain"), layerRivers:$("#layerRivers"), layerEnvironment:$("#layerEnvironment"), layerEmpty:$("#layerEmpty"), layerChanges:$("#layerChanges"),
     emptyDetail:$("#emptyDetail"), detailContent:$("#detailContent"), detailRef:$("#detailRef"), detailName:$("#detailName"), detailMeta:$("#detailMeta"), detailLocation:$("#detailLocation"), detailBody:$("#detailBody"), detailTabs:$("#detailTabs"), detailHeadActions:$("#detailHeadActions"), editTileBtn:$("#editTileBtn"), openDossierBtn:$("#openDossierBtn"), openRangeEditorBtn:$("#openRangeEditorBtn"), deleteTileBtn:$("#deleteTileBtn"),
     dossierWorkspace:$("#dossierWorkspace"), closeDossierBtn:$("#closeDossierBtn"), dossierPageTitle:$("#dossierPageTitle"), dossierPageMeta:$("#dossierPageMeta"), dossierCoordBadge:$("#dossierCoordBadge"), dossierCardTitle:$("#dossierCardTitle"), dossierBrief:$("#dossierBrief"), dossierStandard:$("#dossierStandard"), dossierBadges:$("#dossierBadges"), dossierCompletenessText:$("#dossierCompletenessText"), dossierCompletenessBar:$("#dossierCompletenessBar"), dossierCompletenessMeta:$("#dossierCompletenessMeta"), dossierObjectCount:$("#dossierObjectCount"), dossierObjectIndex:$("#dossierObjectIndex"), dossierLocateBtn:$("#dossierLocateBtn"), dossierChapterBadge:$("#dossierChapterBadge"), dossierHeroTitle:$("#dossierHeroTitle"), dossierContent:$("#dossierContent"), copyPromptBtn:$("#copyPromptBtn"), copyBriefBtn:$("#copyBriefBtn"), editDossierBtn:$("#editDossierBtn"), dossierModeBrief:$("#dossierModeBrief"), dossierModeFull:$("#dossierModeFull"),
+    scriptureWorkspace:$("#scriptureWorkspace"), closeScriptureBtn:$("#closeScriptureBtn"), scripturePageTitle:$("#scripturePageTitle"), scripturePageMeta:$("#scripturePageMeta"), scriptureCopyBtn:$("#scriptureCopyBtn"), scriptureMapBtn:$("#scriptureMapBtn"), scriptureChapterNav:$("#scriptureChapterNav"), scriptureHero:$("#scriptureHero"), scriptureSearchInput:$("#scriptureSearchInput"), scriptureCategoryFilter:$("#scriptureCategoryFilter"), scriptureContent:$("#scriptureContent"),
     drillModal:$("#drillModal"), drillTitle:$("#drillTitle"), drillSubtitle:$("#drillSubtitle"), innerGrid:$("#innerGrid"), innerCoord:$("#innerCoord"), drillCount:$("#drillCount"), drillObjectList:$("#drillObjectList"), drillAddBtn:$("#drillAddBtn"),
     objectModal:$("#objectModal"), objectModalTitle:$("#objectModalTitle"), objectForm:$("#objectForm"), deleteObjectBtn:$("#deleteObjectBtn"), formObjectId:$("#formObjectId"), formName:$("#formName"), formType:$("#formType"), formX:$("#formX"), formY:$("#formY"), formChapter:$("#formChapter"), formGeometry:$("#formGeometry"), formLock:$("#formLock"), formOriginal:$("#formOriginal"), formDerivation:$("#formDerivation"), geometryRangeHint:$("#geometryRangeHint"),
     tileProfileModal:$("#tileProfileModal"), tileProfileForm:$("#tileProfileForm"), tileProfileTitle:$("#tileProfileTitle"), tileProfileKey:$("#tileProfileKey"), tileBriefSummary:$("#tileBriefSummary"), tileBasicSummary:$("#tileBasicSummary"), tileDetailedSummary:$("#tileDetailedSummary"), tileGeoEnvironment:$("#tileGeoEnvironment"), tileArchitecture:$("#tileArchitecture"), tileLivingSpecies:$("#tileLivingSpecies"), tileCountry:$("#tileCountry"), tileFaith:$("#tileFaith"), tileRuler:$("#tileRuler"), tileGuardian:$("#tileGuardian"), tileBeasts:$("#tileBeasts"), tileDivinePlants:$("#tileDivinePlants"), tileHerbs:$("#tileHerbs"), tileMinerals:$("#tileMinerals"), tileSpecialLife:$("#tileSpecialLife"), tileCustoms:$("#tileCustoms"), tileMythicEncounters:$("#tileMythicEncounters"), tileOccurredEvents:$("#tileOccurredEvents"), tileTimeNormal:$("#tileTimeNormal"), tilePlayerReachable:$("#tilePlayerReachable"), tileStoryOther:$("#tileStoryOther"), playerFields:$("#playerFields"), tilePlayerEnemies:$("#tilePlayerEnemies"), tilePlayerPlots:$("#tilePlayerPlots"), tilePlayerLoot:$("#tilePlayerLoot"), scriptureEventFields:$("#scriptureEventFields"),
@@ -298,6 +299,9 @@
     dossierTab:"overview",
     dossierMode:saved?.dossierMode||"brief",
     dossierPrecisionGroup:null,
+    scriptureChapter:"",
+    scriptureQuery:"",
+    scriptureCategory:"all",
     filters:{q:"",chapter:"",type:""},
     indexMode:saved?.indexMode==="regions"?"regions":"objects",
     selectedRegionId:saved?.selectedRegionId||null,
@@ -2490,28 +2494,56 @@
     if(qualified){const parents=state.objects.filter(o=>normalizeDossierImportName(o.name)===normalizeDossierImportName(qualified.parentName));if(parents.length===1)return {targetName,target:null,matches:exact,parentObject:parents[0],child:null,childMatches,qualified}}
     return {targetName,target:null,matches:exact,parentObject:null,child:null,childMatches,qualified:qualified||null}
   }
-  function dossierAliasTargetName(name){
+  function dossierAliasTargetNames(name){
     const aliases={
-      "九疑山":"九嶷山/九疑山","舜葬遗迹":"舜葬","丹朱葬":"帝丹朱葬","后稷葬":"后稷之葬",
-      "兕":"兕（舜葬东）","犀牛":"犀牛（狌狌西北）","狌狌":"狌狌/猩猩（都广东轴）",
-      "氾林（汜林）":"氾林/汜林"
+      "九疑山":["九嶷山"],"舜葬遗迹":["舜葬"],"丹朱葬":["帝丹朱葬"],"后稷葬":["后稷之葬"],
+      "兕":["兕（舜葬东）"],"犀牛":["犀牛（狌狌西北）"],"狌狌":["狌狌/猩猩（都广东轴）"],
+      "氾林（汜林）":["氾林/汜林"]
     };
-    return aliases[normalizeDossierImportName(name)]||""
+    return aliases[normalizeDossierImportName(name)]||[]
+  }
+  function dossierObjectAliasNames(object){
+    const values=[object?.aliases,object?.sameName,object?.variants,object?.alternateNames];
+    return values.flatMap(value=>String(value||"").split(/[／/、,，;；\n]+/)).map(normalizeDossierImportName).filter(Boolean)
   }
   function resolveDossierEntryLink(name,target,sourceCategory){
-    const needle=normalizeDossierImportName(name),desired=dossierCategoryKey(sourceCategory),compatible=o=>!o||objectCategory(o)===desired;if(!needle)return {object:null,reason:"empty"};
-    const exact=state.objects.filter(o=>normalizeDossierImportName(o.name)===needle);
-    if(exact.length===1&&compatible(exact[0]))return {object:exact[0],reason:"exact"};
-    const alias=dossierAliasTargetName(name);
-    if(alias){const hit=state.objects.find(o=>normalizeDossierImportName(o.name)===alias);if(hit&&compatible(hit))return {object:hit,reason:"alias"}}
-    if(target&&normalizeDossierImportName(target.name).includes(needle)&&compatible(target))return {object:target,reason:"target"};
+    const needle=normalizeDossierImportName(name),desired=dossierCategoryKey(sourceCategory),compatible=o=>!!o&&objectCategory(o)===desired;
+    if(!needle)return {object:null,reason:"empty",candidates:[]};
+    const exactAll=state.objects.filter(o=>normalizeDossierImportName(o.name)===needle),exact=exactAll.filter(compatible);
+    if(exact.length===1)return {object:exact[0],reason:"exact",candidates:exact};
+    if(exact.length>1)return {object:null,reason:"ambiguous",candidates:exact};
+    for(const aliasName of dossierAliasTargetNames(name)){
+      const aliasNeedle=normalizeDossierImportName(aliasName),hits=state.objects.filter(o=>normalizeDossierImportName(o.name)===aliasNeedle&&compatible(o));
+      if(hits.length===1)return {object:hits[0],reason:"alias",candidates:hits};
+      if(hits.length>1)return {object:null,reason:"ambiguous",candidates:hits}
+    }
+    const aliasFieldHits=state.objects.filter(o=>compatible(o)&&dossierObjectAliasNames(o).includes(needle));
+    if(aliasFieldHits.length===1)return {object:aliasFieldHits[0],reason:"object-alias",candidates:aliasFieldHits};
+    if(aliasFieldHits.length>1)return {object:null,reason:"ambiguous",candidates:aliasFieldHits};
+    if(target&&compatible(target)&&normalizeDossierImportName(target.name).includes(needle))return {object:target,reason:"target",candidates:[target]};
     const starts=state.objects.filter(o=>{
+      if(!compatible(o))return false;
       const n=normalizeDossierImportName(o.name),base=n.replace(/[（(].*?[）)]/g,"");
-      return (base===needle||n.startsWith(`${needle}（`)||n.startsWith(`${needle}(`))&&compatible(o)
+      return base===needle||n.startsWith(`${needle}（`)||n.startsWith(`${needle}(`)
     });
-    if(starts.length===1)return {object:starts[0],reason:"qualified"};
-    const rawCandidates=state.objects.filter(o=>normalizeDossierImportName(o.name).includes(needle));
-    return {object:null,reason:exact.length>1||starts.length>1||rawCandidates.length?"ambiguous":"missing"}
+    if(starts.length===1)return {object:starts[0],reason:"qualified",candidates:starts};
+    if(starts.length>1)return {object:null,reason:"ambiguous",candidates:starts};
+    const compatibleContains=state.objects.filter(o=>compatible(o)&&normalizeDossierImportName(o.name).includes(needle));
+    if(compatibleContains.length===1)return {object:compatibleContains[0],reason:"contains",candidates:compatibleContains};
+    if(compatibleContains.length>1)return {object:null,reason:"ambiguous",candidates:compatibleContains};
+    const typeMismatches=state.objects.filter(o=>normalizeDossierImportName(o.name).includes(needle)&&!compatible(o));
+    return {object:null,reason:typeMismatches.length?"category-mismatch":"missing",candidates:typeMismatches}
+  }
+  function dossierUnlinkedEntryMessage(entry,linked){
+    const name=entry?.name||"未命名条目",category=dossierCategoryKey(entry?.sourceCategory),mismatchNames=(linked?.candidates||[]).slice(0,3).map(o=>o.name).filter(Boolean);
+    if(linked?.reason==="ambiguous")return `客户端存在多个同类型候选对象“${name}”，暂不自动绑定；条目文字仍会正常显示。`;
+    if(linked?.reason==="category-mismatch"){
+      const shown=mismatchNames.length?`（现有相近对象：${mismatchNames.join("、")}，但类型不符）`:"";
+      if(category==="people")return `客户端尚未建立独立人物／神祇对象“${name}”${shown}；地点、祭台或遗迹不会被误绑定为人物，条目文字仍会正常显示。`;
+      return `客户端中存在名称相近但分类不符的对象“${name}”${shown}；暂不自动绑定，条目文字仍会正常显示。`
+    }
+    if(category==="people")return `客户端尚未建立可唯一绑定的人物／神祇对象“${name}”；条目文字仍会正常显示，建立独立人物对象后可再绑定跳转。`;
+    return `客户端未找到可安全绑定的独立对象“${name}”；条目文字仍会正常显示。`
   }
   function splitMarkdownImportDocuments(text){
     const src=String(text||"").replace(/\r\n?/g,"\n"),re=/^<!--\s*SHMAP_IMPORT_FILE\s*:\s*(.+?)\s*-->\s*$/gm,matches=[...src.matchAll(re)];
@@ -2521,47 +2553,147 @@
       return {sourceFile:m[1].trim(),text:src.slice(bodyStart,end).trim(),startLine:src.slice(0,bodyStart).split("\n").length}
     })
   }
-  function nineSectionLooksLike(text){return /^\s*#{2,3}\s*0?1\s*[.,，、]?\s*区域定位/m.test(text)&&/^\s*#{2,3}\s*0?6\s*[.,，、]?/m.test(text)&&/^\s*#{2,3}\s*0?9\s*[.,，、]?\s*详细描述/m.test(text)}
+  function trimNineHeadingDecorators(line){
+    let value=String(line||"").trim();
+    value=value.replace(/^>\s*/,"").replace(/^#{1,6}\s*/,"");
+    value=value.replace(/^(?:\*\*|__)\s*/,"").replace(/\s*(?:\*\*|__)\s*$/,"");
+    return value.trim()
+  }
+  function matchNineSectionHeaderLine(line){
+    const titles={1:"区域定位",2:"一句话概要",3:"本地标签",4:"地块属性",5:"数据关系",6:"分别整理以下六类",7:"原文摘录",8:"其他典故",9:"详细描述"};
+    const aliases={
+      1:["区域定位","地理定位","位置定位"],
+      2:["一句话概要","一句话概述","概要","一句话摘要"],
+      3:["本地标签","地点标签","标签"],
+      4:["地块属性","地点属性","对象属性"],
+      5:["数据关系","关系数据","对象关系"],
+      6:["分别整理以下六类","分类整理以下六类","分类整理","分类条目","六类整理","这里有什么"],
+      7:["原文摘录","原典摘录","原文"],
+      8:["其他典故","古注补充","典故补充"],
+      9:["详细描述","详细说明","完整描述"]
+    };
+    const value=trimNineHeadingDecorators(line),m=value.match(/^0?([1-9])\s*(?:[.．,，、:：\-—–]|[)）])?\s*(.*?)\s*$/);
+    if(!m)return null;const number=Number(m[1]),title=String(m[2]||"").replace(/[：:]\s*$/,"").replace(/\s+/g,"").trim(),candidates=aliases[number]||[];
+    const matched=candidates.some(alias=>title===alias||(number===6&&title.startsWith(alias)));
+    return matched?{number,title:titles[number]}:null
+  }
+  function normalizeNineCategoryName(value){
+    const key=String(value||"").replace(/\s+/g,"").replace(/[：:]\s*$/,"").replace(/[（(][^）)]*[）)]\s*$/,"");
+    return {
+      "地貌":"地貌","山水地貌":"地貌","地形地貌":"地貌",
+      "水系":"水系","水域":"水系","河流湖泽":"水系",
+      "草木":"草木","植物":"草木",
+      "鸟兽":"鸟兽","动物":"鸟兽","异兽":"鸟兽",
+      "金玉矿物":"金玉矿物","矿物":"金玉矿物","金玉":"金玉矿物",
+      "人群神祇":"人群神祇","人群与神祇":"人群神祇","神祇人群":"人群神祇",
+      "事件与遗迹":"事件遗迹","事件遗迹":"事件遗迹","事迹":"事件遗迹"
+    }[key]||""
+  }
+  function matchNineCategoryHeaderLine(line){
+    const value=trimNineHeadingDecorators(line),category=normalizeNineCategoryName(value);
+    return category?{category}:null
+  }
+  function stripNineListPrefix(value){
+    return String(value||"").replace(/^\s*[-*+]\s*/,"").replace(/^\s*(?:[（(]\s*[1-9]\s*[）)]|[1-9]\s*(?:[，,、.．:：)）]))\s*/,"").trim()
+  }
+  function matchNineEntryFieldLine(line){
+    const value=stripNineListPrefix(stripInlineMarkdown(line)),m=value.match(/^(与本地关系|核心特征|证据|功效|效用|用途|能力)\s*[：:]\s*(.*)\s*$/);
+    if(!m)return null;const field={"与本地关系":"localRelation","核心特征":"coreFeatures","证据":"evidence","功效":"efficacy","效用":"efficacy","用途":"efficacy","能力":"efficacy"}[m[1]];
+    return {field,value:stripInlineMarkdown(m[2]),label:m[1]}
+  }
+  function matchNinePropertyLine(line){
+    const value=stripNineListPrefix(stripInlineMarkdown(line)),m=value.match(/^([^：:]{1,24})\s*[：:]\s*(.*)\s*$/);
+    return m?{key:stripInlineMarkdown(m[1]),value:stripInlineMarkdown(m[2])}:null
+  }
+  function isNinePlaceholderEntryName(value){
+    const key=String(value||"").normalize("NFKC").replace(/[\s，,。；;：:、\-—–]/g,"");
+    return /^(?:原文)?(?:未载明确|未载|无明确记载|未明确记载|暂无明确记载|暂无相关记载|无相关记载|资料待补充|待补充)$/.test(key)
+  }
+  function normalizedDossierCategoryLabel(value){
+    return normalizeNineCategoryName(value)||String(value||"").trim().replace(/^事件与遗迹$/,"事件遗迹")
+  }
+  function dossierEntryAuditText(entries){
+    return (entries||[]).map(e=>{
+      const link=e.linkedObjectId?` → ${e.linkedObjectId}`:"（未绑定）",rows=[`${normalizedDossierCategoryLabel(e.sourceCategory)}｜${e.name}${link}`];
+      if(e.localRelation)rows.push(`与本地关系：${e.localRelation}`);
+      if(e.coreFeatures)rows.push(`核心特征：${e.coreFeatures}`);
+      if(e.efficacy)rows.push(`功效：${e.efficacy}`);
+      if(e.evidence)rows.push(`证据：${e.evidence}`);
+      return rows.join("\n")
+    }).join("\n\n")
+  }
+  function nineSectionLooksLike(text){
+    const seen=new Set();String(text||"").replace(/\r\n?/g,"\n").split("\n").forEach(line=>{const hit=matchNineSectionHeaderLine(line);if(hit)seen.add(hit.number)});
+    return seen.has(1)&&seen.has(6)&&seen.has(9)
+  }
   function parseNineSectionDocument(doc){
-    const lines=String(doc.text||"").split("\n"),sections={},sectionLines={},sectionHeader=/^\s*#{2,3}\s*0?([1-9])\s*[.,，、]?\s*(.*?)\s*$/,categoryHeader=/^\s*(?:#{2,3}\s*)?(地貌|水系|草木|鸟兽|金玉矿物|人群神祇|事件与遗迹|事件遗迹)\s*$/,numbered=/^\s*([1-9])\s*[，,、.]\s*([^：:]+)\s*[：:]\s*(.*)\s*$/,entryField=/^\s*(?:[-*+]\s*|[1-9]\s*[，,、.]\s*)?(与本地关系|核心特征|证据|功效)\s*[：:]\s*(.*)\s*$/;
-    let current=0;lines.forEach((line,i)=>{const m=line.match(sectionHeader);if(m){const next=Number(m[1]);if(next>current&&!sections[next]){current=next;sections[current]=[];sectionLines[current]=doc.startLine+i}return}if(current)sections[current].push({line:doc.startLine+i,text:line})});
-    const textOf=n=>(sections[n]||[]).map(x=>x.text).join("\n").trim();
-    const numberedFields=n=>{const out={};let key="";(sections[n]||[]).forEach(row=>{const m=row.text.match(numbered);if(m){key=stripInlineMarkdown(m[2]);out[key]=stripInlineMarkdown(m[3]);return}if(key&&row.text.trim()&&!row.text.trim().startsWith("#"))out[key]=`${out[key]}\n${stripInlineMarkdown(row.text)}`.trim()});return out};
-    const p4=numberedFields(4),p5=numberedFields(5),entries=[];let category="",entry=null,lastField="";
-    (sections[6]||[]).forEach(row=>{
-      const raw=row.text,trim=raw.trim(),cm=raw.match(categoryHeader);if(cm){category=cm[1]==="事件与遗迹"?"事件遗迹":cm[1];entry=null;lastField="";return}
-      if(!trim||/^#{1,6}\s*0?[1-9]\s*[.,，、]?/.test(trim))return;const clean=stripInlineMarkdown(raw),fm=clean.match(entryField);
-      if(fm&&entry){const field=stripInlineMarkdown(fm[1]),value=stripInlineMarkdown(fm[2]),map={"与本地关系":"localRelation","核心特征":"coreFeatures","证据":"evidence","功效":"efficacy"};lastField=map[field]||"";if(lastField)entry[lastField]=value;return}
-      if(entry&&/^备注(?:\[.*?\])?\s*[：:]/.test(clean)){entry.evidence=mergeSupplementText(entry.evidence,clean);lastField="evidence";return}
-      if(entry&&lastField&&/^\s+/.test(raw)){entry[lastField]=`${entry[lastField]}\n${clean}`.trim();return}
-      if(category&&!/^#/.test(trim)){const entryName=normalizeDossierEntryName(clean);if(!entryName||/^(?:与本地关系|核心特征|证据|功效)\s*[：:]/.test(entryName))return;entry={sourceCategory:category,name:entryName,localRelation:"",coreFeatures:"",evidence:"",efficacy:"",imageUrl:"",line:row.line};entries.push(entry);lastField=""}
+    const lines=String(doc.text||"").replace(/\r\n?/g,"\n").split("\n"),sections={},sectionLines={},parseIssues=[];
+    let current=0;
+    lines.forEach((line,i)=>{
+      const hit=matchNineSectionHeaderLine(line);
+      if(hit){const next=hit.number;if(next>current&&!sections[next]){current=next;sections[current]=[];sectionLines[current]=doc.startLine+i}return}
+      if(current)sections[current].push({line:doc.startLine+i,text:line})
     });
-    const cleanEntries=entries.filter(e=>!/^(?:原文未载明确|未载明确|无明确记载|原文未载)$/i.test(e.name.trim()));
-    const targetInfo=importedDossierTargetByFile(doc.sourceFile),issues=[],entryLinkTarget=targetInfo.target||targetInfo.parentObject||null;
+    const textOf=n=>(sections[n]||[]).map(x=>x.text).join("\n").trim();
+    const numberedFields=n=>{
+      const out={};let key="";
+      (sections[n]||[]).forEach(row=>{
+        const hit=matchNinePropertyLine(row.text);
+        if(hit){key=hit.key;out[key]=hit.value;return}
+        const clean=stripInlineMarkdown(row.text);
+        if(key&&clean&&!matchNineSectionHeaderLine(row.text)&&!matchNineCategoryHeaderLine(row.text))out[key]=mergeSupplementText(out[key],clean)
+      });
+      return out
+    };
+    const p4=numberedFields(4),p5=numberedFields(5),entries=[],placeholderCategories=new Set();let category="",entry=null,lastField="",placeholderActive=false;
+    (sections[6]||[]).forEach(row=>{
+      const raw=row.text,trim=raw.trim(),categoryHit=matchNineCategoryHeaderLine(raw);
+      if(categoryHit){category=categoryHit.category;entry=null;lastField="";placeholderActive=false;return}
+      if(!trim||matchNineSectionHeaderLine(raw))return;
+      const fieldHit=matchNineEntryFieldLine(raw);
+      if(fieldHit){
+        if(!entry){if(placeholderActive)return;parseIssues.push({level:"warn",message:`第06节字段“${fieldHit.label}”前缺少条目名称，已跳过该字段。`,line:row.line});return}
+        entry[fieldHit.field]=mergeSupplementText(entry[fieldHit.field],fieldHit.value);lastField=fieldHit.field;return
+      }
+      const clean=stripInlineMarkdown(raw);
+      if(entry&&/^备注(?:\[.*?\])?\s*[：:]/.test(clean)){entry.evidence=mergeSupplementText(entry.evidence,clean);lastField="evidence";return}
+      if(entry&&lastField&&(/^\s{2,}/.test(raw)||/^(?:续|补充说明|补充)\s*[：:]/.test(clean))){entry[lastField]=mergeSupplementText(entry[lastField],clean);return}
+      if(category&&!/^#{1,6}\s/.test(trim)){
+        const entryName=normalizeDossierEntryName(clean);
+        if(!entryName||/^(?:与本地关系|核心特征|证据|功效|效用|用途|能力)\s*[：:]/.test(entryName))return;
+        if(isNinePlaceholderEntryName(entryName)){placeholderCategories.add(category);entry=null;lastField="";placeholderActive=true;return}
+        entry={sourceCategory:category,name:entryName,localRelation:"",coreFeatures:"",evidence:"",efficacy:"",imageUrl:"",line:row.line};
+        entries.push(entry);lastField="";placeholderActive=false
+      }
+    });
+    const missingSections=[];for(let n=1;n<=9;n++)if(!sections[n])missingSections.push(String(n).padStart(2,"0"));
+    if(missingSections.length)parseIssues.push({level:"warn",message:`九段式缺少章节：${missingSections.join("、")}；已有章节仍会按安全补充方式导入。`,line:doc.startLine});
+    const targetInfo=importedDossierTargetByFile(doc.sourceFile),issues=[...parseIssues],entryLinkTarget=targetInfo.target||targetInfo.parentObject||null;
     let childLocationMode="",childAction="",childTargetId="",skipImport=false;
     if(!doc.sourceFile)issues.push({level:"error",message:"九段式博物志必须通过“选择单个/批量 Markdown”导入；程序使用文件名匹配客户端对象。",line:doc.startLine});
     else if(targetInfo.child){childLocationMode="existing";childAction="bind";childTargetId=targetInfo.child.id;issues.push({level:"warn",message:`已匹配“${targetInfo.parentObject.name}”下属记录“${targetInfo.child.name}”；只更新该子项资料，不改变父级对象的地图结构。`,line:doc.startLine})}
     else if(targetInfo.parentObject){childLocationMode="candidate";childAction="create";const kind=childHierarchyKind(targetInfo.parentObject);issues.push({level:"warn",message:`检测到父级对象“${targetInfo.parentObject.name}”。可将“${targetInfo.targetName}”建立为其${kind.childLabel}；只建立资料层级，不生成新地块或地图坐标。`,line:doc.startLine})}
     else if(!targetInfo.target)issues.push({level:"error",message:`客户端中没有与文件名“${targetInfo.targetName}”完全同名的对象，也没有可唯一识别的父级对象，不会自动新建地图对象或猜测坐标。`,line:doc.startLine});
-    const museumEntries=cleanEntries.map(e=>{
-      const linked=resolveDossierEntryLink(e.name,entryLinkTarget,e.sourceCategory),unsupported=/无史料支撑|原文未载/.test(`${e.name} ${e.evidence}`);
+    const museumEntries=entries.map(e=>{
+      const linked=resolveDossierEntryLink(e.name,entryLinkTarget,e.sourceCategory),unsupported=/无史料支撑|原文未载/.test(`${e.name} ${e.evidence}`),fieldCount=["localRelation","coreFeatures","evidence","efficacy"].filter(field=>hasText(e[field])).length;
+      if(!fieldCount)issues.push({level:"warn",message:`“${e.name}”只识别到名称，没有识别到“与本地关系／核心特征／证据／功效”；请在写入前核对格式。`,line:e.line});
       if(unsupported)issues.push({level:"warn",message:`“${e.name}”含“无史料支撑/原文未载”标记，将保留为博物志文字条目，但不会自动绑定地图对象。`,line:e.line});
-      else if(!linked.object)issues.push({level:"warn",message:`客户端未找到可安全绑定的独立对象“${e.name}”${linked.reason==="ambiguous"?"（存在多个可能对象）":""}；仍会显示在该页博物志中。`,line:e.line});
-      return {...e,linkedObjectId:unsupported?"":(linked.object?.id||""),linkReason:unsupported?"unsupported":linked.reason}
+      else if(!linked.object)issues.push({level:"warn",message:dossierUnlinkedEntryMessage(e,linked),line:e.line});
+      return {...e,sourceCategory:normalizedDossierCategoryLabel(e.sourceCategory),fieldCount,linkedObjectId:unsupported?"":(linked.object?.id||""),linkReason:unsupported?"unsupported":linked.reason}
     });
-    if(!cleanEntries.length)issues.push({level:"warn",message:"第06节没有可陈列条目；“原文未载明确”占位不会导入。",line:sectionLines[6]||doc.startLine});
+    if(!museumEntries.length)issues.push({level:"warn",message:"第06节没有可陈列条目；“原文未载明确”占位不会生成卡片。",line:sectionLines[6]||doc.startLine});
     const profile={
       regionPosition:textOf(1),oneLineSummary:textOf(2),briefSummary:textOf(2),basicSummary:textOf(1),
       localTags:textOf(3).replace(/(^|\s)#/g,"$1"),
-      tileType:p4["地貌类型"]||"",hydrology:p4["水文特征"]||"",orientation:p4["方位范围"]||"",
-      sourceCitation:p4["典籍出处"]||"",parentRegion:p5["父级区域"]||"",adjacentTiles:p5["相邻地块"]||"",
-      relatedWaters:p5["相关水域"]||"",relatedLife:p5["相关生灵"]||"",
+      tileType:p4["地貌类型"]||p4["地形类型"]||"",hydrology:p4["水文特征"]||p4["水系特征"]||"",orientation:p4["方位范围"]||p4["位置范围"]||"",
+      sourceCitation:p4["典籍出处"]||p4["出处"]||"",parentRegion:p5["父级区域"]||p5["所属区域"]||"",adjacentTiles:p5["相邻地块"]||p5["相邻地点"]||"",
+      relatedWaters:p5["相关水域"]||p5["相关水系"]||"",relatedLife:p5["相关生灵"]||p5["相关人物"]||"",
       tileOriginalExcerpt:textOf(7),otherAllusions:textOf(8),detailedSummary:textOf(9)
     };
-    profile.geoEnvironment=uniqueText([profile.regionPosition,profile.tileType]);profile.evidenceChain=uniqueText([profile.sourceCitation,profile.otherAllusions]);
-    const dossier={format:"nine-section-v1",sourceFile:doc.sourceFile,profile,museumEntries};
+    profile.geoEnvironment=uniqueText([profile.regionPosition,profile.tileType,profile.hydrology]);profile.evidenceChain=uniqueText([profile.sourceCitation,profile.otherAllusions]);
+    const detailFieldCount=museumEntries.reduce((sum,e)=>sum+(e.fieldCount||0),0),dossier={format:"nine-section-v2",parserVariant:"mixed-heading-punctuation-v2",sourceFile:doc.sourceFile,profile,museumEntries,placeholderCategories:[...placeholderCategories]};
     const status=issues.some(i=>i.level==="error")?"error":issues.some(i=>i.level==="warn")?"warn":"ok";
-    return {kind:"dossier_document",name:targetInfo.targetName||"未命名博物志",headerName:targetInfo.targetName||"九段式博物志",sourceFile:doc.sourceFile,targetId:targetInfo.target?.id||"",targetName:targetInfo.target?.name||targetInfo.child?.name||targetInfo.targetName,dossier,issues,status,startLine:doc.startLine,entryCount:museumEntries.length,linkedCount:museumEntries.filter(e=>e.linkedObjectId).length,childLocationMode,childAction,childTargetId,skipImport,parentObjectId:targetInfo.parentObject?.id||"",parentObjectName:targetInfo.parentObject?.name||"",childKind:targetInfo.parentObject?childHierarchyKind(targetInfo.parentObject):null,childCandidates:hierarchyChildren(targetInfo.parentObject).map(child=>({id:child.id,name:child.name}))}
+    return {kind:"dossier_document",name:targetInfo.targetName||"未命名博物志",headerName:targetInfo.targetName||"九段式博物志",sourceFile:doc.sourceFile,targetId:targetInfo.target?.id||"",targetName:targetInfo.target?.name||targetInfo.child?.name||targetInfo.targetName,dossier,issues,status,startLine:doc.startLine,entryCount:museumEntries.length,detailFieldCount,linkedCount:museumEntries.filter(e=>e.linkedObjectId).length,childLocationMode,childAction,childTargetId,skipImport,parentObjectId:targetInfo.parentObject?.id||"",parentObjectName:targetInfo.parentObject?.name||"",childKind:targetInfo.parentObject?childHierarchyKind(targetInfo.parentObject):null,childCandidates:hierarchyChildren(targetInfo.parentObject).map(child=>({id:child.id,name:child.name}))}
   }
   function parseMarkdown(text){
     const docs=splitMarkdownImportDocuments(text),entries=[],globalIssues=[];let sawNine=false,sawStandard=false;
@@ -2581,26 +2713,28 @@
   function dossierCategoryKey(value){
     return {"地貌":"terrain","水系":"terrain","山水地貌":"terrain","草木":"plants","鸟兽":"animals","金玉矿物":"minerals","人群神祇":"people","事件遗迹":"events","事件与遗迹":"events"}[String(value||"").trim()]||"terrain"
   }
+  function resolvedDossierEntryObject(entry,owner){
+    const stored=entry?.linkedObjectId?state.objects.find(o=>o.id===entry.linkedObjectId):null;
+    if(stored&&objectCategory(stored)===dossierCategoryKey(entry?.sourceCategory))return stored;
+    return resolveDossierEntryLink(entry?.name,owner,entry?.sourceCategory).object||null
+  }
   function importedMuseumObjects(items){
-    const main=selectedTileMain(items),entries=main?.dossier?.museumEntries;
+    const main=selectedTileMain(items),entries=main?.dossier?.museumEntries,profileOriginal=main?.dossier?.profile?.tileOriginalExcerpt||"";
     if(!Array.isArray(entries)||!entries.length)return null;
-    return entries.map((e,index)=>({id:e.linkedObjectId||"",name:e.name,type:e.sourceCategory||"博物志条目",displayCategory:dossierCategoryKey(e.sourceCategory),localRelation:e.localRelation,coreFeatures:e.coreFeatures,efficacy:e.efficacy,evidence:e.evidence,imageUrl:e.imageUrl||"",dossierOnly:!e.linkedObjectId,dossierIndex:index}))
-  }
-  function briefMuseumObjectHTML(o,cat){
-    const src=objectImageSource(o),rows=[["与本地关系",o.localRelation],["核心特征",o.coreFeatures||objectCoreText(o)],["功效",o.efficacy],["证据",o.evidence||evidenceTextForObject(o)]].filter(([,v])=>hasText(v)&&!/原文未载明确/.test(String(v))).slice(0,4),detail=o.id?` data-object-detail="${esc(o.id)}"`:"";
-    return `<article class="brief-museum-object ${o.dossierOnly?'dossier-only':''}"${detail}><div class="brief-object-image ${src?'has-image':'is-placeholder'}">${src?`<img src="${esc(src)}" alt="${esc(o.name)}" loading="lazy" decoding="async">`:""}<div class="brief-image-placeholder"><i>${cat.glyph}</i><span>待补图</span></div></div><div class="brief-object-copy"><div class="brief-object-title"><strong>${esc(o.name)}</strong><small>${esc(o.type||cat.label)}</small></div>${rows.length?`<div class="brief-object-rows">${rows.map(([k,v])=>`<div><b>${esc(k)}</b><span>${esc(shortText(v,100))}</span></div>`).join("")}</div>`:`<p class="brief-object-empty">资料待补充</p>`}${o.dossierOnly?`<p class="brief-object-empty">博物志文字条目 · 尚未绑定独立地图对象</p>`:""}</div></article>`
-  }
-  function briefMuseumHTML(items,{ignoreImported=false,scopeLabel=""}={}){
-    const imported=ignoreImported?null:importedMuseumObjects(items),source=imported||items,categories=V027_CATEGORIES.map(cat=>({...cat,objects:source.filter(o=>objectCategory(o)===cat.key)})).filter(cat=>cat.objects.length),total=source.length;
-    if(!categories.length)return `<section class="brief-museum empty"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div></div><div class="brief-museum-empty"><i>录</i><span>${scopeLabel?esc(scopeLabel)+"暂无可陈列对象。":"本地块尚无可陈列的独立对象。"}</span></div></section>`;
-    return `<section class="brief-museum"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div><p>${scopeLabel?`${esc(scopeLabel)} · `:""}${categories.length} 类 · ${total} 个条目；图片可后续逐项补充。</p></div><div class="brief-museum-grid count-${categories.length}" style="--museum-cols:${Math.min(categories.length,6)}">${categories.map(cat=>`<article class="brief-museum-category accent-border-${cat.key}"><header><div><i>${cat.glyph}</i><strong>${cat.label}</strong></div><b>${cat.objects.length}</b></header><div class="brief-museum-list">${cat.objects.map(o=>briefMuseumObjectHTML(o,cat)).join("")}</div></article>`).join("")}</div></section>`
+    return entries.map((e,index)=>{
+      const linked=resolvedDossierEntryObject(e,main),originalExcerpt=originalExcerptForEntry(profileOriginal,e.name,e.localRelation);
+      // 九段式卡片正文必须以 Markdown 第06节为唯一来源。
+      // 独立地图对象只提供图片、对象ID与跳转能力，不能用母表字段替换或污染导入文案。
+      // 旧数据中未保存 linkedObjectId 的别名条目，会在显示时重新按“同类型＋专名别名”解析。
+      return {...(linked||{}),id:linked?.id||"",name:e.name||linked?.name||`资料条目${index+1}`,type:e.sourceCategory||linked?.type||"博物志条目",displayCategory:dossierCategoryKey(e.sourceCategory),localRelation:e.localRelation||"",coreFeatures:e.coreFeatures||"",efficacy:e.efficacy||"",evidence:e.evidence||"",originalExcerpt,imageUrl:e.imageUrl||objectImageSource(linked)||"",dossierOnly:!linked?.id,dossierIndex:index,importedFromDossier:true,sourceCategory:e.sourceCategory||"",linkReason:e.linkReason||"runtime-resolved"}
+    })
   }
   function renderImportAnalysis(a){
     if(!a){els.importFormatBadge.className="format-badge neutral";els.importFormatBadge.textContent="等待输入";els.importValidationState.className="validation-state";els.importValidationState.textContent="尚未分析";els.importSummary.innerHTML='<div><strong>0</strong><span>识别条目</span></div><div class="ok"><strong>0</strong><span>可导入</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div>';els.importObjectList.innerHTML='<div class="import-empty">载入文件后，这里会列出对象、地块档案或九段式博物志。</div>';els.importInspector.innerHTML='<div class="import-empty">正确字段、匹配对象、未绑定条目和格式问题会在这里逐条标示。</div>';els.importApplyBtn.disabled=true;return}
     const entries=a.entries||[],ok=entries.filter(o=>o.status==="ok").length,warn=entries.filter(o=>o.status==="warn").length,error=entries.filter(o=>o.status==="error").length+(a.globalIssues||[]).filter(i=>i.level==="error").length,importable=entries.filter(o=>o.status!=="error").length,validFormat=["object-v1","tile-profile-v1","mixed-v1","dossier-v1","mixed-dossier-v1"].includes(a.format),cls=validFormat?(error?"error":warn?"warn":"ok"):"error";
     els.importFormatBadge.className=`format-badge ${cls}`;els.importFormatBadge.textContent=importFormatLabel(a.format);els.importValidationState.className=`validation-state ${cls}`;els.importValidationState.textContent=error?"存在阻断错误":warn?"可导入，但有未绑定条目":"全部通过";els.importSummary.innerHTML=`<div><strong>${entries.length}</strong><span>识别条目</span></div><div class="ok"><strong>${importable}</strong><span>可导入</span></div><div class="warn"><strong>${warn}</strong><span>警告条目</span></div><div class="error"><strong>${error}</strong><span>错误</span></div>`;
     const globalHtml=(a.globalIssues||[]).map(i=>`<div class="issue ${i.level}">第${i.line||1}行：${esc(i.message)}</div>`).join("");
-    els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{let meta;if(o.kind==="tile_profile")meta=`地块档案 · ${o.cellKey||"坐标未完成"}`;else if(o.kind==="dossier_document")meta=`九段式博物志 · ${o.entryCount}项 · 已绑定${o.linkedCount}项`;else meta=`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;return `<button class="import-result-item ${o.status} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${o.status==='ok'?'通过':o.status==='warn'?'警告':'错误'}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>${o.sourceFile?`${esc(o.sourceFile)} · `:""}第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
+    els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{let meta;if(o.kind==="tile_profile")meta=`地块档案 · ${o.cellKey||"坐标未完成"}`;else if(o.kind==="dossier_document")meta=`九段式博物志 · ${o.entryCount}项 · ${o.detailFieldCount||0}个详情字段 · 已绑定${o.linkedCount}项`;else meta=`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;return `<button class="import-result-item ${o.status} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${o.status==='ok'?'通过':o.status==='warn'?'警告':'错误'}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>${o.sourceFile?`${esc(o.sourceFile)} · `:""}第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
     els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(entries.length)renderImportInspector(entries[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable
   }
   function renderImportInspector(o){
@@ -2608,7 +2742,7 @@
     els.importInspectorMeta.textContent=o.kind==="dossier_document"&&o.childLocationMode?`${o.sourceFile||"未命名文件"} · ${o.parentObjectName} / ${o.name}`:o.kind==="dossier_document"?`${o.sourceFile||"未命名文件"} · 目标 ${o.targetName||"未匹配"}`:o.kind==="tile_profile"?`${o.sourceFile?`${o.sourceFile} · `:""}地块 ${o.cellKey||"坐标错误"}`:`${o.sourceFile?`${o.sourceFile} · `:""}${o.headerName} · 第${o.startLine}行`;
     const issueHtml=o.issues.length?`<div class="issue-list">${o.issues.map(i=>`<div class="issue ${i.level}"><strong>${i.level==='error'?'格式错误':'提示'}</strong> · 第${i.line||o.startLine}行<br>${esc(i.message)}</div>`).join("")}</div>`:`<div class="issue-list"><div class="issue ok"><strong>格式正确</strong><br>${o.kind==='dossier_document'?'可更新同名客户端对象的博物志。':o.kind==='tile_profile'?'可更新指定地块档案。':'必填字段与几何参数均可识别。'}</div></div>`;
     let rows=[];
-    if(o.kind==="dossier_document"){const p=o.dossier.profile,unlinked=o.dossier.museumEntries.filter(e=>!e.linkedObjectId);rows=[["条目类型","九段式对象博物志"],["目标对象",o.targetId?`${o.targetName}（${o.targetId}）`:"未匹配"],["区域定位",p.regionPosition],["一句话概要",p.oneLineSummary],["本地标签",p.localTags],["地貌类型",p.tileType],["水文特征",p.hydrology],["方位范围",p.orientation],["典籍出处",p.sourceCitation],["数据关系",[p.parentRegion,p.adjacentTiles,p.relatedWaters,p.relatedLife].filter(Boolean).join("\n")],["分类条目",o.dossier.museumEntries.map(e=>`${e.sourceCategory}｜${e.name}${e.linkedObjectId?` → ${e.linkedObjectId}`:"（未绑定）"}`).join("\n")],["未绑定",unlinked.map(e=>e.name).join(" / ")],["原文摘录",p.tileOriginalExcerpt],["其他典故",p.otherAllusions],["详细描述",p.detailedSummary]]}
+    if(o.kind==="dossier_document"){const p=o.dossier.profile,unlinked=o.dossier.museumEntries.filter(e=>!e.linkedObjectId);rows=[["条目类型","九段式对象博物志"],["目标对象",o.targetId?`${o.targetName}（${o.targetId}）`:"未匹配"],["区域定位",p.regionPosition],["一句话概要",p.oneLineSummary],["本地标签",p.localTags],["地貌类型",p.tileType],["水文特征",p.hydrology],["方位范围",p.orientation],["典籍出处",p.sourceCitation],["数据关系",[p.parentRegion,p.adjacentTiles,p.relatedWaters,p.relatedLife].filter(Boolean).join("\n")],["分类条目",dossierEntryAuditText(o.dossier.museumEntries)],["未绑定",unlinked.map(e=>e.name).join(" / ")],["原文摘录",p.tileOriginalExcerpt],["其他典故",p.otherAllusions],["详细描述",p.detailedSummary]]}
     else if(o.kind==="tile_profile"){const profileRows=TILE_PROFILE_FIELD_DEFS.filter(d=>o.specifiedKeys.includes(d.key)).map(d=>[d.label,o.profilePatch[d.key]??""]);rows=[["条目类型","地块档案更新"],["目标主格",o.cellKey||""],["更新方式",state.tileProfiles[o.cellKey]?"更新已有档案":"新建地块档案"],...profileRows,["经篇事件",o.scriptureSpecified.map(ch=>`${ch}：${o.scriptureEvents[ch]}`).join("\n")]]}
     else rows=[["条目类型","地图对象"],["对象标题",o.headerName],["地名",o.name],["类型",o.type||""],["所属经篇",o.chapter||""],["几何类型",o.geometryType||""],["坐标",o.x===null?"":coordText(o.x,o.y)],["面积／作用域",o.area?JSON.stringify(o.area,null,2):""],["路径节点",o.path?.length?o.path.map(p=>p.join(", ")).join("\n"):""],["证据等级",o.evidenceLevel||""],["与本地关系",o.localRelation||""],["核心特征",o.coreFeatures||""],["图片",o.imageUrl||""],["水系与地貌关系",o.riverTerrainRelation||""],["原文",o.original||""]];
     els.importInspector.innerHTML=issueHtml+childLocationResolutionHTML(o)+`<div class="field-audit">${rows.map(([k,v])=>`<div class="field-audit-row"><b>${esc(k)}</b><code>${v!==""?esc(v):'—'}</code></div>`).join("")}</div>`;bindChildLocationResolutionControls(o)
@@ -2632,15 +2766,60 @@
   }
 
   function isEditableContextTarget(target){return !!target?.closest?.("input,textarea,select,[contenteditable=true]")}
+  function dossierInteractionSurface(target){
+    return target?.closest?.("#identityObjectDrawer:not(.hidden),#dossierWorkspace:not(.hidden)")||null;
+  }
+  function dossierWheelScrollers(target,root){
+    const result=[];
+    let node=target?.nodeType===1?target:target?.parentElement;
+    while(node&&node!==root.parentElement){
+      if(node.matches?.(".brief-object-copy,.brief-museum-list,#identityDrawerBody")&&!result.includes(node))result.push(node);
+      if(node===root)break;
+      node=node.parentElement;
+    }
+    if(root.id==="identityObjectDrawer"){
+      const body=root.querySelector("#identityDrawerBody");if(body&&!result.includes(body))result.push(body)
+    }
+    return result
+  }
+  function scrollElementByWheel(scroller,delta){
+    if(!scroller)return false;const max=Math.max(0,scroller.scrollHeight-scroller.clientHeight);if(max<=1)return false;
+    const canScroll=delta<0?scroller.scrollTop>1:scroller.scrollTop<max-1;if(!canScroll)return false;
+    scroller.scrollTop=Math.max(0,Math.min(max,scroller.scrollTop+delta));return true
+  }
+  function routeDossierWheel(e){
+    const root=dossierInteractionSurface(e.target);if(!root||e.ctrlKey||e.metaKey)return false;
+    const delta=wheelDeltaPixels(e,root);if(Math.abs(delta)<.1)return false;
+    for(const scroller of dossierWheelScrollers(e.target,root)){
+      if(!scrollElementByWheel(scroller,delta))continue;
+      e.preventDefault();e.stopImmediatePropagation();return true
+    }
+    // 当前条目和分类列表都到边界后，继续滚动整个博物志页面。
+    const pane=root.id==="dossierWorkspace"?root.querySelector(".dossier-right"):null;
+    if(scrollElementByWheel(pane,delta)){
+      e.preventDefault();e.stopImmediatePropagation();return true
+    }
+    return false
+  }
+  // 滚轮顺序：条目详细介绍 → 当前分类项目列表 → 博物志整页。
+  document.addEventListener("wheel",routeDossierWheel,{capture:true,passive:false});
+  // 右键按阅读层级返回：对象详情 → 博物志；不会穿透到地图误触发聚焦或选择。
+  document.addEventListener("contextmenu",e=>{
+    if(!dossierInteractionSurface(e.target)||isEditableContextTarget(e.target))return;
+    e.preventDefault();e.stopImmediatePropagation();appGoBack();
+  },true);
   function visibleElement(id){const el=document.getElementById(id);return el&&!el.classList.contains("hidden")?el:null}
   function appGoBack(){
+    if(closeMuseumImageViewer())return true
     if(visibleElement("identityTagExplorer")){closeTagExplorer();return true}
+    const identityDrawer=visibleElement("identityObjectDrawer");if(identityDrawer){identityDrawer.classList.add("hidden");return true}
     const modal=[...document.querySelectorAll(".modal:not(.hidden)")].pop();if(modal){modal.classList.add("hidden");return true}
     const compare=visibleElement("compareWorkspace");if(compare){compare.classList.add("hidden");return true}
     const isolated=visibleElement("isolatedWorkspace");if(isolated){isolated.classList.add("hidden");return true}
     if(visibleElement("rangeWorkspace")){closeRangeEditor();return true}
     if(visibleElement("importWorkspace")){closeImportWorkspace();return true}
     if(visibleElement("brushCollectionWorkspace")){closeBrushCollection();return true}
+    if(visibleElement("scriptureWorkspace")){closeScriptureWorkspace();return true}
     if(visibleElement("dossierWorkspace")){closeDossierWorkspace();return true}
     if(state.precisionClusterOpen){state.precisionClusterOpen=null;scheduleRender();return true}
     if(getSpatialFocusContext().active||v052RegionFocusContext().active||hasMapFocusState()){clearSpatialFocus({keepSelection:false,message:"已通过右键退出区域／范围聚焦并取消地块选择"});return true}
@@ -2698,7 +2877,7 @@
     els.viewport.addEventListener("pointerup",e=>endPan(e,false));els.viewport.addEventListener("pointercancel",e=>endPan(e,true));els.viewport.addEventListener("lostpointercapture",e=>endPan(e,true));
     window.addEventListener("blur",()=>endPan(null,true));document.addEventListener("visibilitychange",()=>{if(document.hidden)endPan(null,true)});
     els.viewport.addEventListener("dblclick",e=>{if(!state.precisionMode||e.target.closest(".precision-object-group,button,input,select,textarea"))return;e.preventDefault();const w=screenToWorld(e.clientX,e.clientY),x=Math.round(w.x*10)/10,y=Math.round(w.y*10)/10;openObjectForm(null,{x,y})});
-    document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(state.selectedWaterPathId){state.selectedWaterPathId=null;state.hoverWaterPathId=null;els.viewport.classList.remove("water-path-hover");hideTooltip();scheduleRender();renderDetails();return}if(visibleElement("identityTagExplorer")){closeTagExplorer();return}if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}if(getSpatialFocusContext().active||v052RegionFocusContext().active){clearSpatialFocus({keepSelection:false,message:"已通过 Esc 退出区域／范围聚焦并取消选择"});return}if(hasMapSelectionState()){clearMapSelection({message:"已通过 Esc 取消当前地块／对象选择"});return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(state.selectedWaterPathId){state.selectedWaterPathId=null;state.hoverWaterPathId=null;els.viewport.classList.remove("water-path-hover");hideTooltip();scheduleRender();renderDetails();return}if(visibleElement("identityTagExplorer")){closeTagExplorer();return}if(els.scriptureWorkspace&&!els.scriptureWorkspace.classList.contains("hidden")){closeScriptureWorkspace();return}if(!els.dossierWorkspace.classList.contains("hidden")){closeDossierWorkspace();return}if(!els.rangeWorkspace.classList.contains("hidden")){closeRangeEditor();return}if(!els.importWorkspace.classList.contains("hidden")){closeImportWorkspace();return}if(getSpatialFocusContext().active||v052RegionFocusContext().active){clearSpatialFocus({keepSelection:false,message:"已通过 Esc 退出区域／范围聚焦并取消选择"});return}if(hasMapSelectionState()){clearMapSelection({message:"已通过 Esc 取消当前地块／对象选择"});return}$$(".modal:not(.hidden)").forEach(m=>m.classList.add("hidden"));state.flippedCell=null;scheduleRender()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();if(!els.rangeWorkspace.classList.contains("hidden"))saveRangeEditor();else exportPatch(false)}})
   }
 
 
@@ -2892,8 +3071,10 @@
   }
 
   function normalizeDisplayCategory(value){
-    const map={"地貌":"terrain","山水地貌":"terrain","草木":"plants","鸟兽":"animals","矿物":"minerals","金玉矿物":"minerals","人群神祇":"people","事迹":"events","事件遗迹":"events"};
-    return map[String(value||"").trim()]||""
+    const raw=String(value||"").trim(),keys=new Set(["terrain","plants","animals","minerals","people","events"]);
+    if(keys.has(raw))return raw;
+    const map={"地貌":"terrain","水系":"terrain","山水地貌":"terrain","草木":"plants","鸟兽":"animals","矿物":"minerals","金玉矿物":"minerals","人群神祇":"people","事迹":"events","事件遗迹":"events","事件与遗迹":"events"};
+    return map[raw]||""
   }
   function objectPrimaryType(o){return String(o?.type||"").split(/[／/]/)[0].trim()}
   function objectCategory(o){
@@ -2921,20 +3102,114 @@
   function splitTags(v){return String(v||"").split(/[／/、,，;；\n]+/).map(x=>x.trim()).filter(Boolean)}
   function evidenceTextForObject(o){return uniqueText([o.evidenceLevel,o.coordinateNature,o.lockStatus,o.chapter]).replace(/\n/g," / ")}
   function objectCoreText(o){return uniqueText([o.coreFeatures,o.appearance,o.terrain,o.water,o.plants,o.animals,o.minerals,o.abilities]).split("\n")[0]||"资料待补充"}
+  function scriptureNamesInText(value){
+    const text=String(value||""),names=[];
+    CHAPTERS_18.forEach(ch=>{if(text.includes(ch)&&!names.includes(ch))names.push(ch)});
+    if(names.length)return names;
+    const generic=[...text.matchAll(/《(?:山海经[·・]?)?([^》]{1,18}经)》/g)].map(m=>String(m[1]||"").trim()).filter(Boolean);
+    return [...new Set(generic)]
+  }
+  function cardScriptureSource(o){
+    const names=[];
+    [o?.evidence,o?.chapter,o?.sourceCitation,o?.sourceNotes].forEach(value=>scriptureNamesInText(value).forEach(ch=>{if(!names.includes(ch))names.push(ch)}));
+    return names.map(ch=>`《${ch}》`).join(" / ")
+  }
+  function isDirectOriginalRelation(value){
+    return String(value||"").split(/\n+/).some(part=>/^原文直载(?:\s*[（(][^）)]*[）)])?$/u.test(part.replace(/^[\-•·*]+\s*/,"").trim()))
+  }
+  function directOriginalRelationHint(value){
+    const hit=String(value||"").match(/原文直载\s*[（(]([^）)]{1,12})[）)]/u);
+    return String(hit?.[1]||"").trim()
+  }
+  function originalExcerptCandidates(value){
+    const text=String(value||"").replace(/\r\n?/g,"\n").trim();if(!text)return [];
+    const quoted=[...text.matchAll(/[“"]([^”"]{2,800})[”"]/g)].map(m=>m[1].trim()).filter(Boolean);
+    if(quoted.length)return [...new Set(quoted)];
+    const cleaned=text.replace(/(?:出自|见于|载于)\s*《[^》]+》[。；;]?/g,"").trim();
+    const lines=cleaned.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    if(lines.length>1)return [...new Set(lines)];
+    return [...new Set(cleaned.split(/(?<=[。！？!?])\s*/).map(x=>x.trim()).filter(Boolean))]
+  }
+  function entryNameTokens(value){
+    const raw=String(value||"").trim(),tokens=[raw];
+    const stripped=raw.replace(/[（(][^）)]*[）)]/g,"").replace(/(?:遗迹|区域|分段|源段|中游段|下游段)$/g,"").trim();
+    if(stripped&&stripped!==raw)tokens.push(stripped);
+    if(/^帝./.test(stripped))tokens.push(stripped.slice(1));
+    return [...new Set(tokens.filter(x=>x.length>=1))]
+  }
+  function originalExcerptForEntry(excerpt,name,relation){
+    if(!isDirectOriginalRelation(relation))return "";
+    const candidates=originalExcerptCandidates(excerpt);if(!candidates.length)return "";
+    const tokens=entryNameTokens(name),hint=directOriginalRelationHint(relation),genericHints=new Set(["有","在","中","见","载","居","经"]);
+    let best=candidates[0],bestScore=-1;
+    candidates.forEach(candidate=>{
+      let score=0;
+      tokens.forEach((token,index)=>{if(candidate.includes(token))score+=index===0?20:10});
+      if(hint&&!genericHints.has(hint)&&candidate.includes(hint))score+=7;
+      if(/葬/.test(hint)&&/葬/.test(candidate))score+=5;
+      if(score>bestScore){bestScore=score;best=candidate}
+    });
+    return best
+  }
+  function displayLocalRelation(value){
+    return uniqueText(String(value||"").split(/\n+/).map(part=>part.trim()).filter(Boolean))
+  }
   function groupObjectsForCategory(items,cat,prefix){
     const groups=new Map();items.filter(o=>objectCategory(o)===cat).forEach(o=>{const a=objectAnchor(o),k=`${a.x.toFixed(1)},${a.y.toFixed(1)}`;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(o)});
     return [...groups.entries()].map(([coord,objects])=>({coord,objects,id:`${prefix}|${cat}|${coord}|${objects.map(o=>o.id).join("-")}`}))
   }
   function categoryProfileSummary(profile,key){const map={terrain:uniqueText([profile.geoEnvironment,profile.hydrology]),plants:uniqueText([profile.divinePlants,profile.herbs]),animals:profile.beasts,minerals:profile.minerals,people:uniqueText([profile.country,profile.faith,profile.ruler,profile.guardian,profile.specialLife]),events:uniqueText([profile.architecture,profile.mythicEncounters,profile.occurredEvents])};return map[key]||""}
   function objectImageSource(o){return String(o?.imageUrl||o?.image||"").trim()}
-  function briefMuseumObjectHTML(o,cat){
-    const src=objectImageSource(o),rows=[["与本地关系",o.localRelation],["核心特征",o.coreFeatures||objectCoreText(o)],["功效",o.efficacy],["证据",o.evidence||evidenceTextForObject(o)]].filter(([,v])=>hasText(v)&&!/原文未载明确/.test(String(v))).slice(0,4),detail=o.id?` data-object-detail="${esc(o.id)}"`:"",tab=o.id?' tabindex="0"':"";
-    return `<article class="brief-museum-object ${o.dossierOnly?'dossier-only':''}"${detail}${tab}><div class="brief-object-image ${src?'has-image':'is-placeholder'}">${src?`<img src="${esc(src)}" alt="${esc(o.name)}" loading="lazy" decoding="async">`:""}<div class="brief-image-placeholder"><i>${cat.glyph}</i><span>待补图</span></div></div><div class="brief-object-copy" tabindex="0" aria-label="${esc(o.name)}资料，滚轮可查看完整内容"><div class="brief-object-title"><strong>${esc(o.name)}</strong><small>${esc(o.type||cat.label)}</small></div>${rows.length?`<div class="brief-object-rows">${rows.map(([k,v])=>`<div><b>${esc(k)}</b><span>${esc(shortText(v,600))}</span></div>`).join("")}</div>`:`<p class="brief-object-empty">资料待补充</p>`}${o.dossierOnly?`<p class="brief-object-empty dossier-only-note">博物志文字条目 · 尚未绑定独立地图对象</p>`:""}</div></article>`
+  function ensureMuseumImageViewer(){
+    let viewer=document.getElementById("museumImageViewer");
+    if(viewer)return viewer;
+    viewer=document.createElement("div");viewer.id="museumImageViewer";viewer.className="museum-image-viewer hidden";viewer.setAttribute("role","dialog");viewer.setAttribute("aria-modal","true");viewer.setAttribute("aria-label","对象图片预览");
+    viewer.innerHTML=`<div class="museum-image-viewer-panel"><button type="button" class="museum-image-viewer-close" aria-label="关闭图片预览">×</button><div class="museum-image-viewer-stage"><img alt="对象图片预览"></div><p></p></div>`;
+    document.body.appendChild(viewer);
+    const close=()=>closeMuseumImageViewer();
+    viewer.querySelector(".museum-image-viewer-close")?.addEventListener("click",close);
+    viewer.addEventListener("click",event=>{if(event.target===viewer)close()});
+    viewer.addEventListener("contextmenu",event=>{event.preventDefault();event.stopImmediatePropagation();close()},true);
+    return viewer
   }
-  function briefMuseumHTML(items,{ignoreImported=false,scopeLabel=""}={}){
-    const imported=ignoreImported?null:importedMuseumObjects(items),source=imported||items,categories=V027_CATEGORIES.map(cat=>({...cat,objects:source.filter(o=>objectCategory(o)===cat.key)})).filter(cat=>cat.objects.length),total=source.length;
-    if(!categories.length)return `<section class="brief-museum empty"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div></div><div class="brief-museum-empty"><i>录</i><span>${scopeLabel?esc(scopeLabel)+"暂无可陈列对象。":"本地块尚无可陈列的独立对象。"}</span></div></section>`;
-    return `<section class="brief-museum"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div><p>${scopeLabel?`${esc(scopeLabel)} · `:""}${categories.length} 类 · ${total} 个条目；图片可后续逐项补充。</p></div><div class="brief-museum-grid count-${categories.length}">${categories.map(cat=>`<article class="brief-museum-category accent-border-${cat.key}"><header><div><i>${cat.glyph}</i><strong>${cat.label}</strong></div><b>${cat.objects.length}</b></header><div class="brief-museum-list">${cat.objects.map(o=>briefMuseumObjectHTML(o,cat)).join("")}</div></article>`).join("")}</div></section>`
+  function openMuseumImageViewer(src,name=""){
+    if(!src)return;const viewer=ensureMuseumImageViewer(),img=viewer.querySelector("img"),caption=viewer.querySelector("p");
+    if(img){img.src=src;img.alt=name?`${name}图片预览`:"对象图片预览"}
+    if(caption)caption.textContent=name||"对象图片";
+    viewer.classList.remove("hidden");document.body.classList.add("museum-image-viewer-open");
+    requestAnimationFrame(()=>viewer.querySelector(".museum-image-viewer-close")?.focus())
+  }
+  function closeMuseumImageViewer(){const viewer=document.getElementById("museumImageViewer");if(!viewer||viewer.classList.contains("hidden"))return false;viewer.classList.add("hidden");document.body.classList.remove("museum-image-viewer-open");return true}
+  function chapterReferenceHTML(value){
+    const text=String(value||"");if(!text)return "";
+    const names=CHAPTERS_18.slice().sort((a,b)=>b.length-a.length).map(name=>name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")),pattern=names.join("|");
+    const re=new RegExp(`《(?:山海经[·・]?)?(${pattern})》|(${pattern})`,"g");let html="",last=0,match;
+    while((match=re.exec(text))){const chapter=match[1]||match[2];html+=esc(text.slice(last,match.index));html+=`<button type="button" class="scripture-directory-link" data-scripture-directory="${esc(chapter)}" title="打开《${esc(chapter)}》目录">${esc(match[0])}</button>`;last=match.index+match[0].length}
+    html+=esc(text.slice(last));return html.replace(/\n/g,"<br>")
+  }
+  function museumObjectHasVisibleDetails(o){
+    if(!o?.importedFromDossier)return !!o?.name;
+    return [o.localRelation,o.coreFeatures,o.evidence,o.efficacy].some(v=>hasText(v)&&!/原文未载明确/.test(String(v)))
+  }
+  function briefMuseumObjectHTML(o,cat){
+    const imported=!!o.importedFromDossier,source=cardScriptureSource(o),directOriginal=imported&&isDirectOriginalRelation(o.localRelation)&&hasText(o.originalExcerpt),relationRow=directOriginal?["原文",o.originalExcerpt]:["与本地关系",displayLocalRelation(o.localRelation)],rows=[
+      relationRow,
+      ["核心特征",imported?o.coreFeatures:(o.coreFeatures||objectCoreText(o))],
+      ["出自",source],
+      ["功效",o.efficacy]
+    ].filter(([,v])=>hasText(v)&&!/原文未载明确/.test(String(v))).slice(0,4),src=objectImageSource(o),detail=o.id?` data-object-detail="${esc(o.id)}"`:"",tab=o.id?' tabindex="0"':"",hasImportedDetails=imported&&rows.length;
+    const note=o.dossierOnly?`<p class="brief-object-empty dossier-only-note">资料条目 · 尚未绑定独立地图对象</p>`:"";
+    return `<article class="brief-museum-object ${o.dossierOnly?'dossier-only':''} ${hasImportedDetails?'has-imported-details':''}"${detail}${tab}><div class="brief-object-image ${src?'has-image':'is-placeholder'}"${src?` data-museum-image-preview="${esc(src)}" data-museum-image-name="${esc(o.name)}" role="button" tabindex="0" title="点击查看完整图片"`:""}>${src?`<img src="${esc(src)}" alt="${esc(o.name)}" loading="lazy" decoding="async">`:""}<div class="brief-image-placeholder"><i>${cat.glyph}</i><span>待补图</span></div></div><div class="brief-object-copy" tabindex="0" aria-label="${esc(o.name)}完整资料"><div class="brief-object-title"><strong>${esc(o.name)}</strong><small>${esc(o.sourceCategory||o.type||cat.label)}</small></div>${rows.length?`<div class="brief-object-rows">${rows.map(([k,v],index)=>`<div><b><em>${index+1}.</em>${esc(k)}</b><span title="${esc(v)}">${chapterReferenceHTML(shortText(v,220))}</span></div>`).join("")}</div>`:""}${note}</div></article>`
+  }
+  function categoryEmptyText(profile,key){
+    const summaries={terrain:uniqueText([profile?.geoEnvironment,profile?.hydrology]),plants:uniqueText([profile?.divinePlants,profile?.herbs]),animals:profile?.beasts,minerals:profile?.minerals,people:uniqueText([profile?.country,profile?.faith,profile?.ruler,profile?.guardian,profile?.specialLife]),events:uniqueText([profile?.architecture,profile?.mythicEncounters,profile?.occurredEvents])},labels={terrain:"山水地貌",plants:"草木",animals:"鸟兽",minerals:"金玉矿物",people:"人群神祇",events:"事件遗迹"},summary=summaries[key];
+    return hasText(summary)?shortText(summary,180):`原文未载明${labels[key]||"本类内容"}`
+  }
+  function briefMuseumHTML(items,{ignoreImported=false,scopeLabel="",profile=null}={}){
+    const imported=ignoreImported?null:importedMuseumObjects(items),rawSource=imported||items,source=rawSource.filter(museumObjectHasVisibleDetails),categories=V027_CATEGORIES.map(cat=>({...cat,objects:source.filter(o=>objectCategory(o)===cat.key)})).filter(cat=>cat.objects.length),filled=categories.length,total=source.length;
+    // 没有实际条目时整块隐藏；有内容的分类以可折叠下拉菜单呈现。
+    if(!total)return "";
+    return `<section class="brief-museum"><div class="brief-museum-head"><div><span class="eyebrow">OBJECT CABINET</span><h3>这里有什么</h3></div><p>${scopeLabel?`${esc(scopeLabel)} · `:""}${filled} 类有记录 · ${total} 个条目</p></div><div class="brief-museum-grid count-${filled}">${categories.map(cat=>`<details class="brief-museum-category accent-border-${cat.key}" data-museum-category="${cat.key}"><summary class="brief-museum-category-toggle"><span class="brief-museum-category-title"><i>${cat.glyph}</i><strong>${cat.label}</strong></span><span class="brief-museum-category-status"><em>${cat.objects.length} 个条目</em><b>${cat.objects.length}</b><span class="brief-museum-category-chevron" aria-hidden="true"></span></span></summary><div class="brief-museum-list">${cat.objects.map(o=>briefMuseumObjectHTML(o,cat)).join("")}</div></details>`).join("")}</div></section>`
   }
   function sourceTileLabelForObject(o){
     const c=objectCell(o),key=cellKey(c.gx,c.gy),items=objectsInCellKey(key),profile=tileProfileFor(key,items),main=selectedTileMain(items);
@@ -2982,7 +3257,7 @@
     return `<section class="category-overview"><div class="category-overview-head"><div><span class="eyebrow">CONTENT OVERVIEW</span><h3>区域内容概览</h3></div><div class="category-overview-head-actions"><p>点击分类切换下方阅读内容。</p><button class="category-overview-all ${active==='all'?'active':''}" data-category-filter="all">全部总览</button></div></div><div class="category-overview-grid">${V027_CATEGORIES.map(cat=>{const list=items.filter(o=>objectCategory(o)===cat.key),names=list.map(o=>o.name),preview=names.slice(0,3).join(" / "),left=Math.max(0,names.length-3),anchor=categoryAnchorId(prefix,cat.key);return `<button class="category-overview-card ${list.length?'':'empty'} ${active===cat.key?'active':''}" data-category-filter="${cat.key}" data-category-jump="${anchor}" aria-pressed="${active===cat.key?'true':'false'}"><span class="category-accent accent-${cat.key}"></span><span class="category-overview-icon">${cat.glyph}</span><span class="category-overview-copy"><strong>${cat.label}</strong><small>${esc(preview||"暂无明确记载")}${left?` · 另 ${left} 项`:""}</small></span><b>${list.length}</b></button>`}).join("")}</div></section>`
   }
   function objectPreviewRows(objects){
-    const relation=uniqueText(objects.map(o=>o.localRelation)),core=uniqueText(objects.map(objectCoreText)),rows=[];
+    const relation=uniqueText(objects.map(o=>displayLocalRelation(o.localRelation))),core=uniqueText(objects.map(objectCoreText)),rows=[];
     if(hasText(relation))rows.push(["与本地关系",shortText(relation,115)]);
     if(hasText(core))rows.push(["核心特征",shortText(core,140)]);
     return rows.slice(0,2)
@@ -2991,36 +3266,187 @@
     const view=state.overlapViews[group.id]||{flipped:false,index:0},objects=group.objects,idx=Math.max(0,Math.min(objects.length-1,view.index||0)),o=objects[idx],names=objects.map(x=>x.name).join(" / "),isOverlap=objects.length>1,tags=[...new Set(objects.flatMap(x=>[x.type,x.chapter,x.evidenceLevel]).filter(Boolean))].slice(0,4),source=[...new Set(objects.map(sourceTileLabelForObject))].join(" / ");
     const flip=isOverlap?`<button class="overlap-flip-btn" data-overlap-flip="${esc(group.id)}" title="翻转查看重叠对象">翻转查看</button>`:"";
     const previews=objectPreviewRows(objects).map(([k,v])=>`<div class="object-summary-row"><b>${esc(k)}</b><p>${esc(v)}</p></div>`).join("");
-    const detailRows=[["类型",o.type],["所属经篇",o.chapter],["精确坐标",coordText(o.x,o.y)],["与本地关系",o.localRelation],["核心特征",o.coreFeatures||objectCoreText(o)],["功效／性质",o.efficacy],["关系说明",o.relationNotes],["证据等级",evidenceTextForObject(o)]].filter(([,v])=>hasText(v));
+    const detailRows=[["类型",o.type],["所属经篇",o.chapter],["精确坐标",coordText(o.x,o.y)],["与本地关系",displayLocalRelation(o.localRelation)],["核心特征",o.coreFeatures||objectCoreText(o)],["功效／性质",o.efficacy],["关系说明",o.relationNotes],["证据等级",evidenceTextForObject(o)]].filter(([,v])=>hasText(v));
     return `<article class="overlap-card ${view.flipped?'flipped':''}"><section class="overlap-card-face overlap-card-front"><div class="object-card-head"><div class="overlap-card-title"><i>${geometryIcon(o)}</i><div><strong>${esc(names)}</strong><small>${esc(tags.slice(0,2).join(" · ")||"地图对象")}</small></div></div>${flip}</div>${previews||`<div class="object-summary-row"><b>资料摘要</b><p>当前对象尚未形成简述，点击查看详细资料。</p></div>`}<div class="object-card-foot"><span>来自：${esc(source)}</span><button data-object-detail="${esc(o.id)}">查看详情 →</button></div></section><section class="overlap-card-face overlap-card-back">${flip}<div class="overlap-object-switch">${objects.map((x,i)=>`<button class="${i===idx?'active':''}" data-overlap-object="${esc(group.id)}" data-overlap-index="${i}">${esc(x.name)}</button>`).join("")}</div><h4 class="overlap-back-title">${esc(o.name)}</h4>${detailRows.map(([k,v])=>`<div class="overlap-back-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("")}<div class="object-card-foot"><span>来自：${esc(sourceTileLabelForObject(o))}</span><button data-object-detail="${esc(o.id)}">查看完整资料 →</button></div></section></article>`
   }
   function categoryReadingHTML(profile,items,prefix){
     const active=state.dossierCategoryFilter||"all",activeDef=V027_CATEGORIES.find(cat=>cat.key===active);
     return `<section class="category-reading" data-category-reading><div class="category-reading-head"><div><span class="eyebrow">CATEGORY READING</span><h3>${activeDef?`${activeDef.label}阅读`:'分类阅读'}</h3></div><div class="category-reading-head-actions"><p>${activeDef?'当前仅显示所选分类；点击“全部分类”恢复。':'对象卡片默认只显示摘要；需要时再展开完整资料。'}</p>${activeDef?`<button data-category-filter="all">全部分类</button>`:""}</div></div><div class="category-reading-grid ${active!=='all'?'single-category':''}">${V027_CATEGORIES.map(cat=>{const groups=groupObjectsForCategory(items,cat.key,prefix),summary=categoryProfileSummary(profile,cat.key),count=items.filter(o=>objectCategory(o)===cat.key).length,anchor=categoryAnchorId(prefix,cat.key),hidden=active!=='all'&&active!==cat.key;return `<article class="reading-category accent-border-${cat.key} ${hidden?'category-filter-hidden':''}" id="${anchor}" data-reading-category="${cat.key}"><header class="reading-category-head"><div><i>${cat.glyph}</i><span><strong>${cat.label}</strong><small>${count?`${count} 个对象`:'暂无明确对象'}</small></span></div>${count?`<b>${count}</b>`:""}</header>${summary?`<div class="reading-category-summary">${esc(shortText(summary,240))}</div>`:""}<div class="reading-object-list">${groups.length?groups.map(overlapCardHTML).join(""):`<div class="reading-category-empty"><i>${cat.glyph}</i><span>${summary?"已有地块汇总资料，尚无独立对象。":"本类尚无明确记载。"}</span></div>`}</div></article>`}).join("")}</div></section>`
   }
+  function dossierObjectEntryFields(o){
+    const hits=[],objectName=normalizeDossierImportName(o?.name),pushEntries=(owner,dossier,scope)=>{
+      const entries=Array.isArray(dossier?.museumEntries)?dossier.museumEntries:[];
+      entries.forEach(entry=>{
+        const resolved=resolvedDossierEntryObject(entry,owner),direct=resolved?.id===o.id;
+        const ownName=owner?.id===o.id&&normalizeDossierImportName(entry?.name)===objectName;
+        if(direct||ownName)hits.push({...entry,_scope:scope,_ownerId:owner?.id||"",_profileOriginal:dossier?.profile?.tileOriginalExcerpt||"",_direct:direct,_ownName:ownName,_resolvedBy:resolved?.id||""})
+      })
+    };
+    state.objects.forEach(owner=>{
+      pushEntries(owner,owner?.dossier,"object");
+      hierarchyChildren(owner).forEach(child=>pushEntries(owner,child?.dossier,"child"))
+    });
+    hits.sort((a,b)=>Number(b._ownName)-Number(a._ownName)||Number(b._direct)-Number(a._direct));
+    const merged={localRelation:"",coreFeatures:"",evidence:"",efficacy:"",originalExcerpt:"",sources:[]};
+    hits.forEach(entry=>{
+      ["localRelation","coreFeatures","evidence","efficacy"].forEach(field=>{if(hasText(entry[field]))merged[field]=mergeSupplementText(merged[field],entry[field])});
+      const quote=originalExcerptForEntry(entry._profileOriginal,entry.name,entry.localRelation);
+      if(hasText(quote))merged.originalExcerpt=mergeSupplementText(merged.originalExcerpt,quote);
+      if(entry._scope&&!merged.sources.includes(entry._scope))merged.sources.push(entry._scope)
+    });
+    return {...merged,hasImported:hits.length>0,entries:hits}
+  }
+  function dossierEvidenceSourceText(value){
+    let text=String(value||"").trim();
+    text=text.replace(/^证据\s*[：:]\s*/,"").replace(/^出自\s*/,"").trim();
+    return text
+  }
   function openIdentityObjectDrawer(id){
     const o=state.objects.find(x=>x.id===id);if(!o)return;let overlay=document.getElementById("identityObjectDrawer");if(!overlay){overlay=document.createElement("section");overlay.id="identityObjectDrawer";overlay.className="identity-object-drawer hidden";overlay.innerHTML=`<div class="identity-drawer-backdrop" data-close-identity-drawer></div><aside><header><div><span class="eyebrow">OBJECT MONOGRAPH</span><h2 id="identityDrawerTitle"></h2><p id="identityDrawerMeta"></p></div><button class="icon-btn" data-close-identity-drawer>×</button></header><div id="identityDrawerBody"></div></aside>`;document.body.appendChild(overlay);overlay.querySelectorAll('[data-close-identity-drawer]').forEach(x=>x.addEventListener('click',()=>overlay.classList.add('hidden')))}
     overlay.querySelector('#identityDrawerTitle').textContent=o.name;overlay.querySelector('#identityDrawerMeta').textContent=`${o.type||"未分类"} · ${coordText(o.x,o.y)} · ${o.chapter||"未标经篇"}`;
-    const rows=[["图片",o.imageUrl],["与本地关系",o.localRelation],["核心特征",o.coreFeatures||objectCoreText(o)],["功效／性质",o.efficacy],["关系说明",o.relationNotes],["原文",o.original],["古注",o.annotations],["其他古籍",o.otherTexts],["异文",o.variants],["现代考证",o.modernResearch],["定位与地图推导",o.derivation],["证据等级",evidenceTextForObject(o)],["资料来源",o.sourceNotes],["来源URL",o.sourceUrl],["待核对问题",o.pendingQuestions]].filter(([,v])=>hasText(v));
-    overlay.querySelector('#identityDrawerBody').innerHTML=rows.length?rows.map(([k,v])=>`<section><h3>${esc(k)}</h3><p>${esc(v)}</p></section>`).join(""):`<div class="dossier-empty">该对象尚未录入更多资料。</div>`;overlay.classList.remove('hidden')
+    const imported=dossierObjectEntryFields(o),importedSource=dossierEvidenceSourceText(imported.evidence),showImportedOriginal=isDirectOriginalRelation(imported.localRelation)&&hasText(imported.originalExcerpt),rows=[
+      ["图片",o.imageUrl],
+      [showImportedOriginal?"原文":"与本地关系",showImportedOriginal?imported.originalExcerpt:displayLocalRelation(imported.localRelation||o.localRelation)],
+      ["核心特征",imported.coreFeatures||(imported.hasImported?"":(o.coreFeatures||objectCoreText(o)))],
+      ["功效／性质",imported.efficacy||o.efficacy],
+      ["出自",importedSource],
+      ["所属经篇",o.chapter],
+      ["关系说明",o.relationNotes],
+      ["原文",showImportedOriginal?"":o.original],
+      ["古注",o.annotations],
+      ["其他古籍",o.otherTexts],
+      ["异文",o.variants],
+      ["现代考证",o.modernResearch],
+      ["定位与地图推导",o.derivation],
+      ["资料审核／证据等级",evidenceTextForObject(o)],
+      ["资料来源",o.sourceNotes],
+      ["来源URL",o.sourceUrl],
+      ["待核对问题",o.pendingQuestions]
+    ].filter(([,v])=>hasText(v));
+    const drawerBody=overlay.querySelector('#identityDrawerBody');drawerBody.innerHTML=rows.length?rows.map(([k,v])=>`<section><h3>${esc(k)}</h3><p>${["出自","所属经篇","原文","古注","其他古籍","异文","资料来源"].includes(k)?chapterReferenceHTML(v):esc(v).replace(/\n/g,"<br>")}</p></section>`).join(""):`<div class="dossier-empty">该对象尚未录入更多资料。</div>`;bindIdentityBoardEvents(drawerBody);overlay.classList.remove('hidden')
   }
 
   function renderIdentityBoard(profile,items,tile,main,{prefix="dossier"}={}){
     const complete=profileCompleteness(profile),name=main?.name||profile.tileType||`地块 ${tile.key}`,type=profile.tileType||main?.type||"未分类地块",oneLine=profile.oneLineSummary||profile.briefSummary||shortText(profile.geoEnvironment||main?.derivation||"尚未形成一句话摘要",150),chapters=CHAPTERS_18.filter(ch=>items.some(o=>String(o.chapter||"").includes(ch))),tags=splitTags(profile.localTags).slice(0,10),sourcePercent=Math.max(0,Math.min(100,Number(String(profile.relationCompleteness||"").replace("%",""))||complete.percent));
-    const identityRows=[["地块类型",type],["方位范围",profile.orientation],["所属经篇",chapters.join(" / ")],["主格坐标",tileCoordCode(tile.gx,tile.gy)]].filter(([,v])=>hasText(v));
-    const original=profile.tileOriginalExcerpt||uniqueText(items.map(o=>o.original)),evidence=profile.evidenceChain||uniqueText(items.flatMap(o=>[o.chapter,o.annotations,o.modernResearch,o.sourceNotes,o.sourceUrl]));
-    return `<article class="tile-identity-board reading-layout" data-board-tile="${esc(tile.key)}"><aside class="tile-identity-sidebar"><div class="tile-identity-mark"><i>${geometryIcon(main||{type})}</i><div><h2>${esc(name)}</h2><small>${esc(type)} · ${esc(state.dataVersion)}</small></div></div><div><div class="identity-label">一句话摘要</div><div class="identity-summary-box">${esc(oneLine)}</div></div>${tags.length?`<div><div class="identity-label">本地标签</div><div class="identity-tags clickable">${tags.map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div>`:""}<div class="identity-table">${identityRows.map(([k,v])=>`<div class="identity-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("")}</div><div class="identity-relation-groups">${identityTagGroupHTML("父级区域",profile.parentRegion)}${identityTagGroupHTML("相邻地块",profile.adjacentTiles)}${identityTagGroupHTML("关联水域",profile.relatedWaters)}${identityTagGroupHTML("关联生灵",profile.relatedLife)}</div><div class="identity-progress"><div class="identity-progress-row"><span>来源可信度</span><i style="--p:${profile.sourceReliability==='高'?'100%':profile.sourceReliability==='中'?'65%':profile.sourceReliability==='低'?'35%':'15%'}"></i><strong>${esc(profile.sourceReliability||"待核对")}</strong></div><div class="identity-progress-row"><span>关联完整度</span><i style="--p:${sourcePercent}%"></i><strong>${sourcePercent}%</strong></div></div><button class="btn secondary full" data-board-locate="${esc(tile.key)}">⌖ 查看地图位置</button></aside><section class="tile-identity-main"><div class="identity-hero"><div class="identity-hero-copy"><h2>${esc(name)}</h2><p>${esc(profile.basicSummary||oneLine)}</p><div class="identity-tags clickable">${tags.slice(0,6).map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div><div class="identity-hero-actions"><button data-board-copy="${esc(tile.key)}">复制本页摘要</button><button data-board-full="${esc(tile.key)}">打开完整博物志</button></div></div>${briefMuseumHTML(items)}<div class="identity-bottom-grid"><section class="identity-research-block ${original?'':'empty'}"><h3>原文摘录</h3><p>${esc(original)}</p></section><section class="identity-research-block ${evidence?'':'empty'}"><h3>资料证据链</h3><p>${esc(evidence)}</p></section></div>${profile.locationConclusion?`<section class="identity-research-block"><h3>当前定位结论</h3><p>${esc(profile.locationConclusion)}</p></section>`:""}${profile.pendingQuestions?`<section class="identity-research-block"><h3>待核对问题</h3><p>${esc(profile.pendingQuestions)}</p></section>`:""}</section></article>`
+    const identityRows=[["区域定位",profile.regionPosition],["地貌类型",profile.tileType||type],["水文特征",profile.hydrology],["方位范围",profile.orientation],["典籍出处",profile.sourceCitation],["所属经篇",chapters.join(" / ")],["主格坐标",tileCoordCode(tile.gx,tile.gy)]].filter(([,v])=>hasText(v));
+    const original=profile.tileOriginalExcerpt||uniqueText(items.map(o=>o.original)),evidence=uniqueText([profile.evidenceChain,profile.sourceCitation,profile.otherAllusions,uniqueText(items.flatMap(o=>[o.chapter,o.annotations,o.modernResearch,o.sourceNotes,o.sourceUrl]))]),detail=profile.detailedSummary;
+    return `<article class="tile-identity-board reading-layout" data-board-tile="${esc(tile.key)}"><aside class="tile-identity-sidebar"><div class="tile-identity-mark"><i>${geometryIcon(main||{type})}</i><div><h2>${esc(name)}</h2><small>${esc(type)} · ${esc(state.dataVersion)}</small></div></div><div><div class="identity-label">一句话摘要</div><div class="identity-summary-box">${esc(oneLine)}</div></div>${tags.length?`<div><div class="identity-label">本地标签</div><div class="identity-tags clickable">${tags.map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div>`:""}<div><div class="identity-label">地块属性</div><div class="identity-table">${identityRows.map(([k,v])=>`<div class="identity-row"><b>${esc(k)}</b><span>${chapterReferenceHTML(v)}</span></div>`).join("")}</div></div><div><div class="identity-label">数据关系</div><div class="identity-relation-groups">${identityTagGroupHTML("父级区域",profile.parentRegion)}${identityTagGroupHTML("相邻地块",profile.adjacentTiles)}${identityTagGroupHTML("相关水域",profile.relatedWaters)}${identityTagGroupHTML("相关生灵",profile.relatedLife)}</div></div><div class="identity-progress"><div class="identity-progress-row"><span>来源可信度</span><i style="--p:${profile.sourceReliability==='高'?'100%':profile.sourceReliability==='中'?'65%':profile.sourceReliability==='低'?'35%':'15%'}"></i><strong>${esc(profile.sourceReliability||"待核对")}</strong></div><div class="identity-progress-row"><span>关联完整度</span><i style="--p:${sourcePercent}%"></i><strong>${sourcePercent}%</strong></div></div><button class="btn secondary full" data-board-locate="${esc(tile.key)}">⌖ 查看地图位置</button></aside><section class="tile-identity-main"><div class="identity-hero"><div class="identity-hero-copy"><span class="identity-region-line">${esc(profile.regionPosition||profile.orientation||"")}</span><h2>${esc(name)}</h2><p>${esc(oneLine)}</p><div class="identity-tags clickable">${tags.slice(0,6).map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div><div class="identity-hero-actions"><button data-board-copy="${esc(tile.key)}">复制本页摘要</button><button data-board-full="${esc(tile.key)}">打开完整博物志</button></div></div>${briefMuseumHTML(items,{profile})}<div class="identity-bottom-grid"><section class="identity-research-block ${original?'':'empty'}"><h3>原文摘录</h3><p>${chapterReferenceHTML(original)}</p></section><section class="identity-research-block ${evidence?'':'empty'}"><h3>资料证据链</h3><p>${chapterReferenceHTML(evidence)}</p></section></div>${detail?`<details class="identity-detailed-summary"><summary>详细描述</summary><p>${esc(detail)}</p></details>`:""}${profile.locationConclusion?`<section class="identity-research-block"><h3>当前定位结论</h3><p>${esc(profile.locationConclusion)}</p></section>`:""}${profile.pendingQuestions?`<section class="identity-research-block"><h3>待核对问题</h3><p>${esc(profile.pendingQuestions)}</p></section>`:""}</section></article>`
   }
 
+  function scriptureGroupFor(chapter){return CHAPTER_GROUPS.find(group=>group.chapters.includes(chapter))||CHAPTER_GROUPS[0]}
+  function scriptureObjectMatchesChapter(object,chapter){
+    if(!object||!chapter)return false;
+    const profile=object.dossier?.profile||{},sources=[object.chapter,profile.sourceCitation,profile.tileOriginalExcerpt,profile.otherAllusions];
+    return sources.some(value=>String(value||"").includes(chapter)||scriptureNamesInText(value).includes(chapter))
+  }
+  function scriptureObjectsFor(chapter){return state.objects.filter(object=>scriptureObjectMatchesChapter(object,chapter))}
+  function scriptureEventsFor(chapter){
+    const rows=[];
+    Object.entries(state.tileProfiles||{}).forEach(([key,profile])=>{const text=profile?.scriptureEvents?.[chapter];if(hasText(text)){const [gx,gy]=key.split(',').map(Number);rows.push({key,gx,gy,text,profile})}});
+    return rows
+  }
+  function scriptureObjectSearchText(object){
+    const profile=object?.dossier?.profile||{};
+    return [object?.name,object?.type,object?.chapter,object?.region,object?.localRelation,object?.coreFeatures,object?.original,object?.annotations,object?.modernResearch,object?.aliases,profile.regionPosition,profile.oneLineSummary,profile.localTags,profile.sourceCitation,profile.tileOriginalExcerpt,profile.otherAllusions,profile.detailedSummary].filter(Boolean).join(" ")
+  }
+  function scriptureObjectSummary(object){
+    const profile=object?.dossier?.profile||{};
+    return profile.oneLineSummary||object?.coreFeatures||object?.localRelation||object?.terrain||object?.water||object?.appearance||shortText(object?.original||"",150)||"资料待补充"
+  }
+  function scriptureObjectExcerpt(object){const profile=object?.dossier?.profile||{};return profile.tileOriginalExcerpt||object?.original||""}
+  function scriptureRegionValues(object){
+    const profile=object?.dossier?.profile||{},raw=[object?.region,profile.parentRegion,profile.regionPosition].filter(Boolean).join("／");
+    return raw.split(/[／/、,，;；\n]+/).map(value=>value.trim()).filter(value=>value&&!/地图推定|区域定位|位置/.test(value)).slice(0,5)
+  }
+  function scriptureStats(chapter){
+    const objects=scriptureObjectsFor(chapter),events=scriptureEventsFor(chapter),cells=new Set(objects.map(object=>{const cell=objectCell(object);return cellKey(cell.gx,cell.gy)})),regions=new Map(),categories=new Map(V027_CATEGORIES.map(category=>[category.key,0]));
+    objects.forEach(object=>{categories.set(objectCategory(object),(categories.get(objectCategory(object))||0)+1);scriptureRegionValues(object).forEach(region=>regions.set(region,(regions.get(region)||0)+1))});
+    const imported=objects.filter(object=>object.dossier?.profile).length,withOriginal=objects.filter(object=>hasText(scriptureObjectExcerpt(object))).length;
+    const xs=objects.map(object=>Number(object.x)).filter(Number.isFinite),ys=objects.map(object=>Number(object.y)).filter(Number.isFinite),bounds=xs.length?{minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)}:null;
+    return {chapter,objects,events,cells,regions:[...regions.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"zh-CN")),categories,imported,withOriginal,bounds}
+  }
+  function scriptureSummaryText(stats){
+    const topCategories=V027_CATEGORIES.map(category=>[category.label,stats.categories.get(category.key)||0]).filter(([,count])=>count).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([label,count])=>`${label}${count}项`).join("、"),topRegions=stats.regions.slice(0,3).map(([name])=>name).join("、");
+    if(!stats.objects.length&&!stats.events.length)return "当前工作区尚未收录本经的地图对象或地块事件，可从对象资料与九段式博物志继续补充。";
+    return `当前工作区共归入${stats.objects.length}个对象，分布在${stats.cells.size}个100里主格${topCategories?`，内容以${topCategories}为主`:""}${topRegions?`；主要涉及${topRegions}`:""}。本页只汇总客户端现有资料，不补写原典未载内容。`
+  }
+  function scriptureChapterCount(chapter){return scriptureObjectsFor(chapter).length}
+  function scriptureNavigationHTML(active){
+    return CHAPTER_GROUPS.map(group=>`<section class="scripture-nav-group"><h3>${esc(group.name)}</h3>${group.chapters.map(chapter=>`<button type="button" class="${chapter===active?'active':''}" data-scripture-chapter="${esc(chapter)}"><span>《${esc(chapter)}》</span><b>${scriptureChapterCount(chapter)}</b></button>`).join("")}</section>`).join("")
+  }
+  function scriptureCategoryButtonsHTML(stats){
+    const buttons=[`<button type="button" class="${state.scriptureCategory==='all'?'active':''}" data-scripture-category="all">全部 <b>${stats.objects.length}</b></button>`];
+    V027_CATEGORIES.forEach(category=>{const count=stats.categories.get(category.key)||0;if(count)buttons.push(`<button type="button" class="${state.scriptureCategory===category.key?'active':''}" data-scripture-category="${category.key}">${category.glyph} ${esc(category.label)} <b>${count}</b></button>`)});
+    return buttons.join("")
+  }
+  function scriptureMiniMapHTML(stats){
+    if(!stats.objects.length||!stats.bounds)return `<div class="scripture-mini-map empty"><span>尚无可绘制的坐标对象</span></div>`;
+    const {minX,maxX,minY,maxY}=stats.bounds,dx=Math.max(1,maxX-minX),dy=Math.max(1,maxY-minY),dots=stats.objects.slice(0,180).map(object=>{const left=6+((Number(object.x)-minX)/dx)*88,top=6+(1-(Number(object.y)-minY)/dy)*88,cat=objectCategory(object);return `<button type="button" class="scripture-map-dot cat-${cat}" style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%" data-scripture-locate-object="${esc(object.id)}" title="${esc(object.name)} · ${esc(coordText(object.x,object.y))}"></button>`}).join("");
+    return `<div class="scripture-mini-map"><i class="axis-x"></i><i class="axis-y"></i>${dots}<span class="map-north">北</span><small>${esc(coordText(minX,minY))} — ${esc(coordText(maxX,maxY))}</small></div>`
+  }
+  function scriptureObjectCardHTML(object,chapter){
+    const category=V027_CATEGORIES.find(item=>item.key===objectCategory(object))||V027_CATEGORIES[0],summary=scriptureObjectSummary(object),excerpt=scriptureObjectExcerpt(object),source=cardScriptureSource(object)||`《${chapter}》`,profile=object.dossier?.profile||{},tags=splitTags(profile.localTags||"").slice(0,4),region=object.region||profile.regionPosition||"未标区域";
+    return `<article class="scripture-object-card"><header><div class="scripture-object-glyph">${category.glyph}</div><div><span>${esc(category.label)} · ${esc(object.type||"未分类")}</span><h4>${esc(object.name)}</h4><p>${esc(region)} · ${esc(coordText(object.x,object.y))}</p></div></header><div class="scripture-object-body"><p>${esc(shortText(summary,190))}</p>${excerpt?`<blockquote>${chapterReferenceHTML(shortText(excerpt,220))}</blockquote>`:""}${tags.length?`<div class="scripture-object-tags">${tags.map(tag=>`<span>${esc(tag)}</span>`).join("")}</div>`:""}</div><footer><span>${chapterReferenceHTML(source)}</span><div><button type="button" data-scripture-object-detail="${esc(object.id)}">查看资料</button><button type="button" data-scripture-locate-object="${esc(object.id)}">地图定位</button></div></footer></article>`
+  }
+  function scriptureEventCardHTML(event,chapter){
+    const title=event.profile?.oneLineSummary||event.profile?.briefSummary||`地块 ${event.key}`;
+    return `<article class="scripture-event-card"><span>经篇事件 · ${esc(tileCoordCode(event.gx,event.gy))}</span><h4>${esc(title)}</h4><p>${esc(event.text)}</p><button type="button" data-scripture-locate-cell="${esc(event.key)}">查看地块</button></article>`
+  }
+  function scriptureMainContentHTML(stats){
+    const query=normalizeText(state.scriptureQuery),objects=stats.objects.filter(object=>(!query||normalizeText(scriptureObjectSearchText(object)).includes(query))&&(state.scriptureCategory==='all'||objectCategory(object)===state.scriptureCategory)),events=stats.events.filter(event=>!query||normalizeText([event.text,event.profile?.oneLineSummary,event.profile?.localTags].filter(Boolean).join(' ')).includes(query)),grouped=V027_CATEGORIES.map(category=>({category,objects:objects.filter(object=>objectCategory(object)===category.key)})).filter(group=>group.objects.length),topRegions=stats.regions.slice(0,8),quotes=objects.filter(object=>hasText(scriptureObjectExcerpt(object))).slice(0,12);
+    const overview=`<section class="scripture-overview-grid"><article class="scripture-distribution-card"><div class="scripture-section-head"><div><span>MAP DISTRIBUTION</span><h3>地图分布</h3></div><b>${stats.cells.size}格</b></div>${scriptureMiniMapHTML(stats)}<div class="scripture-region-list">${topRegions.length?topRegions.map(([name,count])=>`<span>${esc(name)} <b>${count}</b></span>`).join(""):'<em>尚未形成区域统计</em>'}</div></article><article class="scripture-source-card"><div class="scripture-section-head"><div><span>TEXT COVERAGE</span><h3>资料覆盖</h3></div><b>${stats.withOriginal}/${stats.objects.length}</b></div><dl><div><dt>已导入九段式博物志</dt><dd>${stats.imported}项</dd></div><div><dt>含原文摘录</dt><dd>${stats.withOriginal}项</dd></div><div><dt>地块经篇事件</dt><dd>${stats.events.length}条</dd></div><div><dt>待补正文</dt><dd>${Math.max(0,stats.objects.length-stats.withOriginal)}项</dd></div></dl><p>统计来自当前客户端对象、地块档案及已导入 Markdown，不代表原典完整篇目数量。</p></article></section>`;
+    const categories=grouped.length?grouped.map(group=>`<section class="scripture-category-section"><div class="scripture-section-head"><div><span>${esc(group.category.key.toUpperCase())}</span><h3>${group.category.glyph} ${esc(group.category.label)}</h3></div><b>${group.objects.length}项</b></div><div class="scripture-object-grid">${group.objects.map(object=>scriptureObjectCardHTML(object,stats.chapter)).join("")}</div></section>`).join(""):`<section class="scripture-empty"><strong>没有符合当前筛选的内容</strong><p>可清空检索词或切换“全部”分类。</p></section>`;
+    const eventSection=events.length?`<section class="scripture-category-section scripture-events-section"><div class="scripture-section-head"><div><span>TILE EVENTS</span><h3>地块经篇事件</h3></div><b>${events.length}条</b></div><div class="scripture-event-grid">${events.map(event=>scriptureEventCardHTML(event,stats.chapter)).join("")}</div></section>`:"";
+    const quoteSection=quotes.length?`<section class="scripture-quote-index"><div class="scripture-section-head"><div><span>ORIGINAL TEXT INDEX</span><h3>原文索引</h3></div><b>${quotes.length}则</b></div>${quotes.map(object=>`<article><button type="button" data-scripture-object-detail="${esc(object.id)}">${esc(object.name)}</button><p>${chapterReferenceHTML(shortText(scriptureObjectExcerpt(object),260))}</p></article>`).join("")}</section>`:"";
+    return overview+categories+eventSection+quoteSection
+  }
+  function scriptureCopyText(stats){
+    const categories=V027_CATEGORIES.map(category=>`${category.label}${stats.categories.get(category.key)||0}项`).filter(text=>!/0项$/.test(text)).join("；"),regions=stats.regions.slice(0,8).map(([name,count])=>`${name}${count}项`).join("；");
+    return [`【经篇】《${stats.chapter}》`,`【当前对象】${stats.objects.length}项`,`【地图主格】${stats.cells.size}格`,`【分类】${categories||"暂无"}`,`【主要区域】${regions||"暂无"}`,`【含原文摘录】${stats.withOriginal}项`,`【九段式博物志】${stats.imported}项`,`【地块经篇事件】${stats.events.length}条`,`【说明】本摘要依据当前客户端工作区生成，不代表原典完整目录。`].join("\n")
+  }
+  function renderScriptureWorkspace(chapter=state.scriptureChapter,{resetScroll=false}={}){
+    const target=CHAPTERS_18.find(name=>name===String(chapter||"").trim());if(!target||!els.scriptureWorkspace)return;
+    state.scriptureChapter=target;const stats=scriptureStats(target),group=scriptureGroupFor(target),reading=els.scriptureWorkspace.querySelector('.scripture-reading'),oldTop=reading?.scrollTop||0;
+    els.scripturePageTitle.textContent=`《${target}》内容页`;els.scripturePageMeta.textContent=`${group.name} · ${stats.objects.length}个对象 · ${stats.cells.size}个100里主格`;
+    els.scriptureChapterNav.innerHTML=scriptureNavigationHTML(target);els.scriptureCategoryFilter.innerHTML=scriptureCategoryButtonsHTML(stats);els.scriptureSearchInput.value=state.scriptureQuery;
+    els.scriptureHero.innerHTML=`<div class="scripture-hero-copy"><span>${esc(group.name)} · 山海经十八篇</span><h2>《${esc(target)}》</h2><p>${esc(scriptureSummaryText(stats))}</p><div>${stats.regions.slice(0,5).map(([name,count])=>`<span>${esc(name)} <b>${count}</b></span>`).join("")}</div></div><div class="scripture-stat-grid"><article><strong>${stats.objects.length}</strong><span>地图对象</span></article><article><strong>${stats.cells.size}</strong><span>已定位主格</span></article><article><strong>${stats.imported}</strong><span>九段式资料</span></article><article><strong>${stats.withOriginal}</strong><span>含原文摘录</span></article></div>`;
+    els.scriptureContent.innerHTML=scriptureMainContentHTML(stats);bindScriptureWorkspaceContentEvents();
+    requestAnimationFrame(()=>{if(reading)reading.scrollTop=resetScroll?0:oldTop})
+  }
+  function bindScriptureWorkspaceContentEvents(){
+    els.scriptureChapterNav?.querySelectorAll('[data-scripture-chapter]').forEach(button=>button.addEventListener('click',()=>{state.scriptureQuery="";state.scriptureCategory="all";renderScriptureWorkspace(button.dataset.scriptureChapter,{resetScroll:true})}));
+    els.scriptureCategoryFilter?.querySelectorAll('[data-scripture-category]').forEach(button=>button.addEventListener('click',()=>{state.scriptureCategory=button.dataset.scriptureCategory||'all';renderScriptureWorkspace(state.scriptureChapter)}));
+    els.scriptureContent?.querySelectorAll('[data-scripture-object-detail]').forEach(button=>button.addEventListener('click',()=>openIdentityObjectDrawer(button.dataset.scriptureObjectDetail)));
+    els.scriptureContent?.querySelectorAll('[data-scripture-locate-object]').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.scriptureLocateObject;closeScriptureWorkspace();closeDossierWorkspace();jumpToObject(id,true,true)}));
+    els.scriptureContent?.querySelectorAll('[data-scripture-locate-cell]').forEach(button=>button.addEventListener('click',()=>{closeScriptureWorkspace();closeDossierWorkspace();jumpToCell(button.dataset.scriptureLocateCell,false)}));
+    els.scriptureContent?.querySelectorAll('[data-scripture-directory]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const next=button.dataset.scriptureDirectory;if(next!==state.scriptureChapter){state.scriptureQuery="";state.scriptureCategory="all";renderScriptureWorkspace(next,{resetScroll:true})}}))
+  }
+  function openScriptureDirectory(chapter){
+    const target=CHAPTERS_18.find(name=>name===String(chapter||"").trim());if(!target)return;
+    closeTagExplorer();document.getElementById("identityObjectDrawer")?.classList.add("hidden");state.scriptureQuery="";state.scriptureCategory="all";els.scriptureWorkspace.classList.remove("hidden");document.body.classList.add("scripture-page-open");renderScriptureWorkspace(target,{resetScroll:true});
+    const count=scriptureObjectsFor(target).length;toast(`已打开《${target}》内容页`,`${count}个对象`)
+  }
+  function closeScriptureWorkspace(){if(!els.scriptureWorkspace)return;els.scriptureWorkspace.classList.add("hidden");document.body.classList.remove("scripture-page-open")}
+  function showScriptureOnMap(){
+    const target=state.scriptureChapter;if(!target)return;closeScriptureWorkspace();closeDossierWorkspace();document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");document.getElementById("identityObjectDrawer")?.classList.add("hidden");state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.filters.q="";state.filters.chapter=target;state.filters.type="";els.searchInput.value="";populateFilters();els.chapterFilter.value=target;renderSidebar();scheduleRender();persist();requestAnimationFrame(()=>{els.objectList.scrollTop=0;els.leftPanel?.classList.add("scripture-directory-flash");setTimeout(()=>els.leftPanel?.classList.remove("scripture-directory-flash"),720)});toast(`地图已筛选《${target}》`,`${scriptureObjectsFor(target).length}个对象`)
+  }
+  function setupScriptureWorkspace(){
+    if(!els.scriptureWorkspace)return;
+    els.closeScriptureBtn?.addEventListener("click",closeScriptureWorkspace);els.scriptureMapBtn?.addEventListener("click",showScriptureOnMap);els.scriptureCopyBtn?.addEventListener("click",()=>{const stats=scriptureStats(state.scriptureChapter);copyText(scriptureCopyText(stats),`《${stats.chapter}》摘要已复制`)});
+    els.scriptureSearchInput?.addEventListener("input",()=>{state.scriptureQuery=els.scriptureSearchInput.value;renderScriptureWorkspace(state.scriptureChapter)});
+    els.scriptureWorkspace.addEventListener("contextmenu",event=>{if(isEditableContextTarget(event.target))return;event.preventDefault();event.stopImmediatePropagation();appGoBack()});
+  }
   function bindIdentityBoardEvents(root=document){
+    root.querySelectorAll('[data-scripture-directory]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openScriptureDirectory(btn.dataset.scriptureDirectory)}));
     root.querySelectorAll('[data-category-filter]').forEach(btn=>btn.addEventListener('click',()=>{
       const next=btn.dataset.categoryFilter||"all",changed=state.dossierCategoryFilter!==next;state.dossierCategoryFilter=next;
       const pane=els.dossierContent?.closest(".dossier-right");rerenderActiveBoard();
       requestAnimationFrame(()=>{const reading=els.dossierContent?.querySelector('[data-category-reading]');if(reading){const paneRect=pane?.getBoundingClientRect(),readRect=reading.getBoundingClientRect();if(pane&&paneRect)pane.scrollTo({top:pane.scrollTop+readRect.top-paneRect.top-14,behavior:changed?'smooth':'auto'});else reading.scrollIntoView({behavior:'smooth',block:'start'})}})
     }));
     root.querySelectorAll('[data-category-jump]').forEach(btn=>btn.addEventListener('dblclick',()=>{const target=root.querySelector(`#${CSS.escape(btn.dataset.categoryJump)}`);target?.scrollIntoView({behavior:'smooth',block:'start'})}));
-    root.querySelectorAll('[data-object-detail]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();openIdentityObjectDrawer(btn.dataset.objectDetail)}));root.querySelectorAll('.brief-object-image img').forEach(img=>img.addEventListener('error',()=>{const frame=img.closest('.brief-object-image');frame?.classList.remove('has-image');frame?.classList.add('image-error','is-placeholder');img.remove()}));
-    root.querySelectorAll('.brief-object-copy').forEach(panel=>panel.addEventListener('wheel',e=>{const max=panel.scrollHeight-panel.clientHeight;if(max<=2)return;const down=e.deltaY>0,can=down?panel.scrollTop<max-1:panel.scrollTop>1;if(!can)return;e.preventDefault();e.stopPropagation();panel.scrollTop=Math.max(0,Math.min(max,panel.scrollTop+e.deltaY))},{passive:false}));
+    root.querySelectorAll('[data-object-detail]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();openIdentityObjectDrawer(btn.dataset.objectDetail)}));root.querySelectorAll('.brief-object-image img').forEach(img=>img.addEventListener('error',()=>{const frame=img.closest('.brief-object-image');frame?.classList.remove('has-image');frame?.classList.add('image-error','is-placeholder');frame?.removeAttribute('data-museum-image-preview');frame?.removeAttribute('role');frame?.removeAttribute('tabindex');frame?.removeAttribute('title');img.remove()}));
+    root.querySelectorAll('[data-museum-image-preview]').forEach(frame=>{const open=event=>{event.preventDefault();event.stopPropagation();openMuseumImageViewer(frame.dataset.museumImagePreview,frame.dataset.museumImageName)};frame.addEventListener('click',open);frame.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){open(event)}})});
+    // 滚轮由全局博物志滚动路由统一处理，避免重复绑定导致卡片或栏目无法继续下滚。
     root.querySelectorAll('[data-overlap-flip]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const id=btn.dataset.overlapFlip,current=state.overlapViews[id]||{flipped:false,index:0};state.overlapViews[id]={...current,flipped:!current.flipped};rerenderActiveBoard()}));
     root.querySelectorAll('[data-overlap-object]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const id=btn.dataset.overlapObject,current=state.overlapViews[id]||{flipped:true,index:0};state.overlapViews[id]={...current,flipped:true,index:Number(btn.dataset.overlapIndex)||0};rerenderActiveBoard()}));
     root.querySelectorAll('[data-board-locate]').forEach(btn=>btn.addEventListener('click',()=>locateBoardTile(btn.dataset.boardLocate)));
@@ -3221,7 +3647,7 @@
   function renderCollectionMuseum(data){
     const {entries,items,profile,chapters,tags,relationCompleteness}=data,autoSummary=buildV029AutoRegionSummary(data);
     const identityRows=[["采集地块",`${entries.length}个100里主格`],["对象总数",`${items.length}项`],["覆盖范围",profile.orientation],["所属经篇",chapters.join(" / ")],["数据版本",state.dataVersion]].filter(([,v])=>hasText(v));
-    return `<article class="tile-identity-board collection-museum-board"><aside class="tile-identity-sidebar"><div class="tile-identity-mark"><i>集</i><div><h2>采集区域</h2><small>画笔合并博物志</small></div></div><div><div class="identity-label">区域摘要</div><div class="identity-summary-box">${esc(autoSummary.text)}</div></div>${tags.length?`<div><div class="identity-label">汇总标签</div><div class="identity-tags clickable">${tags.slice(0,10).map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div>`:""}<div class="identity-table">${identityRows.map(([k,v])=>`<div class="identity-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("")}</div><div class="identity-progress"><div class="identity-progress-row"><span>来源可信度</span><i style="--p:${profile.sourceReliability==='高'?'100%':profile.sourceReliability==='中'?'65%':profile.sourceReliability==='低'?'35%':'15%'}"></i><strong>${esc(profile.sourceReliability)}</strong></div><div class="identity-progress-row"><span>关联完整度</span><i style="--p:${relationCompleteness}%"></i><strong>${relationCompleteness}%</strong></div></div><button class="btn secondary full" data-collection-locate-all>⌖ 查看全部选区</button></aside><section class="tile-identity-main"><div class="identity-hero"><div class="identity-hero-copy"><h2>画笔采集区域博物志</h2><p>已将 ${entries.length} 个地块合并为统一的“这里有什么”分类陈列。</p><div class="identity-tags clickable">${tags.slice(0,8).map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div><div class="identity-hero-actions"><button data-collection-copy>复制区域摘要</button><button data-collection-continue>继续追加</button><button data-collection-clear>清空集合</button></div></div><section class="auto-region-summary compact-summary"><div><h3>自动区域摘要</h3><p>${esc(autoSummary.text)}</p></div><div class="auto-region-stats">${autoSummary.stats.map(x=>`<span>${esc(x)}</span>`).join("")}</div></section>${briefMuseumHTML(items,{ignoreImported:true,scopeLabel:`画笔采集 ${entries.length} 个地块`})}<details class="collection-directory-collapse"><summary>采集地块目录 · ${entries.length} 个地块</summary>${collectionTileDirectoryHTML(entries)}</details><div class="identity-bottom-grid"><section class="identity-research-block ${profile.tileOriginalExcerpt?'':'empty'}"><h3>原文摘录汇总</h3><p>${esc(profile.tileOriginalExcerpt)}</p></section><section class="identity-research-block ${profile.evidenceChain?'':'empty'}"><h3>资料证据链汇总</h3><p>${esc(profile.evidenceChain)}</p></section></div>${profile.locationConclusion?`<section class="identity-research-block"><h3>定位结论汇总</h3><p>${esc(profile.locationConclusion)}</p></section>`:""}${profile.pendingQuestions?`<section class="identity-research-block"><h3>待核对问题汇总</h3><p>${esc(profile.pendingQuestions)}</p></section>`:""}</section></article>`
+    return `<article class="tile-identity-board collection-museum-board"><aside class="tile-identity-sidebar"><div class="tile-identity-mark"><i>集</i><div><h2>采集区域</h2><small>画笔合并博物志</small></div></div><div><div class="identity-label">区域摘要</div><div class="identity-summary-box">${esc(autoSummary.text)}</div></div>${tags.length?`<div><div class="identity-label">汇总标签</div><div class="identity-tags clickable">${tags.slice(0,10).map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div>`:""}<div class="identity-table">${identityRows.map(([k,v])=>`<div class="identity-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("")}</div><div class="identity-progress"><div class="identity-progress-row"><span>来源可信度</span><i style="--p:${profile.sourceReliability==='高'?'100%':profile.sourceReliability==='中'?'65%':profile.sourceReliability==='低'?'35%':'15%'}"></i><strong>${esc(profile.sourceReliability)}</strong></div><div class="identity-progress-row"><span>关联完整度</span><i style="--p:${relationCompleteness}%"></i><strong>${relationCompleteness}%</strong></div></div><button class="btn secondary full" data-collection-locate-all>⌖ 查看全部选区</button></aside><section class="tile-identity-main"><div class="identity-hero"><div class="identity-hero-copy"><h2>画笔采集区域博物志</h2><p>已将 ${entries.length} 个地块合并为统一的“这里有什么”分类陈列。</p><div class="identity-tags clickable">${tags.slice(0,8).map(t=>identityTagButtonHTML("本地标签",t)).join("")}</div></div><div class="identity-hero-actions"><button data-collection-copy>复制区域摘要</button><button data-collection-continue>继续追加</button><button data-collection-clear>清空集合</button></div></div><section class="auto-region-summary compact-summary"><div><h3>自动区域摘要</h3><p>${esc(autoSummary.text)}</p></div><div class="auto-region-stats">${autoSummary.stats.map(x=>`<span>${esc(x)}</span>`).join("")}</div></section>${briefMuseumHTML(items,{ignoreImported:true,scopeLabel:`画笔采集 ${entries.length} 个地块`,profile})}<details class="collection-directory-collapse"><summary>采集地块目录 · ${entries.length} 个地块</summary>${collectionTileDirectoryHTML(entries)}</details><div class="identity-bottom-grid"><section class="identity-research-block ${profile.tileOriginalExcerpt?'':'empty'}"><h3>原文摘录汇总</h3><p>${esc(profile.tileOriginalExcerpt)}</p></section><section class="identity-research-block ${profile.evidenceChain?'':'empty'}"><h3>资料证据链汇总</h3><p>${esc(profile.evidenceChain)}</p></section></div>${profile.locationConclusion?`<section class="identity-research-block"><h3>定位结论汇总</h3><p>${esc(profile.locationConclusion)}</p></section>`:""}${profile.pendingQuestions?`<section class="identity-research-block"><h3>待核对问题汇总</h3><p>${esc(profile.pendingQuestions)}</p></section>`:""}</section></article>`
   }
   function locateCollectionArea(keys){
     if(!keys.length)return;const bounds=keys.reduce((acc,key)=>{const [gx,gy]=key.split(',').map(Number),b=cellBounds(gx,gy);acc.west=Math.min(acc.west,b.west);acc.east=Math.max(acc.east,b.east);acc.south=Math.min(acc.south,b.south);acc.north=Math.max(acc.north,b.north);return acc},{west:Infinity,east:-Infinity,south:Infinity,north:-Infinity}),r=els.viewport.getBoundingClientRect(),w=Math.max(100,bounds.east-bounds.west),h=Math.max(100,bounds.north-bounds.south),zoom=Math.max(MIN_ZOOM,Math.min(3.8,Math.min((r.width-120)/(w*BASE_CELL_PX/100),(r.height-120)/(h*BASE_CELL_PX/100))));
@@ -3287,17 +3713,14 @@
 
 
 
-  // v0.7.3 · 安全补充导入＋通用父子地点层级：同事资料可建立非空间下属地点／分段。
+  // v0.7.4 · 博物志展示增强与九段式 Markdown 混合格式兼容。
   function stripInlineMarkdown(value){return String(value||"").trim().replace(/^[-*+]\s+/,"").replace(/(?:\*\*|__)/g,"").replace(/`/g,"").trim()}
   function normalizeDossierEntryName(value){return stripInlineMarkdown(value).replace(/^\d+\s*[，,、.]\s*/,"").replace(/^(?:名称|对象名称|地名|山名|水名|国名|事件名称|遗迹名称)\s*[：:]\s*/,"").trim()}
   function normalizeNineSectionMarkdown(text){
     const titles={1:"区域定位",2:"一句话概要",3:"本地标签",4:"地块属性",5:"数据关系",6:"分别整理以下六类",7:"原文摘录",8:"其他典故",9:"详细描述"};
-    const category=/^(地貌|水系|草木|鸟兽|金玉矿物|人群神祇|事件与遗迹|事件遗迹)(?:[（(][^）)]*[）)])?$/;
     return String(text||"").replace(/\r\n?/g,"\n").split("\n").map(line=>{
-      let m=line.match(/^\s*(?:#{1,6}\s*)?(?:\*\*|__)?\s*0([1-9])\s*[.,，、]?\s*.*?\s*(?:\*\*|__)?\s*$/);
-      if(m){const n=Number(m[1]);return `## ${String(n).padStart(2,"0")}.${titles[n]}`}
-      m=line.match(/^\s*(?:\*\*|__)\s*(.+?)\s*(?:\*\*|__)\s*$/);
-      if(m){const c=m[1].trim().match(category);if(c)return `### ${c[1]==="事件遗迹"?"事件与遗迹":c[1]}`}
+      const section=matchNineSectionHeaderLine(line);if(section)return `## ${String(section.number).padStart(2,"0")}.${titles[section.number]}`;
+      const category=matchNineCategoryHeaderLine(line);if(category)return `### ${category.category==="事件遗迹"?"事件与遗迹":category.category}`;
       return line
     }).join("\n")
   }
@@ -3339,7 +3762,8 @@
   }
   function analyzeImportText(){updateImportCharCount();const text=els.importText.value;if(!text.trim()){state.importAnalysis=null;renderImportAnalysis(null);return}state.importAnalysis=applyImportPolicyToAnalysis(parseMarkdown(normalizeNineSectionMarkdown(text)));const entries=state.importAnalysis.entries||[];state.importSelectedIndex=Math.min(state.importSelectedIndex,Math.max(0,entries.length-1));renderImportAnalysis(state.importAnalysis)}
   function compactSupplementText(value){return String(value||"").normalize("NFKC").replace(/\s+/g,"").replace(/[，。；：、,.!?！？;:\-—–]/g,"")}
-  function mergeSupplementText(current,incoming){const a=String(current||"").trim(),b=String(incoming||"").trim();if(!b)return a;if(!a)return b;const ak=compactSupplementText(a),bk=compactSupplementText(b);if(!bk||ak===bk||ak.includes(bk))return a;if(bk.includes(ak))return b;return `${a}\n\n${b}`}
+  function isSupplementPlaceholderText(value){const key=compactSupplementText(value);return /^(?:资料待补充|待补充|原文未载明确|原文未载|未载明确|暂无明确记载|无明确记载|原文未明确记载|暂无相关记载|无相关记载|—|-)$/.test(key)}
+  function mergeSupplementText(current,incoming){const a=String(current||"").trim(),b=String(incoming||"").trim();if(!b||isSupplementPlaceholderText(b))return a;if(!a||isSupplementPlaceholderText(a))return b;const ak=compactSupplementText(a),bk=compactSupplementText(b);if(!bk||ak===bk||ak.includes(bk))return a;if(bk.includes(ak))return b;return `${a}\n\n${b}`}
   function mergeSupplementTags(current,incoming){const out=[],seen=new Set();`${current||""}/${incoming||""}`.split(/[\/／#，,\n]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>{const k=normalizeDossierImportName(x);if(!seen.has(k)){seen.add(k);out.push(x)}});return out.join(" / ")}
   function mergeSupplementScalar(current,incoming){return hasText(current)?current:(incoming??current)}
   function mergeSupplementObject(existing,entry){
@@ -3349,8 +3773,8 @@
   function mergeSupplementDossier(previous,incoming){
     const old=structuredClone(previous||{}),next=structuredClone(incoming||{}),profile={...old.profile};
     Object.entries(next.profile||{}).forEach(([key,value])=>{if(hasText(value))profile[key]=key==="localTags"?mergeSupplementTags(profile[key],value):mergeSupplementText(profile[key],value)});
-    const museum=Array.isArray(old.museumEntries)?old.museumEntries.map(x=>structuredClone(x)):[],index=new Map(museum.map((e,i)=>[`${e.sourceCategory||""}|${normalizeDossierImportName(e.name)}`,i]));
-    (next.museumEntries||[]).forEach(item=>{const key=`${item.sourceCategory||""}|${normalizeDossierImportName(item.name)}`,at=index.get(key);if(at===undefined){index.set(key,museum.length);museum.push(structuredClone(item));return}const merged={...museum[at]};["localRelation","coreFeatures","evidence","efficacy"].forEach(field=>{merged[field]=mergeSupplementText(merged[field],item[field])});merged.linkedObjectId=merged.linkedObjectId||item.linkedObjectId||"";merged.linkReason=merged.linkReason||item.linkReason||"";merged.imageUrl=merged.imageUrl||item.imageUrl||"";museum[at]=merged});
+    const museum=Array.isArray(old.museumEntries)?old.museumEntries.map(x=>({...structuredClone(x),sourceCategory:normalizedDossierCategoryLabel(x.sourceCategory)})):[],index=new Map(museum.map((e,i)=>[`${normalizedDossierCategoryLabel(e.sourceCategory)}|${normalizeDossierImportName(e.name)}`,i]));
+    (next.museumEntries||[]).forEach(item=>{const normalizedItem={...structuredClone(item),sourceCategory:normalizedDossierCategoryLabel(item.sourceCategory)},key=`${normalizedItem.sourceCategory}|${normalizeDossierImportName(normalizedItem.name)}`,at=index.get(key);if(at===undefined){index.set(key,museum.length);museum.push(normalizedItem);return}const merged={...museum[at]};["localRelation","coreFeatures","evidence","efficacy"].forEach(field=>{merged[field]=mergeSupplementText(merged[field],normalizedItem[field])});merged.linkedObjectId=merged.linkedObjectId||normalizedItem.linkedObjectId||"";merged.linkReason=merged.linkReason||normalizedItem.linkReason||"";merged.imageUrl=merged.imageUrl||normalizedItem.imageUrl||"";museum[at]=merged});
     const sources=[];[...(old.sourceFiles||[]),old.sourceFile,...(next.sourceFiles||[]),next.sourceFile].filter(Boolean).forEach(v=>{if(!sources.includes(v))sources.push(v)});
     return {...old,format:old.format||next.format||"nine-section-v1",sourceFile:next.sourceFile||old.sourceFile||"",sourceFiles:sources,profile,museumEntries:museum}
   }
@@ -3361,7 +3785,7 @@
     const entries=a.entries||[],warn=entries.filter(o=>o.status==="warn"&&!o.skipImport).length,error=entries.filter(o=>o.status==="error").length+(a.globalIssues||[]).filter(i=>i.level==="error").length,importable=entries.filter(importEntryEligible).length,skipped=entries.filter(o=>o.skipImport).length,validFormat=["object-v1","tile-profile-v1","mixed-v1","dossier-v1","mixed-dossier-v1"].includes(a.format),cls=validFormat?(error?"error":warn?"warn":"ok"):"error";
     els.importFormatBadge.className=`format-badge ${cls}`;els.importFormatBadge.textContent=`${importFormatLabel(a.format)} · ${supplement?"安全补充":"结构导入"}`;els.importValidationState.className=`validation-state ${cls}`;els.importValidationState.textContent=error?"存在阻断错误":warn?(supplement?"可补充，但有需核对项":"可导入，但有警告"):skipped?`已跳过${skipped}项`:"全部通过";els.importSummary.innerHTML=`<div><strong>${entries.length}</strong><span>识别条目</span></div><div class="ok"><strong>${importable}</strong><span>${supplement?"可补充":"可导入"}</span></div><div class="warn"><strong>${warn}</strong><span>警告条目</span></div><div class="error"><strong>${error}</strong><span>错误</span></div>`;
     const globalHtml=(a.globalIssues||[]).map(i=>`<div class="issue ${i.level}">第${i.line||1}行：${esc(i.message)}</div>`).join("");
-    els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{let meta;if(o.kind==="tile_profile")meta=`${supplement?"补充地块":"地块档案"} · ${o.cellKey||"坐标未完成"}`;else if(o.kind==="dossier_document"&&o.childLocationMode)meta=`父子地点 · ${o.parentObjectName} → ${o.name} · ${o.entryCount}项`;else if(o.kind==="dossier_document")meta=`补充 → ${o.targetId?o.targetName:"未匹配"} · ${o.entryCount}项`;else meta=supplement?`补充 → ${o.targetId?o.targetName:"未匹配"}`:`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;const label=o.skipImport?"跳过":o.childLocationMode==="candidate"?"可建子项":o.childLocationMode==="existing"?"可更新":o.status==='ok'?(supplement?'可补充':'通过'):o.status==='warn'?'需核对':'阻止';return `<button class="import-result-item ${o.status} ${o.skipImport?'skipped':''} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${label}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>${o.sourceFile?`${esc(o.sourceFile)} · `:""}第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
+    els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{let meta;if(o.kind==="tile_profile")meta=`${supplement?"补充地块":"地块档案"} · ${o.cellKey||"坐标未完成"}`;else if(o.kind==="dossier_document"&&o.childLocationMode)meta=`父子地点 · ${o.parentObjectName} → ${o.name} · ${o.entryCount}项 · ${o.detailFieldCount||0}个详情字段`;else if(o.kind==="dossier_document")meta=`补充 → ${o.targetId?o.targetName:"未匹配"} · ${o.entryCount}项 · ${o.detailFieldCount||0}个详情字段`;else meta=supplement?`补充 → ${o.targetId?o.targetName:"未匹配"}`:`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;const label=o.skipImport?"跳过":o.childLocationMode==="candidate"?"可建子项":o.childLocationMode==="existing"?"可更新":o.status==='ok'?(supplement?'可补充':'通过'):o.status==='warn'?'需核对':'阻止';return `<button class="import-result-item ${o.status} ${o.skipImport?'skipped':''} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${label}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>${o.sourceFile?`${esc(o.sourceFile)} · `:""}第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
     els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(entries.length)renderImportInspector(entries[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable;updateImportApplyButtonLabel()
   }
   function renderImportInspector(o){
@@ -3370,7 +3794,7 @@
     const policyHtml=supplement?'<div class="issue ok"><strong>安全补充模式</strong><br>只合并缺失或新增资料；带括号限定名可建立父对象的非空间下属记录，仍不创建地图对象、空地块、坐标或河流路径。</div>':'';
     const issueHtml=(o.issues||[]).length?`<div class="issue-list">${policyHtml}${o.issues.map(i=>`<div class="issue ${i.level}"><strong>${i.level==='error'?'阻止写入':'核对提示'}</strong> · 第${i.line||o.startLine}行<br>${esc(i.message)}</div>`).join("")}</div>`:`<div class="issue-list">${policyHtml}<div class="issue ok"><strong>匹配通过</strong><br>${o.kind==='dossier_document'?'将合并到同名对象博物志。':o.kind==='tile_profile'?'将补充现有地块资料。':supplement?'将补充现有对象资料。':'可按标准结构导入。'}</div></div>`;
     let rows=[];
-    if(o.kind==="dossier_document"){const p=o.dossier.profile,unlinked=o.dossier.museumEntries.filter(e=>!e.linkedObjectId);rows=[["条目类型",o.childLocationMode?"九段式父子地点博物志":"九段式对象博物志"],["写入方式",o.childLocationMode?o.childAction==="skip"?"暂不导入":o.childAction==="bind"?"合并到已有下属记录":"新建非空间下属记录并写入资料":supplement?"合并补充，不覆盖旧博物志":"更新同名对象博物志"],[o.childLocationMode?"父级对象":"目标对象",o.childLocationMode?`${o.parentObjectName}（${o.parentObjectId}）`:o.targetId?`${o.targetName}（${o.targetId}）`:"未匹配"],["区域定位",p.regionPosition],["一句话概要",p.oneLineSummary],["本地标签",p.localTags],["地貌类型",p.tileType],["水文特征",p.hydrology],["方位范围",p.orientation],["典籍出处",p.sourceCitation],["数据关系",[p.parentRegion,p.adjacentTiles,p.relatedWaters,p.relatedLife].filter(Boolean).join("\n")],["分类条目",o.dossier.museumEntries.map(e=>`${e.sourceCategory}｜${e.name}${e.linkedObjectId?` → ${e.linkedObjectId}`:"（未绑定）"}`).join("\n")],["未绑定",unlinked.map(e=>e.name).join(" / ")],["原文摘录",p.tileOriginalExcerpt],["其他典故",p.otherAllusions],["详细描述",p.detailedSummary]]}
+    if(o.kind==="dossier_document"){const p=o.dossier.profile,unlinked=o.dossier.museumEntries.filter(e=>!e.linkedObjectId);rows=[["条目类型",o.childLocationMode?"九段式父子地点博物志":"九段式对象博物志"],["写入方式",o.childLocationMode?o.childAction==="skip"?"暂不导入":o.childAction==="bind"?"合并到已有下属记录":"新建非空间下属记录并写入资料":supplement?"合并补充，不覆盖旧博物志":"更新同名对象博物志"],[o.childLocationMode?"父级对象":"目标对象",o.childLocationMode?`${o.parentObjectName}（${o.parentObjectId}）`:o.targetId?`${o.targetName}（${o.targetId}）`:"未匹配"],["区域定位",p.regionPosition],["一句话概要",p.oneLineSummary],["本地标签",p.localTags],["地貌类型",p.tileType],["水文特征",p.hydrology],["方位范围",p.orientation],["典籍出处",p.sourceCitation],["数据关系",[p.parentRegion,p.adjacentTiles,p.relatedWaters,p.relatedLife].filter(Boolean).join("\n")],["分类条目",dossierEntryAuditText(o.dossier.museumEntries)],["未绑定",unlinked.map(e=>e.name).join(" / ")],["原文摘录",p.tileOriginalExcerpt],["其他典故",p.otherAllusions],["详细描述",p.detailedSummary]]}
     else if(o.kind==="tile_profile"){const profileRows=TILE_PROFILE_FIELD_DEFS.filter(d=>o.specifiedKeys.includes(d.key)).map(d=>[d.label,o.profilePatch[d.key]??""]);rows=[["条目类型","地块档案补充"],["目标主格",o.cellKey||""],["写入方式",supplement?(state.tileProfiles[o.cellKey]?"合并到已有档案":"在已有对象地块建立档案"):state.tileProfiles[o.cellKey]?"更新已有档案":"新建地块档案"],...profileRows,["经篇事件",o.scriptureSpecified.map(ch=>`${ch}：${o.scriptureEvents[ch]}`).join("\n")]]}
     else rows=[["条目类型",supplement?"现有对象资料补充":"地图对象"],["目标对象",supplement?(o.targetId?`${o.targetName}（${o.targetId}）`:"未匹配"):"新对象"],["对象标题",o.headerName],["地名",o.name],["类型",o.type||""],["所属经篇",o.chapter||""],["坐标处理",supplement?"保持客户端原坐标与几何不变":o.x===null?"":coordText(o.x,o.y)],["证据等级",o.evidenceLevel||""],["与本地关系",o.localRelation||""],["核心特征",o.coreFeatures||""],["原文",o.original||""]];
     els.importInspector.innerHTML=issueHtml+childLocationResolutionHTML(o)+`<div class="field-audit">${rows.map(([k,v])=>`<div class="field-audit-row"><b>${esc(k)}</b><code>${v!==""?esc(v):'—'}</code></div>`).join("")}</div>`;bindChildLocationResolutionControls(o)
@@ -3393,8 +3817,8 @@
   }
   function renderExamplePanel(){
     const supplement=importPolicyValue()==="supplement",tab=state.exampleTab;$$('.example-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.exampleTab===tab));
-    const rules=supplement?`安全补充模式（默认）：\n1. 九段式文件名优先匹配客户端既有对象。\n2. “父对象（局部名称）”可绑定到唯一父级对象，并建立非空间下属地点／分段。\n3. 下属地点不生成地图对象、地块、坐标、面积、作用域或路径。\n4. 空字段不会清除旧资料；重复内容自动跳过。\n5. 粗体章节标题“**01.区域定位**”也可直接识别。\n6. 一次最多选择300个Markdown，总量不超过50MB。`:`完整结构导入：\n1. 标准“### 对象：”格式可以新增地图对象。\n2. 标准“### 地块档案：”格式可以建立地块档案。\n3. 九段式仍只更新同名既有对象，不根据文字方位猜坐标。\n4. 一次最多选择300个Markdown，总量不超过50MB。`;
-    if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML=supplement?'<strong>安全补充案例</strong><span>九段式资料只合并到客户端已有对象。</span>':'<strong>完整结构案例</strong><span>可按标准对象／地块格式新增结构。</span>';els.exampleCode.textContent=supplement?NINE_SECTION_MD_SAMPLE:CORRECT_MD_SAMPLE;els.exampleNotes.innerHTML=supplement?'<ul><li>文件名负责匹配已有对象。</li><li>旧博物志不会被整份覆盖。</li><li>坐标、几何、路径和面积保持不变。</li><li>“父对象（局部名称）”可在确认后建立为父对象的非空间下属地点。</li><li>没有唯一父级或父级存在同名冲突时仍会被阻止。</li></ul>':'<ul><li>标准对象格式可新增点、线、面积或作用域。</li><li>标准地块格式可建立或更新地块档案。</li><li>切回安全补充模式后会重新校验。</li></ul>';els.loadExampleBtn.textContent=supplement?'载入安全补充案例':'载入完整结构案例'}
+    const rules=supplement?`安全补充模式（默认）：\n1. 九段式文件名优先匹配客户端既有对象。\n2. “父对象（局部名称）”可绑定到唯一父级对象，并建立非空间下属地点／分段。\n3. 下属地点不生成地图对象、地块、坐标、面积、作用域或路径。\n4. 空字段不会清除旧资料；重复内容自动跳过。\n5. 章节可使用 ##、###、粗体或纯文本；01/1编号及中西文标点均可识别。\n6. 第06节字段支持中文逗号、顿号、括号编号、项目符号与空行分隔。\n7. 导入前会显示每个条目的关系、核心特征、功效和证据。\n8. 一次最多选择300个Markdown，总量不超过50MB。`:`完整结构导入：\n1. 标准“### 对象：”格式可以新增地图对象。\n2. 标准“### 地块档案：”格式可以建立地块档案。\n3. 九段式仍只更新同名既有对象，不根据文字方位猜坐标。\n4. 一次最多选择300个Markdown，总量不超过50MB。`;
+    if(tab==='correct'){els.exampleNotice.className='example-notice ok';els.exampleNotice.innerHTML=supplement?'<strong>安全补充案例</strong><span>九段式资料只合并到客户端已有对象。</span>':'<strong>完整结构案例</strong><span>可按标准对象／地块格式新增结构。</span>';els.exampleCode.textContent=supplement?NINE_SECTION_MD_SAMPLE:CORRECT_MD_SAMPLE;els.exampleNotes.innerHTML=supplement?'<ul><li>文件名负责匹配已有对象。</li><li>支持你提供的“苍梧之丘”混合标题、中文标点和空行字段格式。</li><li>导入检查器会先列出有效条目数与详情字段数。</li><li>旧博物志不会被整份覆盖，空白卡片可通过重新导入补齐。</li><li>坐标、几何、路径和面积保持不变。</li><li>“父对象（局部名称）”可在确认后建立为父对象的非空间下属地点。</li></ul>':'<ul><li>标准对象格式可新增点、线、面积或作用域。</li><li>标准地块格式可建立或更新地块档案。</li><li>切回安全补充模式后会重新校验。</li></ul>';els.loadExampleBtn.textContent=supplement?'载入安全补充案例':'载入完整结构案例'}
     else if(tab==='wrong'){els.exampleNotice.className='example-notice error';els.exampleNotice.innerHTML='<strong>错误案例</strong><span>查看目标缺失、标题和几何格式错误。</span>';els.exampleCode.textContent=WRONG_MD_SAMPLE;els.exampleNotes.innerHTML='<ul><li>补充模式下，客户端没有唯一目标会阻止写入。</li><li>结构模式下，标准对象仍要求完整几何信息。</li><li>九段式不会根据方位文字自动创建坐标。</li></ul>';els.loadExampleBtn.textContent='载入错误案例并检查'}
     else{els.exampleNotice.className='example-notice neutral';els.exampleNotice.innerHTML='<strong>当前模式规则</strong><span>切换导入模式后会自动重新检查当前文件。</span>';els.exampleCode.textContent=rules;els.exampleNotes.innerHTML='<ul><li>建议同事调研资料始终使用“补充已有内容（安全）”。</li><li>导入前先检查“阻止写入”数量。</li><li>未绑定的第06节分类条目只作为博物志文字，不生成地图对象。</li></ul>';els.loadExampleBtn.textContent='载入空白模板'}
   }
@@ -4161,7 +4585,7 @@
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.3",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.4",renderArchitecture:"single-static-runtime",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();
@@ -4172,6 +4596,7 @@
   setupV061Features();
   setupV062Features();
   setupV071Features();
+  setupScriptureWorkspace();
   function v053NormalizeHierarchyAssignments() {
   const hierarchy = window.SHJ_WORLD_HIERARCHY;
   if (!hierarchy || !Array.isArray(hierarchy.regions) || !Array.isArray(state?.objects)) return;

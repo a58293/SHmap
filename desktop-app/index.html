@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v007 · 0.7.3</title>
+  <title>山海经原典地图研究台 · 桌面版 v007 · 0.7.4</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v007 · 0.7.3</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v007 · 0.7.4</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -483,6 +483,34 @@
           <button data-dossier-tab="history">版本记录</button>
         </nav>
         <div id="dossierContent" class="dossier-content"></div>
+      </section>
+    </main>
+  </div>
+
+
+  <div id="scriptureWorkspace" class="scripture-workspace hidden" aria-label="山海经经篇内容页">
+    <header class="scripture-topbar">
+      <div class="scripture-title-block">
+        <button class="dossier-back" id="closeScriptureBtn">← 返回上一页</button>
+        <div><span class="eyebrow">CLASSIC CONTENT DIRECTORY</span><h1 id="scripturePageTitle">经篇内容页</h1><p id="scripturePageMeta">读取经篇资料中……</p></div>
+      </div>
+      <div class="scripture-top-actions">
+        <button class="btn secondary" id="scriptureCopyBtn">▤ 复制本经摘要</button>
+        <button class="btn primary" id="scriptureMapBtn">⌖ 在地图中查看本经</button>
+      </div>
+    </header>
+    <main class="scripture-layout">
+      <aside class="scripture-navigation">
+        <div class="scripture-navigation-head"><span class="eyebrow">EIGHTEEN CLASSICS</span><h2>十八经目录</h2><p>点击经名切换内容页。</p></div>
+        <nav id="scriptureChapterNav" class="scripture-chapter-nav"></nav>
+      </aside>
+      <section class="scripture-reading">
+        <div id="scriptureHero" class="scripture-hero"></div>
+        <div class="scripture-toolbar">
+          <label class="scripture-search"><span>检索本经</span><input id="scriptureSearchInput" type="search" placeholder="搜索地点、国族、神祇、原文或区域" /></label>
+          <div id="scriptureCategoryFilter" class="scripture-category-filter" role="group" aria-label="按内容类别筛选"></div>
+        </div>
+        <div id="scriptureContent" class="scripture-content"></div>
       </section>
     </main>
   </div>

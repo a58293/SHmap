@@ -1,7 +1,7 @@
 {
   "name": "shanhaijing-map-desktop",
   "private": true,
-  "version": "0.7.3",
+  "version": "0.7.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "verify": "node scripts/verify-project.mjs && node scripts/verify-v0.7.3.mjs",
+    "verify": "node scripts/verify-project.mjs && node scripts/verify-v0.7.4.mjs && node scripts/verify-v0.7.4-mdcompat.mjs && node scripts/verify-v0.7.4-card-fields.mjs && node scripts/verify-v0.7.4-entry-binding.mjs && node scripts/verify-v0.7.4-original-quote.mjs && node scripts/verify-v0.7.4-dossier-interaction.mjs && node scripts/verify-v0.7.4-scripture-pages.mjs && node scripts/verify-v0.7.4-compact-image.mjs && node scripts/verify-v0.7.4-vertical-museum.mjs && node scripts/verify-v0.7.4-museum-accordion.mjs",
     "import:master": "node scripts/import-master-v053.mjs"
   },
   "dependencies": {

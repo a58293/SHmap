@@ -9,6 +9,11 @@ let savePending = null;
 let saveBusy = false;
 let saveTimer = null;
 let updateMetadata = null;
+let nativeStorageReady = !isTauri;
+let startupFallback = false;
+let bootstrapRecoveryTask = null;
+const BOOTSTRAP_TIMEOUT_MS = 8000;
+const MAIN_SCRIPT_TIMEOUT_MS = 8000;
 const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 
@@ -24,7 +29,7 @@ function toast(message,error=false){
   const n=document.createElement("div");n.className=`desktop-toast${error?" error":""}`;n.textContent=message;document.body.appendChild(n);setTimeout(()=>n.remove(),3200)
 }
 async function pumpSave(){
-  if(saveBusy||!savePending||!isTauri)return;
+  if(saveBusy||!savePending||!isTauri||!nativeStorageReady)return;
   saveBusy=true;const payload=savePending;savePending=null;
   try{await invoke("save_workspace",{payload})}catch(err){console.error(err);toast(`桌面数据库保存失败：${err}`,true)}finally{saveBusy=false;if(savePending)pumpSave()}
 }
@@ -185,17 +190,80 @@ function setupNativeUi(){
   const saveState=document.querySelector("#saveState");if(saveState)saveState.textContent=isTauri?"桌面数据库":"浏览器预览";
 }
 
+function updateStartupStatus(message){
+  const line=document.querySelector("#versionLine");
+  if(line)line.textContent=message;
+}
+function usableWorkspaceSnapshot(payload){
+  if(!payload||typeof payload!=="string")return false;
+  try{const parsed=JSON.parse(payload);return Array.isArray(parsed?.objects)&&parsed.objects.length>0}catch{return false}
+}
+function promiseWithTimeout(promise,ms,message){
+  let timer;
+  return Promise.race([
+    promise.finally(()=>clearTimeout(timer)),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms)})
+  ])
+}
+function recoveryBanner(message){
+  const existing=document.querySelector("#desktopStartupRecovery");
+  if(existing){existing.querySelector("span").textContent=message;return}
+  const banner=document.createElement("div");banner.id="desktopStartupRecovery";banner.className="desktop-startup-recovery";
+  banner.innerHTML=`<span>${escapeHtml(message)}</span><button type="button">重新启动</button>`;
+  banner.querySelector("button").addEventListener("click",()=>location.reload());
+  document.body.appendChild(banner);
+}
+function loadMainScriptAttempt(url){
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script");let settled=false;
+    const finish=(error)=>{if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve()};
+    const timer=setTimeout(()=>{script.remove();finish(new Error("地图主程序加载超时"))},MAIN_SCRIPT_TIMEOUT_MS);
+    script.src=url;script.onload=()=>finish();script.onerror=()=>finish(new Error("无法加载地图主程序"));document.body.appendChild(script)
+  })
+}
+async function loadMainScript(){
+  updateStartupStatus("正在加载地图主程序……");
+  try{await loadMainScriptAttempt("/app/app.js")}catch(firstError){
+    console.warn("地图主程序首次加载失败，正在重试",firstError);
+    await loadMainScriptAttempt(`/app/app.js?retry=${Date.now()}`)
+  }
+}
 async function start(){
   if(isTauri){
-    const legacy=localStorage.getItem(STORAGE_KEY);
-    bootInfo=await invoke("bootstrap_workspace",{legacySnapshot:legacy,seedSnapshot:JSON.stringify(seedSnapshot())});
-    if(bootInfo.snapshot)localStorage.setItem(STORAGE_KEY,bootInfo.snapshot);
+    const legacy=localStorage.getItem(STORAGE_KEY),seed=JSON.stringify(seedSnapshot());
+    updateStartupStatus("正在读取桌面数据库……");
+    const task=invoke("bootstrap_workspace",{legacySnapshot:legacy,seedSnapshot:seed});
+    bootstrapRecoveryTask=task;
+    try{
+      bootInfo=await promiseWithTimeout(task,BOOTSTRAP_TIMEOUT_MS,"桌面数据库读取超过8秒");
+      if(!usableWorkspaceSnapshot(bootInfo?.snapshot))throw new Error("桌面数据库工作区为空或无效");
+      localStorage.setItem(STORAGE_KEY,bootInfo.snapshot);nativeStorageReady=true
+    }catch(error){
+      startupFallback=true;nativeStorageReady=false;
+      const fallback=usableWorkspaceSnapshot(legacy)?legacy:seed;
+      localStorage.setItem(STORAGE_KEY,fallback);
+      bootInfo={source:usableWorkspaceSnapshot(legacy)?"local-cache-fallback":"built-in-seed-fallback",snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
+      console.error("桌面数据库启动降级",error);
+      updateStartupStatus("数据库响应较慢，正在使用本地缓存启动……");
+      task.then(info=>{
+        bootstrapRecoveryTask=null;nativeStorageReady=true;
+        if(window.SHJ_DESKTOP){window.SHJ_DESKTOP.databaseRecovered=true;window.SHJ_DESKTOP.bootInfo=info}
+        recoveryBanner("桌面数据库已经恢复连接。当前页面使用本地缓存，为避免覆盖差异，请重新启动程序后继续编辑。")
+      }).catch(recoveryError=>{
+        bootstrapRecoveryTask=null;console.error("桌面数据库后台恢复失败",recoveryError);
+        recoveryBanner("桌面数据库暂未恢复。当前地图来自本地缓存，请先不要编辑；关闭程序后重新启动。")
+      })
+    }
   }
-  window.SHJ_DESKTOP={active:isTauri,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
-  await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="/app/app.js";script.onload=resolve;script.onerror=()=>reject(new Error("无法加载地图主程序"));document.body.appendChild(script)});
+  window.SHJ_DESKTOP={active:isTauri&&nativeStorageReady&&!startupFallback,recoveryMode:startupFallback,databaseRecovered:false,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
+  await loadMainScript();
   setupNativeUi();
+  if(startupFallback){
+    recoveryBanner("桌面数据库读取超时，已从本地缓存恢复地图。当前会话请先核对资料，不要进行编辑。")
+    const saveState=document.querySelector("#saveState");if(saveState)saveState.textContent="本地缓存恢复模式"
+  }
   scheduleAutomaticUpdateCheck();
   if(!isTauri)toast("当前为浏览器预览模式；SQLite与原生备份未启用。",true);
-  window.addEventListener("beforeunload",()=>{if(savePending&&isTauri)navigator.sendBeacon?.("about:blank")},{capture:true});
+  window.addEventListener("beforeunload",()=>{if(savePending&&isTauri&&nativeStorageReady)navigator.sendBeacon?.("about:blank")},{capture:true});
 }
-start().catch(err=>{console.error(err);document.body.innerHTML=`<main class="desktop-boot-error"><article><h1>桌面版启动失败</h1><p>程序未能初始化本地数据库。</p><pre>${escapeHtml(err?.stack||err)}</pre></article></main>`});
+start().catch(err=>{console.error(err);document.body.innerHTML=`<main class="desktop-boot-error"><article><h1>桌面版启动失败</h1><p>程序未能初始化地图。请关闭窗口后重新启动；原有数据库与备份不会被删除。</p><pre>${escapeHtml(err?.stack||err)}</pre></article></main>`});

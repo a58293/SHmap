@@ -133,7 +133,11 @@ fn now_text() -> String { Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true) 
 fn hash_payload(payload: &str) -> String { hex::encode(Sha256::digest(payload.as_bytes())) }
 fn parse_payload(payload: &str) -> Result<Value, String> { serde_json::from_str(payload).map_err(|e| format!("工作区JSON无效：{e}")) }
 fn object_count(payload: &Value) -> usize { payload.get("objects").and_then(Value::as_array).map_or(0, Vec::len) }
-fn open_connection(path: &Path) -> Result<Connection, String> { Connection::open(path).map_err(|e| format!("无法打开SQLite数据库：{e}")) }
+fn open_connection(path: &Path) -> Result<Connection, String> {
+    let conn = Connection::open(path).map_err(|e| format!("无法打开SQLite数据库：{e}"))?;
+    conn.busy_timeout(Duration::from_secs(3)).map_err(|e| format!("设置SQLite等待时间失败：{e}"))?;
+    Ok(conn)
+}
 
 fn repo_root_from(path: &Path) -> Option<PathBuf> {
     let mut cursor = if path.is_file() { path.parent()?.to_path_buf() } else { path.to_path_buf() };
