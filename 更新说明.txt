@@ -1,0 +1,15 @@
+SHmap v0.7.4｜GitHub Actions 校验修复
+
+本次仅修复：
+desktop-app/scripts/verify-v0.7.4-museum-accordion.mjs
+
+处理内容：
+1. 恢复博物志折叠菜单的正确校验脚本。
+2. 增加一行无功能影响的版本注释，使 GitHub Desktop 能明确识别本次文件变更。
+3. 不修改客户端功能、地图数据或版本号。
+
+覆盖目录：
+F:\SHmap\SHmap
+
+覆盖后回到 GitHub Desktop：
+Changes → Commit to main → Push origin

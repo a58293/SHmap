@@ -1,3 +1,4 @@
+// v0.7.4 GitHub Actions verification fix
 import fs from "node:fs";
 
 const app=fs.readFileSync(new URL("../public/app/app.js",import.meta.url),"utf8");
