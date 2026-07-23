@@ -10,8 +10,9 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "verify": "node scripts/verify-project.mjs && node scripts/verify-v0.7.6-card-fields.mjs && node scripts/verify-v0.7.6-compact-image.mjs && node scripts/verify-v0.7.6-detail-category-grid.mjs && node scripts/verify-v0.7.6-dossier-interaction.mjs && node scripts/verify-v0.7.6-entry-binding.mjs && node scripts/verify-v0.7.6-mdcompat.mjs && node scripts/verify-v0.7.6-museum-accordion.mjs && node scripts/verify-v0.7.6-original-quote.mjs && node scripts/verify-v0.7.6-scripture-pages.mjs && node scripts/verify-v0.7.6-vertical-museum.mjs && node scripts/verify-v0.7.6.mjs && node scripts/verify-v0.7.6-release.mjs && node scripts/verify-v0.7.6-internal-entry-detail-and-placeholder.mjs && node scripts/verify-v0.7.6-placeholder-variants-v2.mjs",
-    "import:master": "node scripts/import-master-v053.mjs"
+    "verify": "npm run build && npm run verify:checks",
+    "import:master": "node scripts/import-master-v053.mjs",
+    "verify:checks": "node scripts/verify-v0.7.6-dist-output.mjs && node scripts/verify-project.mjs && node scripts/verify-v0.7.6-card-fields.mjs && node scripts/verify-v0.7.6-compact-image.mjs && node scripts/verify-v0.7.6-detail-category-grid.mjs && node scripts/verify-v0.7.6-dossier-interaction.mjs && node scripts/verify-v0.7.6-entry-binding.mjs && node scripts/verify-v0.7.6-mdcompat.mjs && node scripts/verify-v0.7.6-museum-accordion.mjs && node scripts/verify-v0.7.6-original-quote.mjs && node scripts/verify-v0.7.6-scripture-pages.mjs && node scripts/verify-v0.7.6-vertical-museum.mjs && node scripts/verify-v0.7.6.mjs && node scripts/verify-v0.7.6-release.mjs && node scripts/verify-v0.7.6-internal-entry-detail-and-placeholder.mjs && node scripts/verify-v0.7.6-placeholder-variants-v2.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1"
