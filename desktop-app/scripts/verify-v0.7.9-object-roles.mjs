@@ -67,4 +67,4 @@ assert.equal(version.object_count, 617);
 assert.equal(version.independent_map_objects, 591);
 assert.equal(version.non_tile_records, 26);
 
-console.log("v0.7.9 对象角色分层校验通过：591个独立对象，26条非地块资料记录，617条历史资料完整保留。");
+console.log("v0.8.0 对象角色分层校验通过：591个独立对象，26条非地块资料记录，617条历史资料完整保留。");

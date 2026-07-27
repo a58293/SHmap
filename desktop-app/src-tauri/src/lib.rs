@@ -533,7 +533,7 @@ fn open_data_directory(state: tauri::State<'_, AppState>) -> Result<(), String> 
 #[tauri::command]
 fn app_version() -> AppVersionInfo {
     AppVersionInfo {
-        edition: "v007",
+        edition: "v008",
         version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }

@@ -1,0 +1,4 @@
+Set-Location "F:\SHmap\SHmap\desktop-app"
+npm install
+npm run verify
+npm run desktop:dev

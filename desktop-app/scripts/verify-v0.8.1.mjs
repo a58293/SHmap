@@ -14,10 +14,10 @@ const desktopCss = read("src/desktop-ui.css");
 const rust = read("src-tauri/src/lib.rs");
 
 const checks = [
-  ["package 版本", pkg.version === "0.8.0"],
-  ["Tauri 版本", tauri.version === "0.8.0"],
-  ["VERSION 版本", version.semver === "0.8.0" && version.app_version === "v007"],
-  ["界面版本", html.includes("DESKTOP v007 · 0.8.0")],
+  ["package 版本", pkg.version === "0.8.1"],
+  ["Tauri 版本", tauri.version === "0.8.1"],
+  ["VERSION 版本", version.semver === "0.8.1" && version.app_version === "v008"],
+  ["界面版本", html.includes("DESKTOP v008 · 0.8.1")],
   ["查询／专注按钮", html.includes('id="queryModeBtn"') && html.includes('id="focusModeBtn"') && app.includes("v071SetWorkspaceMode")],
   ["多总览模式", html.includes('data-overview-mode="region"') && html.includes('data-overview-mode="domain"') && html.includes('data-overview-mode="chapter"') && html.includes('data-overview-mode="hydrology"') && html.includes('data-overview-mode="civilization"')],
   ["真实区域总览", app.includes('h.regions.filter(r=>r.level===2)') && app.includes("cleanRegionOverviewName(region.name)")],
@@ -69,6 +69,9 @@ const checks = [
   ["更改记录窗口撤销入口", app.includes('id="changesDiscardRound"') && app.includes('discardBtn.addEventListener("click",v050DiscardRoundChanges)') && css.includes(".changes-discard-round")],
   ["整轮撤销前桌面备份", app.includes('createBackup("删除本轮修改前备份")') && bootstrap.includes("createBackup:async label")],
   ["无效占位字段过滤", app.includes("const plain=stripInlineMarkdown") && app.includes("与本地关系|核心特征|证据|功效")],
+  ["备注字段不生成卡片", app.includes("function legacyDossierFieldCard") && app.includes('"备注":"notes"') && app.includes('["备注",entry.notes]')],
+  ["旧条目名称规范化合并", app.includes("function normalizedDossierMuseumEntries") && app.includes("replace(/[。．.!！?？；;：:]+$/g") && app.includes("normalizedDossierMuseumEntries(old.museumEntries)")],
+  ["未知编号字段安全回退", app.includes("function matchNineAuxiliaryFieldLine") && app.includes("entry.notes=mergeSupplementText(entry.notes") && app.includes("isDossierEntryNameFieldLabel")],
   ["左侧搜索结果颜色", css.includes(".left-panel .search-hit strong") && css.includes("color:#173f38")],
   ["左侧装饰图移除", css.includes(".left-panel::after{content:none!important;display:none!important;background:none!important;opacity:0!important}")],
 ];
@@ -79,4 +82,4 @@ for (const [name, ok] of checks) {
   if (!ok) bad = true;
 }
 if (bad) process.exit(1);
-console.log("v0.8.0 专项校验通过：对象角色分层、博物志详情、九段式导入、数据库启动恢复与原有地图功能均保留。");
+console.log("v0.8.1 专项校验通过：对象角色分层、博物志详情、九段式导入、数据库启动恢复与原有地图功能均保留。");

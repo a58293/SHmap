@@ -21,7 +21,7 @@ for(const path of ["public/app/app.js","dist/app/app.js"]){
   assert.ok(app.includes("data-dossier-detail-owner"));
   assert.ok(app.includes("openIdentityDossierEntryDrawer(btn.dataset.dossierDetailOwner,btn.dataset.dossierDetailIndex)"));
   assert.ok(app.includes("filter(({entry})=>!isNinePlaceholderEntryName(entry?.name))"));
-  assert.ok(app.includes("old.museumEntries.filter(x=>!isNinePlaceholderEntryName(x?.name))"));
-  assert.ok(app.includes("(next.museumEntries||[]).filter(item=>!isNinePlaceholderEntryName(item?.name))"));
+  assert.ok(app.includes("normalizedDossierMuseumEntries(old.museumEntries)"));
+  assert.ok(app.includes("normalizedDossierMuseumEntries(next.museumEntries)"));
 }
 console.log("v0.7.6 内部条目详情与占位卡片修正校验通过。");

@@ -12,4 +12,4 @@ for (const path of required) {
   const file = new URL(`../${path}`, import.meta.url);
   assert.ok(fs.existsSync(file), `前端构建产物缺失：${path}`);
 }
-console.log("v0.8.0 前端构建产物检查通过。");
+console.log("v0.8.1 前端构建产物检查通过。");

@@ -109,8 +109,8 @@ const byName = new Map(parsed.entries.map(entry => [`${entry.category}|${entry.n
 const checks = [
   ["package 版本", pkg.version === "0.8.0"],
   ["Tauri 版本", tauri.version === "0.8.0"],
-  ["VERSION 版本", version.semver === "0.8.0" && version.app_version === "v007"],
-  ["界面版本", html.includes("DESKTOP v007 · 0.8.0")],
+  ["VERSION 版本", version.semver === "0.8.0" && version.app_version === "v008"],
+  ["界面版本", html.includes("DESKTOP v008 · 0.8.0")],
   ["安全补充导入模式", html.includes('id="importPolicySelect"') && html.includes('value="supplement" selected') && app.includes('importPolicy:"supplement"')],
   ["通用父子地点层级", app.includes("function qualifiedChildLocationName") && app.includes("function applyChildLocationDossier") && app.includes('geometryMode:"non-spatial-child"')],
   ["九段式混合标题识别", app.includes("function matchNineSectionHeaderLine") && app.includes("一句话概述") && app.includes("分别整理以下六类")],

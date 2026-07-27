@@ -243,7 +243,7 @@
 
   window.SHJ_OBJECT_ROLE_MANIFEST = Object.freeze({
     schemaVersion: "1.0",
-    release: "0.7.9",
+    release: "0.8.0",
     definitions: Object.freeze(definitions),
     apply,
     selectorMatches,

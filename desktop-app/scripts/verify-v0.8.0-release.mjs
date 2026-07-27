@@ -7,8 +7,8 @@ const version=JSON.parse(read("VERSION.json"));
 assert.equal(pkg.version,"0.8.0");
 assert.equal(tauri.version,"0.8.0");
 assert.equal(version.semver,"0.8.0");
-assert.ok(read("index.html").includes("DESKTOP v007 · 0.8.0"));
-assert.ok(read("dist/index.html").includes("DESKTOP v007 · 0.8.0"));
+assert.ok(read("index.html").includes("DESKTOP v008 · 0.8.0"));
+assert.ok(read("dist/index.html").includes("DESKTOP v008 · 0.8.0"));
 assert.ok(read("index.html").includes('/app/object-roles.js'));
 assert.ok(read("dist/index.html").includes('/app/object-roles.js'));
 for(const p of ["public/app/object-roles.js","dist/app/object-roles.js"]){
