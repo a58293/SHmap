@@ -4843,7 +4843,7 @@
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.7",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.7.8",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();
