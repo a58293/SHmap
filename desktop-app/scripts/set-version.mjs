@@ -8,7 +8,7 @@ const repoRoot = path.resolve(appRoot, "..");
 const version = String(process.argv[2] || "").trim().replace(/^v/i, "");
 
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-  console.error("用法：node scripts/set-version.mjs 0.7.8");
+  console.error("用法：node scripts/set-version.mjs 0.7.9");
   process.exit(1);
 }
 
