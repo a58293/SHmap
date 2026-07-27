@@ -2761,6 +2761,9 @@
     return key
   }
   function isNinePlaceholderEntryName(value){
+    const plain=stripInlineMarkdown(String(value||"")).trim();
+    if(/^(?:[*+-]\s*)?\d+\s*[.、，,)]?\s*(?:与本地关系|核心特征|证据|功效|效用|用途|能力)\s*[：:]/.test(plain))return true;
+    if(/^(?:原文)?(?:未载明确|未载|无明确记载|未明确记载)(?:\s*[（(].*?[）)])?\s*[。.]?$/.test(plain))return true;
     const key=compactDossierPlaceholderName(value);
     if(!key)return true;
     const residue=key.replace(/(?:(?:原文)?(?:未载明确|未载|无明确记载|未明确记载|暂无明确记载|暂无相关记载|无相关记载)|资料待补充|待补充|暂无|无)/g,"");
@@ -4335,6 +4338,35 @@
   }
   function v050Undo(){const action=state.undoStack.pop();if(!action){toast("没有可撤销的操作","本轮操作历史为空。","error");return}v050ApplyHistory(action,"undo");state.redoStack.push(action);v050UpdateHistoryUi()}
   function v050Redo(){const action=state.redoStack.pop();if(!action){toast("没有可重做的操作","撤销后才会产生重做记录。","error");return}v050ApplyHistory(action,"redo");state.undoStack.push(action);v050UpdateHistoryUi()}
+  function v050RestoreTrashForRevertedChange(change){
+    if(change.operation==="delete"){state.trash=state.trash.filter(item=>!v050TrashMatches(item,change.entityId));return}
+    if(change.operation!=="restore"||state.trash.some(item=>v050TrashMatches(item,change.entityId)))return;
+    const entityId=String(change.entityId||""),after=v050Clone(change.after);
+    if(entityId.startsWith("CELL-")){
+      const cellKey=entityId.replace(/^CELL-/,"");
+      if(after?.objects)pushTrash({kind:"tile",cellKey,objects:v050Clone(after.objects||[]),profile:v050Clone(after.profile||null)});
+      else pushTrash({kind:"profile",cellKey,data:v050ProfileSnapshot(after)})
+    }else if(after){
+      const cell=objectCell(after);pushTrash({kind:"object",cellKey:cellKey(cell.gx,cell.gy),data:after})
+    }
+  }
+  async function v050DiscardRoundChanges(){
+    const count=state.changes.length;
+    if(!count){toast("本轮没有修改","当前没有需要删除或撤销的更改。","error");return}
+    if(!confirm(`确定撤销并删除本轮 ${count} 项修改？\n\n程序会先建立“删除本轮修改前备份”，然后按记录倒序恢复。此操作不会删除历史备份。`))return;
+    const button=document.getElementById("v050DiscardRound");if(button)button.disabled=true;
+    try{
+      persist(true);
+      if(window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.createBackup)await window.SHJ_DESKTOP.createBackup("删除本轮修改前备份");
+      state.v050ApplyingHistory=true;
+      [...state.changes].reverse().forEach(change=>{v050ApplyEntitySnapshot(change,change.before);v050RestoreTrashForRevertedChange(change)});
+      state.changes=[];state.undoStack=[];state.redoStack=[];
+      invalidateObjectCaches();invalidateProfileCaches();populateFilters();renderSidebar();renderDetails();scheduleRender();updateHeader();persist(true);v050UpdateHistoryUi();
+      document.getElementById("v050HistoryPanel")?.classList.add("hidden");
+      toast("已撤销本轮修改",`${count}项修改已经恢复；删除前状态已保存在桌面备份中。`)
+    }catch(error){toast("删除本轮修改失败",String(error),"error")}
+    finally{state.v050ApplyingHistory=false;if(button)button.disabled=false}
+  }
   function v050LocationLabel(){const o=indexedObject(state.selectedId);return o?.name||(state.selectedCell?`地块 ${state.selectedCell}`:"地图位置")}
   function v050CurrentLocation(label=v050LocationLabel()){return {x:Number(state.camera.x)||0,y:Number(state.camera.y)||0,zoom:Number(state.camera.zoom)||1,selectedId:state.selectedId||null,selectedCell:state.selectedCell||null,viewPreset:state.viewPreset||"all",relationEvidenceFilter:state.relationEvidenceFilter||"all",relationDepth:state.relationDepth||"direct",label,time:new Date().toISOString()}}
   function v050SameLocation(a,b){return !!a&&!!b&&Math.hypot(a.x-b.x,a.y-b.y)<5&&Math.abs(a.zoom-b.zoom)<.025&&a.selectedId===b.selectedId&&a.viewPreset===b.viewPreset}
@@ -4450,11 +4482,11 @@
   function v050InjectUi(){
     const toolbar=document.querySelector(".map-toolbar");if(!toolbar||document.getElementById("v050ModeBar"))return;
     toolbar.insertAdjacentHTML("afterend",`<section id="v050ModeBar" class="v050-mode-bar" data-mode="browse"><div class="v050-mode-summary"><span>当前模式</span><strong data-v050-mode>普通浏览</strong><em data-v050-hint></em></div><div class="v050-mode-selection" data-v050-selection>选中：未选对象</div><div class="v050-relation-depth" title="关系显示层级"><button data-relation-depth="direct">直接</button><button data-relation-depth="spatial">＋空间</button><button data-relation-depth="context">＋同篇</button></div><div class="v050-mode-actions"><button id="v050NavBack" title="上一个位置">←</button><button id="v050NavForward" title="下一个位置">→</button><button id="v050BookmarkAdd" title="收藏当前位置">☆</button><button id="v050BookmarkOpen">书签</button><button id="v050Undo" title="撤销">↶</button><button id="v050Redo" title="重做">↷</button><button id="v050HistoryOpen">本轮 <b id="v050HistoryCount">0</b></button><button id="v050GlobalSearchOpen">检索 <kbd>Ctrl K</kbd></button><button id="v050LeftToggle" title="显示或收起左侧索引">左栏</button><button id="v050RightToggle" title="显示或收起右侧档案">右栏</button><button id="v050FocusToggle" title="专注地图">专注</button><button id="v050ExitMode" class="exit">退出模式</button></div></section>`);
-    document.body.insertAdjacentHTML("beforeend",`<section id="v050GlobalSearch" class="v050-global-search hidden"><div class="v050-overlay-backdrop" data-v050-search-close></div><article><header><span>GLOBAL RESEARCH SEARCH</span><div><input id="v050GlobalSearchInput" type="search" placeholder="搜索对象、地块、标签、原文或关系……" autocomplete="off"><kbd>Esc</kbd></div><button data-v050-search-close>×</button></header><main id="v050GlobalSearchBody"></main></article></section><section id="v050BookmarkPanel" class="v050-side-drawer hidden"><div class="v050-overlay-backdrop" data-v050-bookmark-close></div><article><header><div><span>RESEARCH BOOKMARKS</span><h2>研究书签</h2></div><button data-v050-bookmark-close>×</button></header><main id="v050BookmarkBody"></main><footer><button id="v050BookmarkAddInside">＋ 收藏当前位置</button></footer></article></section><section id="v050HistoryPanel" class="v050-side-drawer hidden"><div class="v050-overlay-backdrop" data-v050-history-close></div><article><header><div><span>ROUND HISTORY</span><h2>本轮操作</h2></div><button data-v050-history-close>×</button></header><main id="v050HistoryBody"></main><footer><button id="v050UndoInside">撤销上一步</button><button id="v050RedoInside">重做</button></footer></article></section>`)
+    document.body.insertAdjacentHTML("beforeend",`<section id="v050GlobalSearch" class="v050-global-search hidden"><div class="v050-overlay-backdrop" data-v050-search-close></div><article><header><span>GLOBAL RESEARCH SEARCH</span><div><input id="v050GlobalSearchInput" type="search" placeholder="搜索对象、地块、标签、原文或关系……" autocomplete="off"><kbd>Esc</kbd></div><button data-v050-search-close>×</button></header><main id="v050GlobalSearchBody"></main></article></section><section id="v050BookmarkPanel" class="v050-side-drawer hidden"><div class="v050-overlay-backdrop" data-v050-bookmark-close></div><article><header><div><span>RESEARCH BOOKMARKS</span><h2>研究书签</h2></div><button data-v050-bookmark-close>×</button></header><main id="v050BookmarkBody"></main><footer><button id="v050BookmarkAddInside">＋ 收藏当前位置</button></footer></article></section><section id="v050HistoryPanel" class="v050-side-drawer hidden"><div class="v050-overlay-backdrop" data-v050-history-close></div><article><header><div><span>ROUND HISTORY</span><h2>本轮操作</h2></div><button data-v050-history-close>×</button></header><main id="v050HistoryBody"></main><footer><button id="v050UndoInside">撤销上一步</button><button id="v050RedoInside">重做</button><button id="v050DiscardRound" class="danger">删除本轮修改</button></footer></article></section>`)
   }
   function setupV050Features(){
     document.documentElement.dataset.uiTextScale=v050SavedTextScale();v050InjectUi();v050OrganizeControls();v050SetupRelationMenuPortal();const observer=new MutationObserver(v050OrganizeControls);observer.observe(document.querySelector(".top-actions"),{childList:true,subtree:true});
-    document.getElementById("v050ExitMode")?.addEventListener("click",v050ExitMode);document.getElementById("v050NavBack")?.addEventListener("click",v050HistoryBack);document.getElementById("v050NavForward")?.addEventListener("click",v050HistoryForward);document.getElementById("v050BookmarkAdd")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkAddInside")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkOpen")?.addEventListener("click",()=>v050OpenDrawer("v050BookmarkPanel"));document.getElementById("v050HistoryOpen")?.addEventListener("click",()=>v050OpenDrawer("v050HistoryPanel"));document.getElementById("v050Undo")?.addEventListener("click",v050Undo);document.getElementById("v050Redo")?.addEventListener("click",v050Redo);document.getElementById("v050UndoInside")?.addEventListener("click",v050Undo);document.getElementById("v050RedoInside")?.addEventListener("click",v050Redo);document.getElementById("v050GlobalSearchOpen")?.addEventListener("click",v050OpenGlobalSearch);document.getElementById("v050LeftToggle")?.addEventListener("click",()=>v050TogglePanel("left"));document.getElementById("v050RightToggle")?.addEventListener("click",()=>v050TogglePanel("right"));document.getElementById("v050FocusToggle")?.addEventListener("click",()=>v071SetWorkspaceMode(state.workspaceUi.focusMap?"query":"focus"));
+    document.getElementById("v050ExitMode")?.addEventListener("click",v050ExitMode);document.getElementById("v050NavBack")?.addEventListener("click",v050HistoryBack);document.getElementById("v050NavForward")?.addEventListener("click",v050HistoryForward);document.getElementById("v050BookmarkAdd")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkAddInside")?.addEventListener("click",v050AddBookmark);document.getElementById("v050BookmarkOpen")?.addEventListener("click",()=>v050OpenDrawer("v050BookmarkPanel"));document.getElementById("v050HistoryOpen")?.addEventListener("click",()=>v050OpenDrawer("v050HistoryPanel"));document.getElementById("v050Undo")?.addEventListener("click",v050Undo);document.getElementById("v050Redo")?.addEventListener("click",v050Redo);document.getElementById("v050UndoInside")?.addEventListener("click",v050Undo);document.getElementById("v050RedoInside")?.addEventListener("click",v050Redo);document.getElementById("v050DiscardRound")?.addEventListener("click",v050DiscardRoundChanges);document.getElementById("v050GlobalSearchOpen")?.addEventListener("click",v050OpenGlobalSearch);document.getElementById("v050LeftToggle")?.addEventListener("click",()=>v050TogglePanel("left"));document.getElementById("v050RightToggle")?.addEventListener("click",()=>v050TogglePanel("right"));document.getElementById("v050FocusToggle")?.addEventListener("click",()=>v071SetWorkspaceMode(state.workspaceUi.focusMap?"query":"focus"));
     document.querySelectorAll("[data-relation-depth]").forEach(b=>b.addEventListener("click",()=>{state.relationDepth=b.dataset.relationDepth;state.relationHoverId=null;scheduleRender();persist();v050UpdateModeBar();toast(`关系层级：${V050_RELATION_DEPTH_LABELS[state.relationDepth]}`,state.relationDepth==="direct"?"仅显示明确直接关系":state.relationDepth==="spatial"?"同时显示空间推定关系":"同时显示同篇与弱关联") }));
     const beforeMap={relationModeBtn:"relation",compareModeBtn:"compare",measureModeBtn:"measure",brushModeBtn:"brush"};Object.entries(beforeMap).forEach(([id,key])=>document.getElementById(id)?.addEventListener("click",()=>v050ExclusiveBefore(key),true));
     document.getElementById("v050GlobalSearchInput")?.addEventListener("input",v050RenderGlobalSearch);document.getElementById("v050GlobalSearch")?.addEventListener("click",e=>{if(e.target.closest("[data-v050-search-close]")){v050CloseGlobalSearch();return}const o=e.target.closest("[data-v050-search-object]");if(o){v050CloseGlobalSearch();jumpToObject(o.dataset.v050SearchObject,true,true);return}const c=e.target.closest("[data-v050-search-cell]");if(c?.dataset.v050SearchCell){v050CloseGlobalSearch();jumpToCell(c.dataset.v050SearchCell,true)}});

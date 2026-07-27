@@ -1077,6 +1077,10 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 #v050HistoryBody p{margin:3px 0;color:#637169;font-size:8px;line-height:1.45}
 #v050HistoryBody small{color:#92968f;font:700 7px var(--mono)}
 #v050HistoryBody article>button{padding:5px 8px;border:1px solid #c7d5ce;border-radius:7px;background:#eef5f1;color:#285d4b;font-size:8px;font-weight:800}
+#v050HistoryPanel footer{flex-wrap:wrap}
+#v050HistoryPanel footer #v050DiscardRound{margin-left:auto;border-color:#c78f85;background:#fff0ec;color:#a13f32}
+#v050HistoryPanel footer #v050DiscardRound:hover{border-color:#a13f32;background:#a13f32;color:#fff}
+#v050HistoryPanel footer #v050DiscardRound:disabled{opacity:.55;cursor:wait}
 
 .v050-evidence-strip{display:flex;align-items:center;gap:7px;margin-top:8px;padding-top:7px;border-top:1px solid rgba(190,187,175,.65)}
 .v050-evidence-strip>span{padding:3px 7px;border-radius:999px;font:800 7px/1 var(--mono)}
@@ -1723,6 +1727,23 @@ body{
 }
 .left-panel::before{content:none!important;display:none!important;background:none!important}
 .left-panel::after{content:none!important;display:none!important;background:none!important;opacity:0!important}
+.left-panel .search-cell-group,
+.left-panel .search-region-group,
+.left-panel .search-name-group{color:#173f38}
+.left-panel .search-cell-group .search-cell-head strong,
+.left-panel .search-region-group .search-cell-head strong,
+.left-panel .search-name-group .search-priority-head strong,
+.left-panel .search-hit strong,
+.left-panel .search-tile-hit strong,
+.left-panel .search-name-copy>strong{color:#173f38}
+.left-panel .search-cell-group .search-cell-head small,
+.left-panel .search-region-group .search-cell-head small,
+.left-panel .search-hit small,
+.left-panel .search-tile-hit small,
+.left-panel .search-name-copy small,
+.left-panel .search-name-copy em{color:#6d716b}
+.left-panel .search-hit p,
+.left-panel .search-tile-hit p{color:#5d6862}
 .map-viewport::before{content:none!important;display:none!important;background:none!important;opacity:0!important}
 #worldCanvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:1!important}
 #tileLayer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:3!important;pointer-events:none}

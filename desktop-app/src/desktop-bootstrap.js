@@ -256,7 +256,7 @@ async function start(){
       })
     }
   }
-  window.SHJ_DESKTOP={active:isTauri&&nativeStorageReady&&!startupFallback,recoveryMode:startupFallback,databaseRecovered:false,saveWorkspace:queueSave,flush:flushWorkspace,bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
+  window.SHJ_DESKTOP={active:isTauri&&nativeStorageReady&&!startupFallback,recoveryMode:startupFallback,databaseRecovered:false,saveWorkspace:queueSave,flush:flushWorkspace,createBackup:async label=>{await flushWorkspace();return invoke("create_backup",{label:label||"手动备份"})},bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
   await loadMainScript();
   setupNativeUi();
   if(startupFallback){
