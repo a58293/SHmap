@@ -2,10 +2,13 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v007",
-  "semver": "0.7.6",
-  "frontend_base": "v076-safe-import-semantic-fallback-detail-grid",
+  "semver": "0.7.7",
+  "frontend_base": "v077-object-role-layer",
   "data_version": "v125-r0001",
   "object_count": 617,
+  "independent_map_objects": 591,
+  "non_tile_records": 26,
+  "object_role_schema": "entity / collection / subregion / path / detail / context",
   "original_library_records": 4120,
   "storage": "SQLite + local-cache startup fallback",
   "build_target": "Windows x64 NSIS",
@@ -37,5 +40,5 @@
   "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
   "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
   "safe_import_policy": "审核正文指纹仍为硬校验；完整目标指纹变化时仅在名称、经篇、类型唯一匹配后允许补充，并显示警告；不修改坐标、名称、经篇、类型、几何或对象数量",
-  "release_scope": "145 audited Markdown safe-import recognition and semantic fallback"
+  "release_scope": "集合对象与非独立资料记录分层；九丘、岷三江等保留历史资料但不再额外占用地图主格"
 }

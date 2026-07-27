@@ -14,10 +14,10 @@ const desktopCss = read("src/desktop-ui.css");
 const rust = read("src-tauri/src/lib.rs");
 
 const checks = [
-  ["package 版本", pkg.version === "0.7.6"],
-  ["Tauri 版本", tauri.version === "0.7.6"],
-  ["VERSION 版本", version.semver === "0.7.6" && version.app_version === "v007"],
-  ["界面版本", html.includes("DESKTOP v007 · 0.7.6")],
+  ["package 版本", pkg.version === "0.7.7"],
+  ["Tauri 版本", tauri.version === "0.7.7"],
+  ["VERSION 版本", version.semver === "0.7.7" && version.app_version === "v007"],
+  ["界面版本", html.includes("DESKTOP v007 · 0.7.7")],
   ["查询／专注按钮", html.includes('id="queryModeBtn"') && html.includes('id="focusModeBtn"') && app.includes("v071SetWorkspaceMode")],
   ["多总览模式", html.includes('data-overview-mode="region"') && html.includes('data-overview-mode="domain"') && html.includes('data-overview-mode="chapter"') && html.includes('data-overview-mode="hydrology"') && html.includes('data-overview-mode="civilization"')],
   ["真实区域总览", app.includes('h.regions.filter(r=>r.level===2)') && app.includes("cleanRegionOverviewName(region.name)")],
@@ -73,4 +73,4 @@ for (const [name, ok] of checks) {
   if (!ok) bad = true;
 }
 if (bad) process.exit(1);
-console.log("v0.7.6 专项校验通过：博物志详情直显、九段式导入兼容、数据库启动超时恢复与原有地图功能均保留。");
+console.log("v0.7.7 专项校验通过：对象角色分层、博物志详情、九段式导入、数据库启动恢复与原有地图功能均保留。");

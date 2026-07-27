@@ -19,9 +19,10 @@ const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
+  const objects=window.SHJ_OBJECT_ROLE_MANIFEST?.apply?.(initial.objects||[])||(initial.objects||[]);
   return {
-    objects:initial.objects||[],changes:[],changeArchives:[],appliedRemotePatches:[],remotePatchHistory:[],viewedRemotePatches:[],
-    dataVersion:initial.metadata?.dataVersion||"v075-r0001",camera:{x:0,y:0,zoom:.92},selectedId:initial.objects?.[0]?.id||null,
+    objects,changes:[],changeArchives:[],appliedRemotePatches:[],remotePatchHistory:[],viewedRemotePatches:[],
+    dataVersion:initial.metadata?.dataVersion||"v075-r0001",camera:{x:0,y:0,zoom:.92},selectedId:objects[0]?.id||null,
     selectedCell:null,tileProfiles:{},trash:[],trashRetentionDays:0,nextIdCounter:0,dossierMode:"brief",brushKeys:[],brushStrokes:[],viewPreset:"all",compareKeys:[]
   };
 }

@@ -1722,7 +1722,7 @@ body{
   background-image:none!important;
 }
 .left-panel::before{content:none!important;display:none!important;background:none!important}
-.left-panel::after{opacity:.42!important}
+.left-panel::after{content:none!important;display:none!important;background:none!important;opacity:0!important}
 .map-viewport::before{content:none!important;display:none!important;background:none!important;opacity:0!important}
 #worldCanvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:1!important}
 #tileLayer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:3!important;pointer-events:none}
@@ -3239,4 +3239,73 @@ body.museum-image-viewer-open{overflow:hidden}
 .reading-layout .brief-museum .brief-object-rows>div span{
   font-size:12px!important;
   line-height:1.65!important;
+}
+/* v0.7.7 · 集合对象、路径层与内部资料分层 */
+.object-role-badge{
+  display:inline-flex;
+  align-items:center;
+  margin-left:6px;
+  padding:2px 6px;
+  border:1px solid rgba(31,109,90,.28);
+  border-radius:999px;
+  background:rgba(230,240,234,.78);
+  color:#1f6d5a;
+  font:700 8px/1.2 sans-serif;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+.object-role-badge.path{border-color:rgba(43,127,153,.3);background:rgba(225,241,246,.82);color:#256f82}
+.object-role-badge.detail{border-color:rgba(139,105,52,.3);background:rgba(246,237,218,.84);color:#765628}
+.object-role-badge.context,.object-role-badge.subregion{border-color:rgba(94,89,78,.26);background:rgba(235,232,223,.86);color:#625d52}
+.role-record-card{
+  margin-bottom:14px;
+  padding:14px 15px;
+  border:1px solid rgba(31,109,90,.28);
+  border-left:4px solid #1f6d5a;
+  border-radius:10px;
+  background:linear-gradient(135deg,rgba(235,244,238,.94),rgba(250,247,237,.96));
+}
+.role-record-card.path{border-left-color:#2b7f99}
+.role-record-card.detail{border-left-color:#9a6d2f}
+.role-record-card.context,.role-record-card.subregion{border-left-color:#716b5e}
+.role-record-card header{display:flex;flex-wrap:wrap;gap:7px 12px;align-items:center;margin-bottom:8px}
+.role-record-card header span{
+  padding:3px 8px;
+  border-radius:999px;
+  background:#1f6d5a;
+  color:#fff;
+  font:700 9px/1.3 sans-serif;
+}
+.role-record-card header strong{color:#29483f;font-size:13px;line-height:1.55}
+.role-record-card p{margin:0;color:#625d52;font-size:11px;line-height:1.75}
+.role-record-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.role-record-links.compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+.role-record-links button{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  min-width:0;
+  padding:9px;
+  border:1px solid rgba(31,109,90,.2);
+  border-radius:8px;
+  background:rgba(255,253,247,.88);
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.role-record-links button:hover{border-color:#1f6d5a;background:#f2f8f3}
+.role-record-links button i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#edf3ee;color:#1f6d5a;font-style:normal}
+.role-record-links button span{min-width:0}
+.role-record-links button strong,.role-record-links button small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.role-record-links button strong{font-size:11px}
+.role-record-links button small{margin-top:3px;color:var(--muted);font-size:8px}
+.role-record-links button em{color:#1f6d5a;font:700 8px/1 sans-serif;font-style:normal}
+.role-virtual-members{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.role-virtual-members span{padding:6px 9px;border:1px dashed rgba(117,87,41,.32);border-radius:7px;background:rgba(246,237,218,.68);color:#765628;font-size:10px}
+@media (max-width:1300px){
+  .role-record-links{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .role-record-links,.role-record-links.compact{grid-template-columns:1fr}
 }
