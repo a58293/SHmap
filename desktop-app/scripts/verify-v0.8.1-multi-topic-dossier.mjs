@@ -11,9 +11,9 @@ for (const source of [app, dist]) {
   assert.ok(source.includes("function dossierTopicsFor(items)"));
   assert.ok(source.includes("function dossierTopicSwitcherHTML(items,main)"));
   assert.ok(source.includes('data-dossier-topic="${esc(object.id)}"'));
-  assert.ok(source.includes('["09. 详细描述",profile.detailedSummary]'));
-  assert.ok(source.includes('["08. 其他典故",profile.otherAllusions]'));
-  assert.ok(source.includes('["07. 原文摘录",profile.tileOriginalExcerpt]'));
+  assert.ok(source.includes('["09. 详细描述",profile.detailedSummary]') || source.includes('identityDrawerFieldHTML("09. 详细描述",profile.detailedSummary'));
+  assert.ok(source.includes('["08. 其他典故",profile.otherAllusions]') || source.includes('identityDrawerFieldHTML("08. 其他典故",profile.otherAllusions'));
+  assert.ok(source.includes('["07. 原文摘录",profile.tileOriginalExcerpt]') || source.includes('identityDrawerFieldHTML("07. 原文摘录",profile.tileOriginalExcerpt'));
   assert.ok(source.includes('objectHasImportedDossier(o)?"已导入完整 Markdown 档案"'));
   assert.ok(source.includes('wideCard("09. 详细描述"') || source.includes('wideCard("详细描述"'));
 }

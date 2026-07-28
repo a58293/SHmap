@@ -1,7 +1,7 @@
 {
   "name": "shanhaijing-map-desktop",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,7 @@
     "desktop:build": "tauri build",
     "verify": "npm run build && npm run verify:checks",
     "import:master": "node scripts/import-master-v053.mjs",
-    "verify:checks": "node scripts/verify-v0.8.1-dist-output.mjs && node scripts/verify-project.mjs && node scripts/verify-v0.7.6-card-fields.mjs && node scripts/verify-v0.7.6-compact-image.mjs && node scripts/verify-v0.7.6-detail-category-grid.mjs && node scripts/verify-v0.7.6-dossier-interaction.mjs && node scripts/verify-v0.7.6-entry-binding.mjs && node scripts/verify-v0.8.1-mdcompat.mjs && node scripts/verify-v0.7.6-museum-accordion.mjs && node scripts/verify-v0.7.6-original-quote.mjs && node scripts/verify-v0.7.6-scripture-pages.mjs && node scripts/verify-v0.7.6-vertical-museum.mjs && node scripts/verify-v0.8.0-dossier-normalization.mjs && node scripts/verify-v0.8.1.mjs && node scripts/verify-v0.8.0-object-roles.mjs && node scripts/verify-v0.8.1-multi-topic-dossier.mjs && node scripts/verify-v0.8.1-release.mjs && node scripts/verify-v0.7.6-internal-entry-detail-and-placeholder.mjs && node scripts/verify-v0.7.6-placeholder-variants-v2.mjs"
+    "verify:checks": "node scripts/verify-v0.8.2-dist-output.mjs && node scripts/verify-project.mjs && node scripts/verify-v0.7.6-card-fields.mjs && node scripts/verify-v0.7.6-compact-image.mjs && node scripts/verify-v0.7.6-detail-category-grid.mjs && node scripts/verify-v0.7.6-dossier-interaction.mjs && node scripts/verify-v0.7.6-entry-binding.mjs && node scripts/verify-v0.8.2-mdcompat.mjs && node scripts/verify-v0.7.6-museum-accordion.mjs && node scripts/verify-v0.7.6-original-quote.mjs && node scripts/verify-v0.7.6-scripture-pages.mjs && node scripts/verify-v0.7.6-vertical-museum.mjs && node scripts/verify-v0.8.0-dossier-normalization.mjs && node scripts/verify-v0.8.2.mjs && node scripts/verify-v0.8.0-object-roles.mjs && node scripts/verify-v0.8.1-multi-topic-dossier.mjs && node scripts/verify-v0.8.2-organized-object-drawer.mjs && node scripts/verify-v0.8.2-release.mjs && node scripts/verify-v0.7.6-internal-entry-detail-and-placeholder.mjs && node scripts/verify-v0.7.6-placeholder-variants-v2.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1"

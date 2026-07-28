@@ -17,7 +17,7 @@ const checks=[
   ["审计信息下沉详细",/资料审核／证据等级/.test(drawerBlock)&&/evidenceTextForObject\(o\)/.test(drawerBlock)],
   ["对象详情读取Markdown条目",/function dossierObjectEntryFields/.test(app)&&/resolved\?\.id===o\.id/.test(app)&&/normalizeDossierImportName\(entry\?\.name\)===objectName/.test(app)],
   ["对象详情核心特征优先Markdown",/imported\.coreFeatures/.test(drawerBlock)&&/imported\.hasImported\?"":\(o\.coreFeatures\|\|objectCoreText\(o\)\)/.test(drawerBlock)],
-  ["对象详情显示Markdown出处",/dossierEvidenceSourceText/.test(app)&&/\["出自",importedSource\]/.test(drawerBlock)],
+  ["对象详情显示Markdown出处",/dossierEvidenceSourceText/.test(app)&&(/\["出自",importedSource\]/.test(drawerBlock)||/identityDrawerFieldHTML\("出自",importedSource/.test(drawerBlock))],
   ["经篇链接生成",/data-scripture-directory/.test(app)&&/chapterReferenceHTML/.test(app)],
   ["经篇目录跳转",/function openScriptureDirectory/.test(app)&&/state\.filters\.chapter=target/.test(app)],
   ["经篇链接样式",/\.scripture-directory-link/.test(css)],

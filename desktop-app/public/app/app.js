@@ -3511,45 +3511,68 @@
     text=text.replace(/^证据\s*[：:]\s*/,"").replace(/^出自\s*/,"").trim();
     return text
   }
+  function identityDrawerFieldHTML(label,value,{references=false,wide=false,accent=false}={}){
+    if(!hasText(value))return "";
+    const body=references?chapterReferenceHTML(value):esc(value).replace(/\n/g,"<br>");
+    return `<div class="identity-drawer-field ${wide?"wide":""} ${accent?"accent":""}"><h4>${esc(label)}</h4><div>${body}</div></div>`
+  }
+  function identityDrawerSectionHTML(title,subtitle,fields){
+    const body=fields.filter(Boolean).join("");if(!body)return "";
+    return `<section class="identity-drawer-section"><header><h3>${esc(title)}</h3><span>${esc(subtitle)}</span></header><div class="identity-drawer-field-grid">${body}</div></section>`
+  }
   function openIdentityObjectDrawer(id){
     const o=state.objects.find(x=>x.id===id);if(!o)return;let overlay=document.getElementById("identityObjectDrawer");if(!overlay){overlay=document.createElement("section");overlay.id="identityObjectDrawer";overlay.className="identity-object-drawer hidden";overlay.innerHTML=`<div class="identity-drawer-backdrop" data-close-identity-drawer></div><aside><header><div><span class="eyebrow">OBJECT MONOGRAPH</span><h2 id="identityDrawerTitle"></h2><p id="identityDrawerMeta"></p></div><button class="icon-btn" data-close-identity-drawer>×</button></header><div id="identityDrawerBody"></div></aside>`;document.body.appendChild(overlay);overlay.querySelectorAll('[data-close-identity-drawer]').forEach(x=>x.addEventListener('click',()=>overlay.classList.add('hidden')))}
     overlay.querySelector('#identityDrawerTitle').textContent=o.name;overlay.querySelector('#identityDrawerMeta').textContent=`${o.type||"未分类"} · ${coordText(o.x,o.y)} · ${o.chapter||"未标经篇"}`;
-    const imported=dossierObjectEntryFields(o),importedSource=dossierEvidenceSourceText(imported.evidence),showImportedOriginal=isDirectOriginalRelation(imported.localRelation)&&hasText(imported.originalExcerpt),profile=o.dossier?.profile||{},sourceFiles=[...(o.dossier?.sourceFiles||[]),o.dossier?.sourceFile].filter(Boolean),rows=[
-      ["01. 区域定位",profile.regionPosition],
-      ["02. 一句话概要",profile.oneLineSummary],
-      ["03. 本地标签",profile.localTags],
-      ["04. 地貌类型",profile.tileType],
-      ["04. 水文特征",profile.hydrology],
-      ["04. 方位范围",profile.orientation],
-      ["04. 典籍出处",profile.sourceCitation],
-      ["05. 父级区域",profile.parentRegion],
-      ["05. 相邻地块",profile.adjacentTiles],
-      ["05. 相关水域",profile.relatedWaters],
-      ["05. 相关生灵",profile.relatedLife],
-      ["07. 原文摘录",profile.tileOriginalExcerpt],
-      ["08. 其他典故",profile.otherAllusions],
-      ["09. 详细描述",profile.detailedSummary],
-      ["Markdown来源文件",sourceFiles.join(" / ")],
-      ["图片",o.imageUrl],
-      [showImportedOriginal?"原文":"与本地关系",showImportedOriginal?imported.originalExcerpt:displayLocalRelation(imported.localRelation||o.localRelation)],
-      ["核心特征",imported.coreFeatures||(imported.hasImported?"":(o.coreFeatures||objectCoreText(o)))],
-      ["功效／性质",imported.efficacy||o.efficacy],
-      ["备注",imported.notes],
-      ["出自",importedSource],
-      ["所属经篇",o.chapter],
-      ["关系说明",o.relationNotes],
-      ["原文",showImportedOriginal?"":o.original],
-      ["古注",o.annotations],
-      ["其他古籍",o.otherTexts],
-      ["异文",o.variants],
-      ["现代考证",o.modernResearch],
-      ["定位与地图推导",o.derivation],
-      ["资料审核／证据等级",evidenceTextForObject(o)],
-      ["资料来源",o.sourceNotes],
-      ["来源URL",o.sourceUrl],
-      ["待核对问题",o.pendingQuestions]
-    ].filter(([,v])=>hasText(v));
-    const drawerBody=overlay.querySelector('#identityDrawerBody');drawerBody.innerHTML=rows.length?rows.map(([k,v])=>`<section class="${k==="09. 详细描述"?"identity-drawer-detailed":""}"><h3>${esc(k)}</h3><p>${["出自","所属经篇","原文","古注","其他古籍","异文","资料来源","04. 典籍出处","07. 原文摘录","08. 其他典故"].includes(k)?chapterReferenceHTML(v):esc(v).replace(/\n/g,"<br>")}</p></section>`).join(""):`<div class="dossier-empty">该对象尚未录入更多资料。</div>`;bindIdentityBoardEvents(drawerBody);overlay.classList.remove('hidden')
+    const cell=objectCell(o),key=cellKey(cell.gx,cell.gy),items=objectsInCellKey(key),profile=mergeImportedDossierProfile(tileProfileFor(key,items),o),imported=dossierObjectEntryFields(o),importedSource=dossierEvidenceSourceText(imported.evidence),showImportedOriginal=isDirectOriginalRelation(imported.localRelation)&&hasText(imported.originalExcerpt),sourceFiles=[...(o.dossier?.sourceFiles||[]),o.dossier?.sourceFile].filter(Boolean),tags=splitTags(profile.localTags).slice(0,10),topics=dossierTopicsFor(items);
+    const sections=[
+      identityDrawerSectionHTML("地块身份与位置","图二中的地块档案摘要",[
+        identityDrawerFieldHTML("区域定位",profile.regionPosition,{wide:true}),
+        identityDrawerFieldHTML("地貌类型",profile.tileType),
+        identityDrawerFieldHTML("水文特征",profile.hydrology),
+        identityDrawerFieldHTML("方位范围",profile.orientation),
+        identityDrawerFieldHTML("典籍出处",profile.sourceCitation,{references:true}),
+        identityDrawerFieldHTML("父级区域",profile.parentRegion),
+        identityDrawerFieldHTML("相邻地块",profile.adjacentTiles,{wide:true}),
+        identityDrawerFieldHTML("相关水域",profile.relatedWaters),
+        identityDrawerFieldHTML("相关生灵",profile.relatedLife)
+      ]),
+      identityDrawerSectionHTML("对象特征","本对象在所属地块中的角色",[
+        identityDrawerFieldHTML(showImportedOriginal?"原文直载":"与本地关系",showImportedOriginal?imported.originalExcerpt:displayLocalRelation(imported.localRelation||o.localRelation),{references:showImportedOriginal,wide:true}),
+        identityDrawerFieldHTML("核心特征",imported.coreFeatures||(imported.hasImported?"":(o.coreFeatures||objectCoreText(o))),{wide:true}),
+        identityDrawerFieldHTML("功效／性质",imported.efficacy||o.efficacy),
+        identityDrawerFieldHTML("备注",imported.notes),
+        identityDrawerFieldHTML("出自",importedSource,{references:true})
+      ]),
+      identityDrawerSectionHTML("原文与注疏","对象原典资料",[
+        identityDrawerFieldHTML("所属经篇",o.chapter,{references:true,wide:true}),
+        identityDrawerFieldHTML("原文",showImportedOriginal?"":o.original,{references:true,wide:true}),
+        identityDrawerFieldHTML("古注",o.annotations,{references:true,wide:true}),
+        identityDrawerFieldHTML("其他古籍",o.otherTexts,{references:true}),
+        identityDrawerFieldHTML("异文",o.variants,{references:true})
+      ]),
+      identityDrawerSectionHTML("研究与定位","考证、地图推导与证据等级",[
+        identityDrawerFieldHTML("现代考证",o.modernResearch,{wide:true}),
+        identityDrawerFieldHTML("定位与地图推导",o.derivation,{wide:true}),
+        identityDrawerFieldHTML("关系说明",o.relationNotes),
+        identityDrawerFieldHTML("资料审核／证据等级",evidenceTextForObject(o),{wide:true}),
+        identityDrawerFieldHTML("资料来源",o.sourceNotes,{references:true}),
+        identityDrawerFieldHTML("来源URL",o.sourceUrl),
+        identityDrawerFieldHTML("待核对问题",o.pendingQuestions,{wide:true})
+      ]),
+      identityDrawerSectionHTML("Markdown 完整档案","第07—09节与来源文件",[
+        identityDrawerFieldHTML("07. 原文摘录",profile.tileOriginalExcerpt,{references:true,wide:true}),
+        identityDrawerFieldHTML("08. 其他典故",profile.otherAllusions,{references:true,wide:true}),
+        identityDrawerFieldHTML("09. 详细描述",profile.detailedSummary,{wide:true,accent:true}),
+        identityDrawerFieldHTML("来源文件",sourceFiles.join(" / "),{wide:true})
+      ])
+    ].filter(Boolean).join("");
+    const topicStrip=topics.length?`<div class="identity-drawer-topics"><strong>本格资料主题</strong><div>${topics.map(topic=>`<button class="${topic.id===o.id?"active":""}" data-drawer-topic="${esc(topic.id)}">${esc(topic.name)}</button>`).join("")}</div></div>`:"";
+    const drawerBody=overlay.querySelector('#identityDrawerBody');
+    drawerBody.innerHTML=`<article class="identity-drawer-organized"><div class="identity-drawer-summary"><div class="identity-drawer-glyph">${geometryIcon(o)}</div><div><span>${esc(profile.regionPosition||profile.orientation||"所在100里主格")}</span><h3>${esc(profile.oneLineSummary||shortText(o.derivation||o.original||"尚未形成对象摘要",180))}</h3>${tags.length?`<div class="identity-drawer-tags">${tags.map(tag=>`<i>${esc(tag)}</i>`).join("")}</div>`:""}</div><div class="identity-drawer-actions"><button data-drawer-locate="${esc(o.id)}">地图定位</button><button class="primary" data-drawer-full="${esc(key)}">打开完整博物志</button></div></div>${topicStrip}${sections||`<div class="dossier-empty">该对象尚未录入更多资料。</div>`}</article>`;
+    drawerBody.querySelectorAll("[data-drawer-topic]").forEach(button=>button.addEventListener("click",()=>openIdentityObjectDrawer(button.dataset.drawerTopic)));
+    drawerBody.querySelectorAll("[data-drawer-full]").forEach(button=>button.addEventListener("click",()=>{overlay.classList.add("hidden");openFullDossierForTile(button.dataset.drawerFull,o.id)}));
+    drawerBody.querySelectorAll("[data-drawer-locate]").forEach(button=>button.addEventListener("click",()=>{overlay.classList.add("hidden");closeDossierWorkspace();jumpToObject(button.dataset.drawerLocate,true,true)}));
+    bindIdentityBoardEvents(drawerBody);overlay.classList.remove('hidden')
   }
 
   function openIdentityDossierEntryDrawer(ownerId,index){
@@ -3718,7 +3741,7 @@
   }
   function rerenderActiveBoard(){const pane=els.dossierContent?.closest(".dossier-right"),top=pane?.scrollTop||0;renderDossierWorkspace();requestAnimationFrame(()=>{if(pane)pane.scrollTop=top})}
   function locateBoardTile(key){const [gx,gy]=key.split(',').map(Number);document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");closeDossierWorkspace();state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;animateCameraTo(cellCenter(gx),cellCenter(gy),Math.max(state.camera.zoom,.88),()=>{state.flippedCell=null;scheduleRender();renderDetails()})}
-  function openFullDossierForTile(key){document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");state.dossierCollectionMode=false;state.dossierPrecisionGroup=null;state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;state.dossierMode="full";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
+  function openFullDossierForTile(key,preferredId=null){document.getElementById("brushCollectionWorkspace")?.classList.add("hidden");state.dossierCollectionMode=false;state.dossierPrecisionGroup=null;state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedCell=key;const items=objectsInCellKey(key),preferred=items.find(object=>object.id===preferredId);if(preferred||items[0])state.selectedId=(preferred||items[0]).id;state.dossierMode="full";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
 
   function activeDossierTile(){const tile=activeTile();if(!tile)return null;const group=state.dossierPrecisionGroup?ensureObjectIndexes().anchorGroupByKey.get(state.dossierPrecisionGroup):null;if(!group)return {...tile,precision:null};const items=(group.items||[]).filter(o=>{const c=objectCell(o);return cellKey(c.gx,c.gy)===tile.key});if(!items.length){state.dossierPrecisionGroup=null;return {...tile,precision:null}}return {...tile,items,precision:{key:group.key,x:group.x,y:group.y}}}
   function openDossierWorkspace(){const tile=activeTile();if(!tile){toast("尚未选择地块","请先在地图中选择一个地块。","error");return}state.dossierCollectionMode=false;state.dossierPrecisionGroup=null;state.dossierCategoryFilter="all";state.dossierMode="brief";state.dossierTab="overview";els.dossierWorkspace.classList.remove("hidden");renderDossierWorkspace()}
@@ -4912,7 +4935,7 @@
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.8.1",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.8.2",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();
