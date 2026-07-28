@@ -3585,22 +3585,40 @@
       document.body.appendChild(overlay);
       overlay.querySelectorAll("[data-close-identity-drawer]").forEach(x=>x.addEventListener("click",()=>overlay.classList.add("hidden")))
     }
-    const profileOriginal=owner?.dossier?.profile?.tileOriginalExcerpt||"",originalExcerpt=originalExcerptForEntry(profileOriginal,entry.name,entry.localRelation),source=dossierEvidenceSourceText(entry.evidence),sourceFiles=[...(owner?.dossier?.sourceFiles||[]),owner?.dossier?.sourceFile].filter(Boolean);
+    const cell=objectCell(owner),key=cellKey(cell.gx,cell.gy),items=objectsInCellKey(key),profile=mergeImportedDossierProfile(tileProfileFor(key,items),owner),profileOriginal=owner?.dossier?.profile?.tileOriginalExcerpt||"",originalExcerpt=originalExcerptForEntry(profileOriginal,entry.name,entry.localRelation),source=dossierEvidenceSourceText(entry.evidence),sourceFiles=[...(owner?.dossier?.sourceFiles||[]),owner?.dossier?.sourceFile].filter(Boolean),tags=splitTags(profile.localTags).slice(0,10),topics=dossierTopicsFor(items);
     overlay.querySelector("#identityDrawerTitle").textContent=entry.name;
     overlay.querySelector("#identityDrawerMeta").textContent=`${entry.sourceCategory||"博物志条目"} · 地块内部资料 · ${owner.name}`;
-    const rows=[
-      ["资料属性","地块内部资料，不是独立地图对象"],
-      ["所属地块",owner.name],
-      ["与本地关系",entry.localRelation],
-      ["核心特征",entry.coreFeatures],
-      ["功效／性质",entry.efficacy],
-      ["备注",entry.notes],
-      ["出自",source],
-      ["原文",originalExcerpt],
-      ["来源文件",sourceFiles.join(" / ")]
-    ].filter(([,value])=>hasText(value)&&!isNinePlaceholderEntryName(value));
+    const sections=[
+      identityDrawerSectionHTML("资料身份","地块内部条目，不单独占用地图坐标",[
+        identityDrawerFieldHTML("资料属性","地块内部资料，不是独立地图对象",{wide:true}),
+        identityDrawerFieldHTML("所属地块",owner.name),
+        identityDrawerFieldHTML("资料分类",entry.sourceCategory||"博物志条目"),
+        identityDrawerFieldHTML("与本地关系",entry.localRelation,{wide:true})
+      ]),
+      identityDrawerSectionHTML("条目特征","本条目的有效内容",[
+        identityDrawerFieldHTML("核心特征",entry.coreFeatures,{wide:true}),
+        identityDrawerFieldHTML("功效／性质",entry.efficacy),
+        identityDrawerFieldHTML("备注",entry.notes,{wide:true}),
+        identityDrawerFieldHTML("出自",source,{references:true})
+      ]),
+      identityDrawerSectionHTML("原文与来源","对应原文和审核文件",[
+        identityDrawerFieldHTML("原文",originalExcerpt,{references:true,wide:true}),
+        identityDrawerFieldHTML("来源文件",sourceFiles.join(" / "),{wide:true})
+      ]),
+      identityDrawerSectionHTML("所属地块档案","与独立对象详情保持同一阅读结构",[
+        identityDrawerFieldHTML("区域定位",profile.regionPosition,{wide:true}),
+        identityDrawerFieldHTML("地貌类型",profile.tileType),
+        identityDrawerFieldHTML("水文特征",profile.hydrology),
+        identityDrawerFieldHTML("典籍出处",profile.sourceCitation,{references:true}),
+        identityDrawerFieldHTML("09. 详细描述",profile.detailedSummary,{wide:true,accent:true})
+      ])
+    ].filter(Boolean).join("");
+    const topicStrip=topics.length?`<div class="identity-drawer-topics"><strong>本格资料主题</strong><div>${topics.map(topic=>`<button class="${topic.id===owner.id?"active":""}" data-entry-owner-topic="${esc(topic.id)}">${esc(topic.name)}</button>`).join("")}</div></div>`:"";
     const drawerBody=overlay.querySelector("#identityDrawerBody");
-    drawerBody.innerHTML=rows.length?rows.map(([key,value])=>`<section><h3>${esc(key)}</h3><p>${["出自","原文"].includes(key)?chapterReferenceHTML(value):esc(value).replace(/\n/g,"<br>")}</p></section>`).join(""):`<div class="dossier-empty">该条目尚未录入更多资料。</div>`;
+    drawerBody.innerHTML=`<article class="identity-drawer-organized internal-entry"><div class="identity-drawer-summary"><div class="identity-drawer-glyph">${geometryIcon({type:entry.sourceCategory})}</div><div><span>${esc(entry.sourceCategory||"博物志条目")} · 所属地块 ${esc(owner.name)}</span><h3>${esc(entry.coreFeatures||entry.localRelation||"该条目尚未形成摘要")}</h3>${tags.length?`<div class="identity-drawer-tags">${tags.map(tag=>`<i>${esc(tag)}</i>`).join("")}</div>`:""}</div><div class="identity-drawer-actions"><button data-entry-owner-locate="${esc(owner.id)}">地图定位</button><button class="primary" data-entry-owner-full="${esc(key)}">打开完整博物志</button></div></div>${topicStrip}${sections||`<div class="dossier-empty">该条目尚未录入更多资料。</div>`}</article>`;
+    drawerBody.querySelectorAll("[data-entry-owner-topic]").forEach(button=>button.addEventListener("click",()=>openIdentityObjectDrawer(button.dataset.entryOwnerTopic)));
+    drawerBody.querySelectorAll("[data-entry-owner-full]").forEach(button=>button.addEventListener("click",()=>{overlay.classList.add("hidden");openFullDossierForTile(button.dataset.entryOwnerFull,owner.id)}));
+    drawerBody.querySelectorAll("[data-entry-owner-locate]").forEach(button=>button.addEventListener("click",()=>{overlay.classList.add("hidden");closeDossierWorkspace();jumpToObject(button.dataset.entryOwnerLocate,true,true)}));
     bindIdentityBoardEvents(drawerBody);overlay.classList.remove("hidden")
   }
 
@@ -4935,7 +4953,7 @@
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.8.2",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.8.3",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();

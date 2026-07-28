@@ -9,7 +9,7 @@ assert.ok(app.includes("function matchNineAuxiliaryFieldLine"));
 assert.ok(app.includes("entry.notes=mergeSupplementText(entry.notes"));
 assert.ok(app.includes('"备注":"notes"'));
 assert.ok(app.includes('["备注",o.notes]'));
-assert.ok(app.includes('["备注",entry.notes]'));
+assert.ok(app.includes('["备注",entry.notes]') || app.includes('identityDrawerFieldHTML("备注",entry.notes'));
 assert.ok(app.includes("replace(/[。．.!！?？；;：:]+$/g"));
 assert.ok(app.includes("normalizedDossierMuseumEntries(old.museumEntries)"));
 assert.ok(app.includes("地貌名称|水系名称|河流名称|草木名称|植物名称|鸟兽名称"));
