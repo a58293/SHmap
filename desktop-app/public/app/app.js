@@ -3589,6 +3589,13 @@
     overlay.querySelector("#identityDrawerTitle").textContent=entry.name;
     overlay.querySelector("#identityDrawerMeta").textContent=`${entry.sourceCategory||"博物志条目"} · 地块内部资料 · ${owner.name}`;
     const sections=[
+      identityDrawerSectionHTML("所属地块档案","与独立对象详情保持同一阅读结构",[
+        identityDrawerFieldHTML("区域定位",profile.regionPosition,{wide:true}),
+        identityDrawerFieldHTML("地貌类型",profile.tileType),
+        identityDrawerFieldHTML("水文特征",profile.hydrology),
+        identityDrawerFieldHTML("典籍出处",profile.sourceCitation,{references:true}),
+        identityDrawerFieldHTML("09. 详细描述",profile.detailedSummary,{wide:true,accent:true})
+      ]),
       identityDrawerSectionHTML("资料身份","地块内部条目，不单独占用地图坐标",[
         identityDrawerFieldHTML("资料属性","地块内部资料，不是独立地图对象",{wide:true}),
         identityDrawerFieldHTML("所属地块",owner.name),
@@ -3604,13 +3611,6 @@
       identityDrawerSectionHTML("原文与来源","对应原文和审核文件",[
         identityDrawerFieldHTML("原文",originalExcerpt,{references:true,wide:true}),
         identityDrawerFieldHTML("来源文件",sourceFiles.join(" / "),{wide:true})
-      ]),
-      identityDrawerSectionHTML("所属地块档案","与独立对象详情保持同一阅读结构",[
-        identityDrawerFieldHTML("区域定位",profile.regionPosition,{wide:true}),
-        identityDrawerFieldHTML("地貌类型",profile.tileType),
-        identityDrawerFieldHTML("水文特征",profile.hydrology),
-        identityDrawerFieldHTML("典籍出处",profile.sourceCitation,{references:true}),
-        identityDrawerFieldHTML("09. 详细描述",profile.detailedSummary,{wide:true,accent:true})
       ])
     ].filter(Boolean).join("");
     const topicStrip=topics.length?`<div class="identity-drawer-topics"><strong>本格资料主题</strong><div>${topics.map(topic=>`<button class="${topic.id===owner.id?"active":""}" data-entry-owner-topic="${esc(topic.id)}">${esc(topic.name)}</button>`).join("")}</div></div>`:"";
@@ -4953,7 +4953,7 @@
     state.perf.v062EnvironmentSignature="";
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.8.3",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.8.6",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();

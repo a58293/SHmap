@@ -2,7 +2,7 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v008",
-  "semver": "0.8.3",
+  "semver": "0.8.6",
   "frontend_base": "v077-object-role-layer",
   "data_version": "v125-r0001",
   "object_count": 617,
@@ -40,5 +40,5 @@
   "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
   "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
   "safe_import_policy": "审核正文指纹仍为硬校验；完整目标指纹变化时仅在名称、经篇、类型唯一匹配后允许补充，并显示警告；不修改坐标、名称、经篇、类型、几何或对象数量",
-  "release_scope": "独立地图对象与地块内部条目使用统一详情布局；不改坐标及617条历史资料"
+  "release_scope": "内部条目按本格资料主题、所属地块档案、资料身份、条目特征顺序显示；不改坐标及617条历史资料"
 }
