@@ -1234,7 +1234,8 @@ html[data-ui-text-scale="large"] .toast{min-width:320px;padding:11px 16px}
 
 /* v0.5.1 · 线型水系 */
 .map-viewport.water-path-hover{cursor:pointer}
-.map-tooltip.water-path-tooltip{min-width:220px;max-width:340px;border-color:rgba(43,127,153,.55);box-shadow:0 14px 34px rgba(20,75,91,.22)}
+.map-tooltip.water-path-tooltip{min-width:220px;max-width:340px;border-color:rgba(43,127,153,.55);box-shadow:0 14px 34px rgba(20,75,91,.22);pointer-events:auto;cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
+.map-tooltip.water-path-tooltip:hover,.map-tooltip.water-path-tooltip:focus-visible{transform:translateY(-2px);box-shadow:0 18px 40px rgba(20,75,91,.32);outline:2px solid rgba(116,200,225,.82);outline-offset:2px}
 .map-tooltip.water-path-tooltip strong{color:#155e78}
 .map-tooltip.water-path-tooltip small{display:block;margin-top:3px;color:var(--muted)}
 .map-tooltip.water-path-tooltip p{margin:8px 0 4px;line-height:1.55}
@@ -1250,6 +1251,8 @@ html[data-ui-text-scale="large"] .toast{min-width:320px;padding:11px 16px}
 .water-path-card footer{display:flex;gap:7px;padding:0 13px 12px}
 .water-path-card footer button{flex:1;border:1px solid rgba(43,127,153,.35);border-radius:8px;background:#fff;color:#1f6f88;padding:8px;font-size:9px;font-weight:800}
 .water-path-card footer button:hover{background:#e7f3f6;border-color:#2b7f99}
+.water-path-card footer button.primary{background:#1f6f88;color:#fff;border-color:#17576c;box-shadow:0 5px 13px rgba(31,111,136,.18)}
+.water-path-card footer button.primary:hover{background:#175e75;border-color:#124b5f}
 html[data-ui-text-scale="large"] .water-path-card header h3{font-size:27px}
 html[data-ui-text-scale="large"] .water-path-card header span,
 html[data-ui-text-scale="large"] .water-path-card header b,
@@ -3363,3 +3366,5 @@ body.museum-image-viewer-open{overflow:hidden}
 .identity-drawer-field{padding:12px 14px;border-right:1px solid #ebe5da;border-bottom:1px solid #ebe5da;min-width:0}.identity-drawer-field:nth-child(2n){border-right:0}.identity-drawer-field.wide{grid-column:1/-1;border-right:0}.identity-drawer-field h4{font-size:10px;color:#6d786f;margin:0 0 6px}.identity-drawer-field>div{font-size:13px;line-height:1.75;color:#30483f;overflow-wrap:anywhere}.identity-drawer-field.accent{border-left:4px solid var(--jade);background:#eef5f1}.identity-drawer-field.accent>div{font-size:14px;line-height:1.9}
 @media(max-width:1100px){.identity-object-drawer{grid-template-columns:1fr minmax(560px,66vw)}.identity-drawer-summary{grid-template-columns:44px 1fr}.identity-drawer-actions{grid-column:1/-1;justify-content:flex-end}}
 @media(max-width:720px){.identity-object-drawer{grid-template-columns:1fr}.identity-drawer-summary{grid-template-columns:40px 1fr}.identity-drawer-field-grid{grid-template-columns:1fr}.identity-drawer-field{grid-column:1/-1;border-right:0}.identity-drawer-section>header{display:block}.identity-drawer-section>header span{display:block;margin-top:3px}}
+.v050-mode-actions #waterConversionAuditToggle{border-color:rgba(58,117,134,.55);color:#245e70;background:#edf7f8}
+.v050-mode-actions #waterConversionAuditToggle.active{background:#2f7182;color:#fff;border-color:#245968;box-shadow:0 0 0 2px rgba(47,113,130,.14)}
