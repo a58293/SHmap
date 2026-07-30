@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.0</title>
+  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.1</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.0</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.1</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -81,7 +81,10 @@
             </section>
           </div>
         </details>
-        <div class="index-mode-tabs" role="tablist" aria-label="地图索引层级"><button id="objectIndexModeBtn" class="active" type="button" role="tab" aria-selected="true">对象</button><button id="regionIndexModeBtn" type="button" role="tab" aria-selected="false">世界／区域</button></div>
+        <div class="index-mode-tabs" role="tablist" aria-label="地图索引层级">
+          <button id="objectIndexModeBtn" class="active" type="button" role="tab" aria-selected="true"><i aria-hidden="true">●</i><span><strong>对象列表</strong><small>地名与资料</small></span></button>
+          <button id="regionIndexModeBtn" type="button" role="tab" aria-selected="false"><i aria-hidden="true">▦</i><span><strong>区域目录</strong><small>世界与分区</small></span></button>
+        </div>
         <div class="result-head"><span id="indexResultTitle">对象索引</span><strong id="resultCount">0</strong></div>
         <div id="objectSortBar" class="object-sort-bar" aria-label="对象索引排序">
           <select id="objectSortSelect" title="对象索引排序方式">

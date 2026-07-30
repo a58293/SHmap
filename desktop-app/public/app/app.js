@@ -720,8 +720,9 @@
   function renderTypeFilterTree(){
     const types=[...new Set(state.objects.map(o=>o.type).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"zh-CN"));
     const order=["山","水系","国家／区域","神木／植物","神祇／人物","异兽／生物","墓葬","事件地标","其他"],groups=new Map(order.map(k=>[k,[]]));
+    const icons={"山":"山","水系":"水","国家／区域":"域","神木／植物":"木","神祇／人物":"神","异兽／生物":"兽","墓葬":"墓","事件地标":"事","其他":"·"};
     types.forEach(t=>groups.get(typeCategoryFor(t)).push(t));
-    els.typeFilterTree.innerHTML=`<button class="type-filter-all ${state.filters.type?'':'active'}" data-type-value="">全部类型</button>`+order.filter(k=>groups.get(k).length).map(k=>`<details class="type-filter-group" ${groups.get(k).includes(state.filters.type)?'open':''}><summary><span>${esc(k)}</span><b>${groups.get(k).length}</b></summary><div>${groups.get(k).map(t=>`<button class="${state.filters.type===t?'active':''}" data-type-value="${esc(t)}">${esc(t)}</button>`).join("")}</div></details>`).join("");
+    els.typeFilterTree.innerHTML=`<div class="type-filter-head"><strong>选择对象类型</strong><small>先选大类，再选具体类型</small></div><button class="type-filter-all ${state.filters.type?'':'active'}" data-type-value=""><i>全</i><span>全部类型</span><b>${types.length}</b></button>`+order.filter(k=>groups.get(k).length).map(k=>`<details class="type-filter-group" ${groups.get(k).includes(state.filters.type)?'open':''}><summary><i>${icons[k]}</i><span>${esc(k)}</span><b>${groups.get(k).length}</b></summary><div>${groups.get(k).map(t=>`<button class="${state.filters.type===t?'active':''}" data-type-value="${esc(t)}"><span>${esc(t)}</span>${state.filters.type===t?'<b>已选</b>':''}</button>`).join("")}</div></details>`).join("");
     els.typeFilterSummary.textContent=state.filters.type||"全部";
     els.typeFilterTree.querySelectorAll('[data-type-value]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();state.filters.type=btn.dataset.typeValue||"";els.typeFilterSummary.textContent=state.filters.type||"全部";els.typeFilterMenu.open=false;renderTypeFilterTree();renderSidebar();scheduleRender()}));
   }
@@ -5125,7 +5126,7 @@
     window.SHJ_WATER_DISPLAY={decision:waterDisplayDecision,mode:objectDisplayMode,renderTier:waterPathRenderTier,audit:()=>state.waterConversionAudit,bindingForPath:pathId=>waterPathDossierObject((state.waterPaths||[]).find(path=>path.id===pathId))?.dossier?.waterBinding||null,summary:()=>state.objects.map(object=>({id:object.id,name:object.name,type:object.type,displayMode:objectDisplayMode(object),waterBinding:object?.dossier?.waterBinding||null,...waterDisplayDecision(object)}))};
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.0",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.1",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",bootGuard:true};
   setupV027State();
   init();
   setupImportSupplementPolicy();
