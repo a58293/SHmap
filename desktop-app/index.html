@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v008 · 0.8.9</title>
+  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.0</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v008 · 0.8.9</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.0</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -52,25 +52,35 @@
           <label class="field"><span>经篇</span><select id="chapterFilter"><option value="">全部</option></select></label>
           <div class="field type-filter-field"><span>类型</span><details id="typeFilterMenu" class="type-filter-menu"><summary id="typeFilterSummary">全部</summary><div id="typeFilterTree" class="type-filter-tree"></div></details></div>
         </div>
-        <div class="quick-nav">
-          <div class="section-label">快速定位</div>
-          <div class="chip-row">
-            <button data-jump-name="都广之野">都广</button>
-            <button data-jump-name="昆仑复合体主体">昆仑</button>
-            <button data-jump-name="氾林">氾林</button>
-            <button id="fitAllBtn">已录入范围</button>
+        <details class="sidebar-section sidebar-tools">
+          <summary><span>地图工具</span><small>定位 · 图层 · 统计</small></summary>
+          <div class="sidebar-section-body">
+            <section class="sidebar-tool-group">
+              <strong>快速定位</strong>
+              <div class="chip-row">
+                <button data-jump-name="都广之野">都广</button>
+                <button data-jump-name="昆仑复合体主体">昆仑</button>
+                <button data-jump-name="氾林">氾林</button>
+                <button id="fitAllBtn">已录入范围</button>
+              </div>
+            </section>
+            <section class="sidebar-tool-group">
+              <strong>地图图层</strong>
+              <div class="layer-grid">
+                <label><input type="checkbox" id="layerAreas" checked /> 面积与作用域</label>
+                <label><input type="checkbox" id="layerTerrain" checked /> 高倍率彩色地形</label>
+                <label><input type="checkbox" id="layerRivers" checked /> 河流与线型对象</label>
+                <label title="依据周边地块类型与真实水系走向生成淡墨山水纹理"><input type="checkbox" id="layerEnvironment" checked /> 山水环境纹理</label>
+                <label><input type="checkbox" id="layerEmpty" /> 空白地块</label>
+                <label><input type="checkbox" id="layerChanges" checked /> 本轮更改标记</label>
+              </div>
+            </section>
+            <section class="sidebar-tool-group">
+              <strong>数据概况</strong>
+              <div class="map-stats" id="mapStats"></div>
+            </section>
           </div>
-        </div>
-        <div class="layer-box">
-          <div class="section-label">图层</div>
-          <label><input type="checkbox" id="layerAreas" checked /> 面积与作用域</label>
-          <label><input type="checkbox" id="layerTerrain" checked /> 高倍率彩色地形</label>
-          <label><input type="checkbox" id="layerRivers" checked /> 河流与线型对象</label>
-          <label title="依据周边地块类型与真实水系走向生成淡墨山水纹理"><input type="checkbox" id="layerEnvironment" checked /> 山水环境纹理</label>
-          <label><input type="checkbox" id="layerEmpty" /> 空白地块</label>
-          <label><input type="checkbox" id="layerChanges" checked /> 本轮更改标记</label>
-        </div>
-        <div class="map-stats" id="mapStats"></div>
+        </details>
         <div class="index-mode-tabs" role="tablist" aria-label="地图索引层级"><button id="objectIndexModeBtn" class="active" type="button" role="tab" aria-selected="true">对象</button><button id="regionIndexModeBtn" type="button" role="tab" aria-selected="false">世界／区域</button></div>
         <div class="result-head"><span id="indexResultTitle">对象索引</span><strong id="resultCount">0</strong></div>
         <div id="objectSortBar" class="object-sort-bar" aria-label="对象索引排序">
@@ -208,7 +218,7 @@
               <h2 id="detailName"></h2>
               <p id="detailMeta"></p>
             </div>
-            <div id="detailHeadActions" class="detail-head-actions"><button class="btn secondary compact" id="openDossierBtn">▤ 地块博物志</button><button class="btn secondary compact range-entry" id="openRangeEditorBtn">▱ 编辑面积／作用域</button><button class="btn primary compact" id="editTileBtn">✎ 编辑地块</button><button class="btn danger compact" id="deleteTileBtn">⌫ 删除</button></div>
+            <div id="detailHeadActions" class="detail-head-actions"><button class="btn secondary compact" id="openDossierBtn">▤ 地块博物志</button><button class="btn secondary compact range-entry" id="openRangeEditorBtn">▱ 编辑面积／作用域</button><button class="btn primary compact" id="editTileBtn">✎ 编辑地块与对象</button><button class="btn danger compact" id="deleteTileBtn">⌫ 删除</button></div>
           </div>
           <div class="detail-location-card" id="detailLocation"></div>
           <div id="detailTabs" class="detail-tabs tile-detail-tabs">
@@ -288,18 +298,37 @@
     <div class="modal-backdrop" data-close-modal="tileProfileModal"></div>
     <section class="modal-card tile-profile-card">
       <div class="modal-head">
-        <div><span class="eyebrow">TILE DOSSIER EDITOR</span><h2 id="tileProfileTitle">编辑地块档案</h2><p>地块档案与格内对象分开保存；神话与历史事件按《山海经》十八经篇归档。</p></div>
+        <div><span class="eyebrow">TILE & OBJECT EDITOR</span><h2 id="tileProfileTitle">编辑地块与对象</h2><p>左侧修改本格所有对象；右侧修改整个100里地块的共同档案。</p></div>
         <button class="modal-close" data-close-modal="tileProfileModal">×</button>
       </div>
       <form id="tileProfileForm" class="tile-profile-form">
         <input type="hidden" id="tileProfileKey" />
-        <section class="profile-form-section summary-layer-editor">
+        <div class="tile-editor-layout">
+          <aside class="tile-object-manager">
+            <div class="tile-object-manager-head">
+              <div><span>本格对象</span><strong id="tileObjectEditorCount">0项</strong></div>
+              <button type="button" class="btn primary compact" id="tileAddObjectBtn">＋ 新增</button>
+            </div>
+            <p class="tile-object-manager-note">地图上显示的名称来自对象名称。点击任意对象，即可修改名称、类型、经篇、坐标、原文、别名和证据。</p>
+            <div id="tileObjectEditorList" class="tile-object-editor-list"></div>
+            <nav class="tile-editor-nav" aria-label="地块档案分区">
+              <strong>地块整体档案</strong>
+              <button type="button" data-tile-editor-jump="tileSectionSummary">三层简述</button>
+              <button type="button" data-tile-editor-jump="tileSectionIdentity">身份与空间</button>
+              <button type="button" data-tile-editor-jump="tileSectionGeo">地理与生态</button>
+              <button type="button" data-tile-editor-jump="tileSectionCivilization">文明与资源</button>
+              <button type="button" data-tile-editor-jump="tileSectionEvents">事件与经篇</button>
+              <button type="button" data-tile-editor-jump="tileSectionEvidence">原文与证据</button>
+            </nav>
+          </aside>
+          <div class="tile-profile-fields">
+        <section class="profile-form-section summary-layer-editor" id="tileSectionSummary">
           <div class="profile-section-title"><b>卷</b><div><h3>地块三层简述</h3><p>用于地图上的宽幅简述卡牌，只记录地图调研信息。</p></div></div>
           <label class="field"><span>简要</span><textarea id="tileBriefSummary" rows="3" placeholder="一句话或极短摘要"></textarea></label>
           <label class="field"><span>基础</span><textarea id="tileBasicSummary" rows="5" placeholder="基础地理与主要对象"></textarea></label>
           <label class="field"><span>详细</span><textarea id="tileDetailedSummary" rows="8" placeholder="完整地块说明"></textarea></label>
         </section>
-        <section class="profile-form-section">
+        <section class="profile-form-section" id="tileSectionIdentity">
           <div class="profile-section-title"><b>一</b><div><h3>身份与空间关系</h3><p>用于卡牌左侧身份信息和顶部摘要。</p></div></div>
           <label class="field"><span>一句话摘要</span><textarea id="tileOneLineSummary" rows="2"></textarea></label>
           <div class="form-grid two"><label class="field"><span>地块类型</span><input id="tileType" /></label><label class="field"><span>方位范围</span><input id="tileOrientation" /></label></div>
@@ -308,14 +337,14 @@
           <div class="form-grid two"><label class="field"><span>关联水域</span><input id="tileRelatedWaters" /></label><label class="field"><span>关联生灵</span><input id="tileRelatedLife" /></label></div>
           <div class="form-grid two"><label class="field"><span>来源可信度</span><select id="tileSourceReliability"><option value="">未填写</option><option>高</option><option>中</option><option>低</option><option>待核对</option></select></label><label class="field"><span>关联完整度</span><input id="tileRelationCompleteness" placeholder="例如 78%" /></label></div>
         </section>
-        <section class="profile-form-section">
+        <section class="profile-form-section" id="tileSectionGeo">
           <div class="profile-section-title"><b>二</b><div><h3>地理与生态</h3><p>记录地貌、水文、建筑遗迹和生活物种。</p></div></div>
           <label class="field"><span>地理环境</span><textarea id="tileGeoEnvironment" rows="4"></textarea></label>
           <label class="field"><span>水文特征</span><textarea id="tileHydrology" rows="4"></textarea></label>
           <label class="field"><span>建筑与遗迹</span><textarea id="tileArchitecture" rows="3"></textarea></label>
           <label class="field"><span>生活物种</span><textarea id="tileLivingSpecies" rows="4"></textarea></label>
         </section>
-        <section class="profile-form-section">
+        <section class="profile-form-section" id="tileSectionCivilization">
           <div class="profile-section-title"><b>三</b><div><h3>文明、神祇与自然资源</h3><p>只记录原典、古注和研究资料中的地理文化信息。</p></div></div>
           <div class="form-grid two"><label class="field"><span>所属国度／部族</span><input id="tileCountry" /></label><label class="field"><span>信仰对象</span><input id="tileFaith" /></label></div>
           <div class="form-grid two"><label class="field"><span>统治者</span><input id="tileRuler" /></label><label class="field"><span>守护神</span><input id="tileGuardian" /></label></div>
@@ -324,21 +353,23 @@
           <div class="form-grid two"><label class="field"><span>金玉矿物</span><textarea id="tileMinerals" rows="3"></textarea></label><label class="field"><span>特殊生命</span><textarea id="tileSpecialLife" rows="3"></textarea></label></div>
           <label class="field"><span>当地风俗</span><textarea id="tileCustoms" rows="4"></textarea></label>
         </section>
-        <section class="profile-form-section">
+        <section class="profile-form-section" id="tileSectionEvents">
           <div class="profile-section-title"><b>四</b><div><h3>神话事件与现象</h3><p>记录神迹、祭祀、文明异象、自然异常与历史事件。</p></div></div>
           <label class="field"><span>神话事件与现象</span><textarea id="tileMythicEncounters" rows="5"></textarea></label>
           <label class="field"><span>已发生事件</span><textarea id="tileOccurredEvents" rows="4"></textarea></label>
           <div class="scripture-editor-head"><div><strong>十八经篇事件归档</strong><small>把有明确经篇归属的事件分别归档。</small></div><span>18卷</span></div>
           <div id="scriptureEventFields" class="scripture-event-fields"></div>
         </section>
-        <section class="profile-form-section">
+        <section class="profile-form-section" id="tileSectionEvidence">
           <div class="profile-section-title"><b>五</b><div><h3>原文与证据</h3><p>说明当前地块为何这样定位，以及还存在哪些问题。</p></div></div>
           <label class="field"><span>地块原文摘录</span><textarea id="tileOriginalExcerpt" rows="5"></textarea></label>
           <label class="field"><span>资料证据链</span><textarea id="tileEvidenceChain" rows="5"></textarea></label>
           <label class="field"><span>当前定位结论</span><textarea id="tileLocationConclusion" rows="4"></textarea></label>
           <label class="field"><span>待核对问题</span><textarea id="tilePendingQuestions" rows="4"></textarea></label>
         </section>
-        <div class="form-actions"><button type="button" class="btn secondary" data-close-modal="tileProfileModal">取消</button><button type="submit" class="btn primary">保存地块档案</button></div>
+          </div>
+        </div>
+        <div class="form-actions tile-editor-actions"><span>对象修改会单独保存；此按钮保存右侧地块整体档案。</span><button type="button" class="btn secondary" data-close-modal="tileProfileModal">取消</button><button type="submit" class="btn primary">保存地块整体档案</button></div>
       </form>
     </section>
   </div>
@@ -455,7 +486,7 @@
         <div class="dossier-mode-toggle" role="group" aria-label="博物志显示模式"><button id="dossierModeBrief" class="active" type="button">简述</button><button id="dossierModeFull" type="button">完整</button></div>
         <button class="btn secondary" id="copyPromptBtn">▣ 复制地块摘要</button>
         <button class="btn secondary" id="copyBriefBtn">▤ 复制证据摘要</button>
-        <button class="btn primary" id="editDossierBtn">✎ 编辑地块档案</button>
+        <button class="btn primary" id="editDossierBtn">✎ 编辑地块与对象</button>
       </div>
     </header>
     <main class="dossier-layout">
