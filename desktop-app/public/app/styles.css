@@ -3441,7 +3441,7 @@ body.museum-image-viewer-open{overflow:hidden}
 .v050-mode-actions #waterConversionAuditToggle{border-color:rgba(58,117,134,.55);color:#245e70;background:#edf7f8}
 .v050-mode-actions #waterConversionAuditToggle.active{background:#2f7182;color:#fff;border-color:#245968;box-shadow:0 0 0 2px rgba(47,113,130,.14)}
 
-/* v0.9.1 · 直观优先：左栏索引切换与类型选择器 */
+/* v0.9.2 · 直观优先：左栏索引切换与类型选择器 */
 html.v062-yujian-theme .left-panel .index-mode-tabs{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -3634,7 +3634,7 @@ html.v062-yujian-theme .left-panel .type-filter-group button>b{
   font-size:8px;
 }
 
-/* v0.9.1 · 经篇页简洁阅读版 */
+/* v0.9.2 · 经篇页简洁阅读版 */
 .scripture-workspace{
   background:#f5f1e7;
   background-image:none;
@@ -3738,7 +3738,12 @@ html.v062-yujian-theme .left-panel .type-filter-group button>b{
   border-color:#d8d6cf;
   border-radius:8px;
   box-shadow:none;
+  cursor:pointer;
+  transition:border-color .16s ease,background-color .16s ease,transform .16s ease;
 }
+.scripture-object-card:hover{border-color:#7fa095;background:#fffefb;transform:translateY(-1px)}
+.scripture-object-card:focus-visible{outline:3px solid rgba(36,105,88,.24);outline-offset:2px;border-color:#246958}
+.scripture-object-card:has(button:focus-visible){outline:none;transform:none}
 .scripture-object-card>header{padding:12px 13px 9px}
 .scripture-object-card h4{font-size:17px}
 .scripture-object-body{padding:11px 13px;gap:8px}
