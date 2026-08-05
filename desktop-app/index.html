@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.2</title>
+  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.3</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.2</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.3</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -316,7 +316,7 @@
             <div id="tileObjectEditorList" class="tile-object-editor-list"></div>
             <nav class="tile-editor-nav" aria-label="地块档案分区">
               <strong>地块整体档案</strong>
-              <button type="button" data-tile-editor-jump="tileSectionSummary">三层简述</button>
+              <button type="button" data-tile-editor-jump="tileSectionSummary">图片与简述</button>
               <button type="button" data-tile-editor-jump="tileSectionIdentity">身份与空间</button>
               <button type="button" data-tile-editor-jump="tileSectionGeo">地理与生态</button>
               <button type="button" data-tile-editor-jump="tileSectionCivilization">文明与资源</button>
@@ -326,7 +326,19 @@
           </aside>
           <div class="tile-profile-fields">
         <section class="profile-form-section summary-layer-editor" id="tileSectionSummary">
-          <div class="profile-section-title"><b>卷</b><div><h3>地块三层简述</h3><p>用于地图上的宽幅简述卡牌，只记录地图调研信息。</p></div></div>
+          <div class="profile-section-title"><b>卷</b><div><h3>地块主体图片与三层简述</h3><p>地块主体图片独立保存，不会替代地块内部对象的图片。</p></div></div>
+          <section class="tile-image-manager" aria-label="地块主体图片">
+            <div class="tile-image-preview is-empty" id="tileImagePreview"><span>地块待补图</span></div>
+            <div class="tile-image-controls">
+              <strong>地块主体图片</strong>
+              <p>用于表现整个地块环境；内部山川、生灵等对象仍使用各自图片。</p>
+              <input id="tileImageUrl" type="hidden" />
+              <input id="tileImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+              <div><button type="button" class="btn secondary compact" id="tileChooseImage">选择图片</button><button type="button" class="btn secondary compact" id="tileRemoveImage">移除图片</button></div>
+            </div>
+            <label class="field"><span>图片来源</span><input id="tileImageSource" placeholder="例如：自制地块图／文献扫描／授权素材" /></label>
+            <label class="field"><span>版权与使用备注</span><input id="tileImageCopyright" placeholder="作者、授权范围或仅供内部研究" /></label>
+          </section>
           <label class="field"><span>简要</span><textarea id="tileBriefSummary" rows="3" placeholder="一句话或极短摘要"></textarea></label>
           <label class="field"><span>基础</span><textarea id="tileBasicSummary" rows="5" placeholder="基础地理与主要对象"></textarea></label>
           <label class="field"><span>详细</span><textarea id="tileDetailedSummary" rows="8" placeholder="完整地块说明"></textarea></label>

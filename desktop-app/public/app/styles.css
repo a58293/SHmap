@@ -3756,3 +3756,20 @@ html.v062-yujian-theme .left-panel .type-filter-group button>b{
   .scripture-layout{grid-template-columns:210px minmax(0,1fr)}
   .scripture-hero{grid-template-columns:1fr}
 }
+
+/* v0.9.3 · 地块主体去重与地块独立图片 */
+.tile-image-manager{display:grid;grid-template-columns:170px minmax(210px,1fr) minmax(180px,1fr);gap:12px;align-items:start;margin:0 0 16px;padding:13px;border:1px solid #d7cfbd;border-radius:12px;background:#fbf8f0}
+.tile-image-preview{grid-row:span 2;width:170px;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;border:1px solid #cbd6d0;border-radius:10px;background:#edf2ee;color:#708078;cursor:pointer}
+.tile-image-preview.is-empty{cursor:default;border-style:dashed;background:#f4f2eb}
+.tile-image-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.tile-image-preview span{font:800 12px var(--serif)}
+.tile-image-controls{min-width:0}.tile-image-controls>strong{display:block;font:800 16px var(--serif);color:var(--jade-dark)}.tile-image-controls>p{margin:4px 0 10px;color:var(--muted);font-size:10px;line-height:1.55}.tile-image-controls>div{display:flex;gap:7px;flex-wrap:wrap}
+.tile-image-manager>.field{margin:0}
+.identity-hero-side{display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:none;max-width:300px}
+.identity-tile-image{width:260px;margin:0;overflow:hidden;border:1px solid #cbd3cd;border-radius:10px;background:#edf2ee;cursor:pointer}
+.identity-tile-image img{display:block;width:100%;height:146px;object-fit:cover}
+.identity-tile-image figcaption{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;background:#fffdf8;color:#66736c;font-size:9px}.identity-tile-image figcaption strong{color:var(--jade-dark);white-space:nowrap}.identity-tile-image figcaption span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.identity-tile-image:focus-visible{outline:3px solid rgba(36,105,88,.24);outline-offset:2px}
+.identity-tile-image.full{width:min(520px,100%);margin:0 0 16px}.identity-tile-image.full img{height:auto;max-height:320px;object-fit:contain;background:#f2f0e9}
+@media(max-width:900px){.tile-image-manager{grid-template-columns:130px 1fr}.tile-image-preview{width:130px}.tile-image-manager>.field{grid-column:2}.identity-hero-side{align-items:flex-start;max-width:100%}.identity-tile-image{width:min(360px,100%)}}
+@media(max-width:620px){.tile-image-manager{grid-template-columns:1fr}.tile-image-preview{grid-row:auto;width:100%;max-width:280px}.tile-image-manager>.field{grid-column:auto}.identity-tile-image{width:100%}}
