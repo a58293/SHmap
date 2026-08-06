@@ -1,0 +1,15 @@
+{
+  "version": "0.9.6",
+  "notes": "山海经原典地图研究台 v0.9.6\n\n批量应用山海经地图更改包\n\n• 可以一次选择多份 .shjpatch 更改包，也可以批量读取 GitHub 待处理目录。\n• 更改包按生成时间从旧到新应用，避免后提交的内容被旧资料覆盖。\n• 已经应用过的相同内容会自动跳过，不会重复写入。\n• 任意一份出现目标冲突时，本批次整体停止，不会只写入一半。\n• 应用前自动创建数据库备份，出现问题时可以恢复。\n\n地块图片与资料归属\n\n• 地块主图可在“地块样式”和“图片样式”之间切换。\n• 图片导入后自动转为 WebP，减少空间占用并便于多端同步。\n• 地块自身资料与“这里有什么”的内部条目保持单向归属，避免彼此循环收录。\n\n数据安全\n\n本次升级不覆盖 data.js，不清空 SQLite 数据库，也不改变现有对象、坐标、水系路径或区域关系。",
+  "pub_date": "2026-08-06T09:06:52.000Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkdzT013RDFQQlZvY0dITUZSNkVBV29Eb1M1OHd1bk55WEEzMGNUVk91LzA4RWNBM2Qram54MjJUY0F2NEVON3RINjgzMDVwVEFyY3NJRWdjbmQ2WVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2MDA3MjA4CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuOS42X3g2NC1zZXR1cC5leGUKWCtxdncvMUtTT0JaMTRZSGwvdlF5a2NXdjNsNWJ3aUw5d3BWOEVSMGZtUU1NQXVScTY0MzhJNGlQZDRmcm10dkVVWU9Dck1PUkJKcnprRXA4M0VmQVE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/503726827"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkdzT013RDFQQlZvY0dITUZSNkVBV29Eb1M1OHd1bk55WEEzMGNUVk91LzA4RWNBM2Qram54MjJUY0F2NEVON3RINjgzMDVwVEFyY3NJRWdjbmQ2WVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2MDA3MjA4CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzAuOS42X3g2NC1zZXR1cC5leGUKWCtxdncvMUtTT0JaMTRZSGwvdlF5a2NXdjNsNWJ3aUw5d3BWOEVSMGZtUU1NQXVScTY0MzhJNGlQZDRmcm10dkVVWU9Dck1PUkJKcnprRXA4M0VmQVE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/503726827"
+    }
+  }
+}

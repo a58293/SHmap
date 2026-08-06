@@ -29,7 +29,7 @@ for (const path of ["public/app/app.js", "dist/app/app.js"]) {
     'displayMode:"water-point"',
     'candidateCircle:true',
   ]) assert.ok(app.includes(marker), `${path} 缺少水体转换标记：${marker}`);
-  assert.ok(app.includes('window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.7"'), `${path} 运行版本未同步`);
+  assert.ok(app.includes('window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.4"'), `${path} 运行版本未同步`);
   assert.ok(app.includes('waterDisplay:"special-model-audited-dossier-and-render-tiers"'), `${path} 缺少水系特殊模型运行标记`);
 }
 for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
@@ -41,4 +41,4 @@ const data = read("public/app/data.js");
 assert.ok(data.includes("window.SHJ_WATER_PATHS="), "data.js 水系数据缺失");
 assert.ok(!data.includes("waterConversionAudit"), "不得将水体转换状态写入 data.js");
 assert.ok(!data.includes("shmap-water-binding-v1"), "不得把水系资料绑定写入基础 data.js");
-console.log("v0.9.6 水系特殊模型专项检查通过。");
+console.log("v0.9.4 水系特殊模型专项检查通过。");

@@ -10,6 +10,9 @@ for (const source of [app, dist]) {
   assert.ok(source.includes("function objectHasImportedDossier(object)"));
   assert.ok(source.includes("function dossierTopicsFor(items)"));
   assert.ok(source.includes("function dossierTopicSwitcherHTML(items,main)"));
+  assert.ok(source.includes("const objects=items||[],topicCount=dossierTopicsFor(objects).length"));
+  assert.ok(source.includes("没有 Markdown 的对象也可点击查看基础资料"));
+  assert.ok(source.includes("base-object-topic"));
   assert.ok(source.includes('data-dossier-topic="${esc(object.id)}"'));
   assert.ok(source.includes('["09. 详细描述",profile.detailedSummary]') || source.includes('identityDrawerFieldHTML("09. 详细描述",profile.detailedSummary'));
   assert.ok(source.includes('["08. 其他典故",profile.otherAllusions]') || source.includes('identityDrawerFieldHTML("08. 其他典故",profile.otherAllusions'));
@@ -19,6 +22,7 @@ for (const source of [app, dist]) {
 }
 
 assert.ok(css.includes(".dossier-topic-switcher"));
+assert.ok(css.includes(".dossier-topic-switcher button.base-object-topic"));
 assert.ok(css.includes(".dossier-object-item.has-dossier-topic"));
 assert.ok(css.includes(".identity-object-drawer section.identity-drawer-detailed"));
 

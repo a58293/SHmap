@@ -62,7 +62,7 @@ for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
     `${path} scripture card hover feedback is missing`,
   );
   assert.ok(
-    css.includes("v0.9.2 · 地块主体去重与地块独立图片"),
+    css.includes("v0.9.3 · 地块主体去重与地块独立图片"),
     `${path} 缺少地块主体图片样式`,
   );
 }
@@ -91,4 +91,4 @@ for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
   );
 }
 
-console.log("v0.9.2 直观界面专项校验通过。");
+console.log("v0.9.4 直观界面专项校验通过。");

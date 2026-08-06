@@ -1,0 +1,54 @@
+name: Sync Stable Updater Manifest
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: updater-manifest-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: startsWith(github.event.release.tag_name, 'desktop-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Download signed updater manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir -p .updater-download
+          for attempt in 1 2 3 4 5 6; do
+            if gh release download "$RELEASE_TAG" --pattern latest.json --dir .updater-download --clobber; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "latest.json was not available after retries" >&2
+          exit 1
+      - name: Prepare repository-direct manifest
+        run: node scripts/sync-updater-manifest-notes.mjs .updater-download/latest.json RELEASE_NOTES.md updates/latest.json
+      - name: Commit stable updater manifest
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add updates/latest.json
+          if git diff --cached --quiet; then
+            echo "Updater manifest is already current."
+            exit 0
+          fi
+          git commit -m "chore: sync updater manifest ${{ github.event.release.tag_name }}"
+          git push origin HEAD:main

@@ -107,10 +107,10 @@ const fieldCount = parsed.entries.reduce((sum, entry) => sum + ["与本地关系
 const byName = new Map(parsed.entries.map(entry => [`${entry.category}|${entry.name}`, entry]));
 
 const checks = [
-["package 版本", pkg.version === "0.9.7"],
-["Tauri 版本", tauri.version === "0.9.7"],
-["VERSION 版本", version.semver === "0.9.7" && version.app_version === "v009"],
-["界面版本", html.includes("DESKTOP v009 · 0.9.7")],
+  ["package 版本", pkg.version === "0.9.4"],
+  ["Tauri 版本", tauri.version === "0.9.4"],
+  ["VERSION 版本", version.semver === "0.9.4" && version.app_version === "v009"],
+  ["界面版本", html.includes("DESKTOP v009 · 0.9.4")],
   ["安全补充导入模式", html.includes('id="importPolicySelect"') && html.includes('value="supplement" selected') && app.includes('importPolicy:"supplement"')],
   ["通用父子地点层级", app.includes("function qualifiedChildLocationName") && app.includes("function applyChildLocationDossier") && app.includes('geometryMode:"non-spatial-child"')],
   ["九段式混合标题识别", app.includes("function matchNineSectionHeaderLine") && app.includes("一句话概述") && app.includes("分别整理以下六类")],
@@ -142,4 +142,4 @@ for (const [name, ok] of checks) {
   if (!ok) bad = true;
 }
 if (bad) process.exit(1);
-console.log(`v0.9.6 Markdown兼容专项校验通过：苍梧之丘样例识别 ${parsed.entries.length} 个有效条目、${fieldCount} 个详情字段。`);
+console.log(`v0.9.4 Markdown兼容专项校验通过：苍梧之丘样例识别 ${parsed.entries.length} 个有效条目、${fieldCount} 个详情字段。`);

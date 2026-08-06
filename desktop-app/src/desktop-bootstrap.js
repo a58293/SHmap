@@ -45,6 +45,27 @@ function queueSave(payload){
 function formatTime(value){try{return new Intl.DateTimeFormat("zh-CN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value||""}}
 function escapeHtml(v){return String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 
+function renderReleaseNotes(value){
+  const lines=String(value||"本次更新未填写说明。").replace(/\r\n?/g,"\n").split("\n");
+  const output=[];
+  let listOpen=false;
+  const inline=text=>escapeHtml(text)
+    .replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
+  const closeList=()=>{if(listOpen){output.push("</ul>");listOpen=false}};
+  for(const sourceLine of lines){
+    const line=sourceLine.trim();
+    if(!line){closeList();continue}
+    const heading=line.match(/^(#{1,3})\s+(.+)$/);
+    if(heading){closeList();const level=Math.min(5,heading[1].length+2);output.push(`<h${level}>${inline(heading[2])}</h${level}>`);continue}
+    const bullet=line.match(/^[-*]\s+(.+)$/);
+    if(bullet){if(!listOpen){output.push("<ul>");listOpen=true}output.push(`<li>${inline(bullet[1])}</li>`);continue}
+    closeList();output.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  return output.join("");
+}
+
 
 function updateProgress(percent, label){
   const bar=document.querySelector("#desktopUpdateProgressBar");
@@ -63,7 +84,7 @@ function renderUpdateState(info,message){
     if(latest)latest.textContent=`v${info.version}`;
     const channel=document.querySelector("#desktopUpdateChannel");
     if(channel)channel.textContent=info.source||"自动选择";
-    if(notes)notes.innerHTML=escapeHtml(info.body||"本次更新未填写说明。").replace(/\n/g,"<br>");
+    if(notes)notes.innerHTML=renderReleaseNotes(info.body);
     if(install)install.disabled=false;
     document.querySelector("#desktopUpdateBtn")?.classList.add("has-update");
     updateProgress(100,"检查完成 · 可安装新版本");

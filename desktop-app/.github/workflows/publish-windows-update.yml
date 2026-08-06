@@ -37,7 +37,7 @@ jobs:
         id: release_notes
         shell: pwsh
         run: |
-          $body = Get-Content "RELEASE_NOTES.md" -Raw
+          $body = Get-Content "RELEASE_NOTES.md" -Raw -Encoding utf8
           "body<<RELEASE_BODY" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           $body | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "RELEASE_BODY" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
