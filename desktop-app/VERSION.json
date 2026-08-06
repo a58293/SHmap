@@ -2,7 +2,7 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v009",
-  "semver": "0.9.3",
+  "semver": "0.9.5",
   "frontend_base": "v077-object-role-layer",
   "data_version": "v125-r0001",
   "object_count": 617,
@@ -17,7 +17,8 @@
   "data_publish": "GitHub submissions/pending via local authenticated Git",
   "water_path_segments": 79,
   "water_arrow_cells": 118,
-  "water_display": "v0.9.3 audited water dossiers, zoom render tiers, subject-card deduplication and independent tile imagery",
+  "water_display": "v0.9.5 audited water dossiers, zoom render tiers, subject-card deduplication and switchable map tile imagery",
+  "image_sync": "automatic adaptive WebP compression, SHA-256 deduplication, GitHub asset publishing, cross-device asset references and map tile image switching",
   "hierarchy_fix": "v0.5.3 region overview and local bounds",
   "relation_line_fix": "v0.5.4 stable pan, viewport clipping, offscreen targets and relation cache",
   "relation_network": "v0.6.0 compact/full modes, directional bundling, offscreen aggregation and hover labels",
@@ -41,5 +42,6 @@
   "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
   "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
   "safe_import_policy": "审核正文指纹仍为硬校验；完整目标指纹变化时仅在名称、经篇、类型唯一匹配后允许补充，并显示警告；不修改坐标、名称、经篇、类型、几何或对象数量",
-  "release_scope": "内部条目按本格资料主题、所属地块档案、资料身份、条目特征顺序显示；不改坐标及617条历史资料"
+  "release_scope": "地块图片可切换；同格并列主体只作导航，‘这里有什么’严格读取当前主体第06节；不改坐标及617条历史资料",
+  "dossier_topic_scope": "global owner-scoped section-06 entries; sibling subjects are navigation/relations only"
 }

@@ -1,6 +1,6 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -127,6 +127,14 @@ struct PublishPatchResponse {
     remote_path: String,
     commit: String,
     pushed_at: String,
+    asset_count: usize,
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PublishAssetInput {
+    file_name: String,
+    bytes: Vec<u8>,
 }
 
 fn now_text() -> String { Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true) }
@@ -268,6 +276,35 @@ fn validate_patch_file(file_name: &str, content: &str) -> Result<Value, String> 
     Ok(payload)
 }
 
+fn validate_publish_assets(assets: &[PublishAssetInput]) -> Result<(), String> {
+    if assets.len() > 64 { return Err("单个更改包最多同步64张图片。".to_string()); }
+    let mut total = 0usize;
+    for asset in assets {
+        let path = Path::new(&asset.file_name);
+        if path.file_name().and_then(|value| value.to_str()) != Some(asset.file_name.as_str())
+            || asset.file_name.contains('/') || asset.file_name.contains('\\')
+        {
+            return Err(format!("图片资源文件名无效：{}", asset.file_name));
+        }
+        let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+        if !matches!(extension.as_str(), "webp" | "png" | "jpg" | "jpeg") {
+            return Err(format!("图片资源格式不受支持：{}", asset.file_name));
+        }
+        let stem = path.file_stem().and_then(|value| value.to_str()).unwrap_or("").to_ascii_lowercase();
+        if stem.len() != 64 || !stem.bytes().all(|value| value.is_ascii_hexdigit()) {
+            return Err(format!("图片资源缺少有效SHA-256指纹：{}", asset.file_name));
+        }
+        if asset.bytes.is_empty() || asset.bytes.len() > 2 * 1024 * 1024 {
+            return Err(format!("图片资源大小无效（单张上限2MB）：{}", asset.file_name));
+        }
+        let actual = hex::encode(Sha256::digest(&asset.bytes));
+        if actual != stem { return Err(format!("图片资源指纹校验失败：{}", asset.file_name)); }
+        total = total.saturating_add(asset.bytes.len());
+    }
+    if total > 25 * 1024 * 1024 { return Err("本轮图片资源合计超过25MB。".to_string()); }
+    Ok(())
+}
+
 fn parse_ahead_behind(value: &str) -> Result<(usize, usize), String> {
     let parts = value.split_whitespace().collect::<Vec<_>>();
     if parts.len() != 2 { return Err(format!("无法解析 Git 同步状态：{value}")); }
@@ -280,9 +317,11 @@ fn publish_patch_blocking(
     repo_path: Option<String>,
     file_name: String,
     content: String,
+    assets: Vec<PublishAssetInput>,
     commit_message: String,
 ) -> Result<PublishPatchResponse, String> {
     let _payload = validate_patch_file(&file_name, &content)?;
+    validate_publish_assets(&assets)?;
     let repo = find_repo_root(repo_path)?;
     let git = find_git_executable()?;
 
@@ -297,6 +336,9 @@ fn publish_patch_blocking(
     }
 
     let relative_path = format!("submissions/pending/{file_name}");
+    let asset_paths = assets.iter().map(|asset| format!("submissions/assets/{}", asset.file_name)).collect::<Vec<_>>();
+    let mut publish_paths = vec![relative_path.clone()];
+    publish_paths.extend(asset_paths.iter().cloned());
     run_git_network(&git, &repo, &["fetch", "origin", "main"])?;
     let counts = run_git(&git, &repo, &git_args(&["rev-list", "--left-right", "--count", "origin/main...HEAD"]))?;
     let (mut behind, ahead) = parse_ahead_behind(&counts)?;
@@ -309,8 +351,8 @@ fn publish_patch_blocking(
     }
     if ahead > 0 {
         let ahead_files = run_git(&git, &repo, &git_args(&["-c", "core.quotepath=false", "diff", "--name-only", "origin/main..HEAD"]))?;
-        let only_this_patch = ahead_files.lines().filter(|line| !line.trim().is_empty()).all(|line| line.trim().replace('\\', "/") == relative_path);
-        if !only_this_patch {
+        let only_this_submission = ahead_files.lines().filter(|line| !line.trim().is_empty()).all(|line| publish_paths.contains(&line.trim().replace('\\', "/")));
+        if !only_this_submission {
             return Err("本地存在尚未推送的其他代码提交。请先在 GitHub Desktop 点击 Push origin，再重新完成本轮编辑。".to_string());
         }
     }
@@ -323,17 +365,37 @@ fn publish_patch_blocking(
     if destination.exists() { fs::remove_file(&destination).map_err(|error| format!("无法替换旧更改包：{error}"))?; }
     fs::rename(&temporary, &destination).map_err(|error| format!("无法保存更改包：{error}"))?;
 
-    let status = run_git(&git, &repo, &vec!["status".into(), "--porcelain".into(), "--".into(), relative_path.clone()])?;
+    let asset_dir = repo.join("submissions").join("assets");
+    fs::create_dir_all(&asset_dir).map_err(|error| format!("无法创建 submissions/assets：{error}"))?;
+    for asset in &assets {
+        let asset_destination = asset_dir.join(&asset.file_name);
+        if asset_destination.exists() {
+            let existing = fs::read(&asset_destination).map_err(|error| format!("无法读取已有图片资源：{error}"))?;
+            if existing != asset.bytes { return Err(format!("同名图片资源内容不一致：{}", asset.file_name)); }
+            continue;
+        }
+        let asset_temporary = asset_destination.with_extension(format!("{}.tmp", asset_destination.extension().and_then(|value| value.to_str()).unwrap_or("image")));
+        fs::write(&asset_temporary, &asset.bytes).map_err(|error| format!("无法写入临时图片资源：{error}"))?;
+        fs::rename(&asset_temporary, &asset_destination).map_err(|error| format!("无法保存图片资源：{error}"))?;
+    }
+
+    let mut status_args = vec!["status".into(), "--porcelain".into(), "--".into()];
+    status_args.extend(publish_paths.iter().cloned());
+    let status = run_git(&git, &repo, &status_args)?;
     if !status.trim().is_empty() {
-        run_git(&git, &repo, &vec!["add".into(), "--".into(), relative_path.clone()])?;
+        let mut add_args = vec!["add".into(), "--".into()];
+        add_args.extend(publish_paths.iter().cloned());
+        run_git(&git, &repo, &add_args)?;
         let message = commit_message.replace('\r', " ").replace('\n', " ").trim().chars().take(180).collect::<String>();
         let message = if message.is_empty() { format!("data: 发布 {file_name}") } else { message };
-        run_git(&git, &repo, &vec![
+        let mut commit_args = vec![
             "-c".into(), "user.name=SHmap Desktop".into(),
             "-c".into(), "user.email=shmap-desktop@users.noreply.github.com".into(),
             "commit".into(), "--only".into(), "--no-verify".into(), "-m".into(), message,
-            "--".into(), relative_path.clone(),
-        ])?;
+            "--".into(),
+        ];
+        commit_args.extend(publish_paths.iter().cloned());
+        run_git(&git, &repo, &commit_args)?;
     }
 
     let commit = run_git(&git, &repo, &git_args(&["rev-parse", "--short=12", "HEAD"]))?;
@@ -345,6 +407,7 @@ fn publish_patch_blocking(
         remote_path: relative_path,
         commit,
         pushed_at: now_text(),
+        asset_count: assets.len(),
     })
 }
 
@@ -353,9 +416,10 @@ async fn publish_patch_to_github(
     repo_path: Option<String>,
     file_name: String,
     content: String,
+    assets: Vec<PublishAssetInput>,
     commit_message: String,
 ) -> Result<PublishPatchResponse, String> {
-    tauri::async_runtime::spawn_blocking(move || publish_patch_blocking(repo_path, file_name, content, commit_message))
+    tauri::async_runtime::spawn_blocking(move || publish_patch_blocking(repo_path, file_name, content, assets, commit_message))
         .await
         .map_err(|error| format!("自动上传任务异常：{error}"))?
 }
