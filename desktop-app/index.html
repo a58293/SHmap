@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.5</title>
+  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.6</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.5</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.6</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -28,6 +28,8 @@
       <div class="top-actions">
         <button class="btn secondary" id="openImportBtn">导入 Markdown</button>
         <button class="btn secondary" id="checkUpdateBtn">检查数据更新</button>
+        <button class="btn secondary" id="batchPatchBtn">批量更改包</button>
+        <input id="batchPatchInput" type="file" accept=".shjpatch,application/json" multiple hidden>
         <button class="btn secondary" id="exportPatchBtn">仅导出更改包</button>
         <button class="btn primary" id="finishRoundBtn">完成本轮编辑</button>
       </div>
