@@ -3805,3 +3805,39 @@ html.v062-yujian-theme .left-panel .type-filter-group button>b{
 .batch-selection-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:9px 11px;border:1px solid #d7d4c8;border-radius:9px;background:#fbfaf5}.batch-selection-tools label{display:flex;align-items:center;gap:7px;font-weight:800;color:var(--jade-dark)}.batch-selection-tools input,.batch-patch-check input{width:16px;height:16px;accent-color:var(--jade)}.batch-selection-tools>span{margin-left:auto;color:var(--muted);font-size:10px}.batch-selection-tools>span b{color:var(--jade-dark);font-size:12px}.batch-patch-check{display:flex;align-items:center;gap:7px;white-space:nowrap}.batch-patch-check input:disabled{opacity:.35}.batch-patch-table tr.selected{background:#f2f7f3}.patch-selection-safe{margin:10px 0;padding:10px 12px;border:1px solid #b7d9cb;border-radius:9px;background:#edf7f2;color:#315c50}.patch-selection-safe strong{display:block;margin-bottom:3px}.patch-selection-safe p{margin:0;font-size:10px;line-height:1.55}
 #batchPatchBtn{border-color:#7e9a8d;color:#234f43;background:#edf5f1}
 @media(max-width:780px){.batch-patch-head{display:block}.batch-patch-head>button{margin-top:10px}.batch-patch-rules{grid-template-columns:1fr}.pending-batch-actions{width:100%}.pending-batch-actions .btn{flex:1}}
+
+/* v0.9.8 · 顶部操作与地图工具分层 */
+.top-center{gap:5px}
+.top-center .nav-tab{padding-inline:12px}
+.top-actions{gap:7px;flex-wrap:nowrap!important;overflow:visible}
+.v050-top-data{align-items:center;gap:7px;padding:0;border:0}
+.v050-top-data>.btn{min-height:38px;padding:8px 13px;font-size:11px}
+.v098-top-data-menu,.v098-map-tools-menu{position:relative;flex:none}
+.v098-top-data-menu>summary,.v098-map-tools-menu>summary{list-style:none;cursor:pointer;user-select:none}
+.v098-top-data-menu>summary::-webkit-details-marker,.v098-map-tools-menu>summary::-webkit-details-marker{display:none}
+.v098-top-data-menu>summary{display:grid;place-items:center;min-height:38px;padding:8px 13px;border:1px solid #93aa9f;border-radius:9px;background:#edf5f1;color:#234f43;font-size:11px;font-weight:850;white-space:nowrap}
+.v098-top-data-menu>summary:after,.v050-top-system>summary:after{content:"⌄";margin-left:6px;color:#71847b;font-size:9px}
+.v098-top-data-menu[open]>summary,.v050-top-system[open]>summary{border-color:#276b59;background:#276b59;color:#fff}
+.v098-top-data-menu[open]>summary:after,.v050-top-system[open]>summary:after{color:#fff;transform:rotate(180deg)}
+.v098-top-data-menu>div{position:absolute;right:0;top:calc(100% + 8px);z-index:180;display:grid;gap:7px;width:270px;padding:10px;border:1px solid #c9c3b5;border-radius:12px;background:#fffdf8;box-shadow:0 18px 44px rgba(29,48,42,.22)}
+.v098-top-data-menu>div>header{display:grid;gap:2px;padding:3px 4px 7px;border-bottom:1px solid #e2ddd1}.v098-top-data-menu>div>header strong{color:var(--jade-dark);font:850 14px var(--serif)}.v098-top-data-menu>div>header small{color:var(--muted);font-size:9px}
+.v098-top-data-menu>div>.btn{width:100%;min-height:38px;padding:9px 11px;text-align:left;font-size:10px}
+.v050-top-system>summary{display:flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;font-size:11px}
+.v050-top-system>div{right:0;top:calc(100% + 8px);z-index:180;width:250px;min-width:250px;padding:10px;border-radius:12px;box-shadow:0 18px 44px rgba(29,48,42,.22)}
+.v050-top-system>div>.nav-tab,.v050-top-system>div>.btn{width:100%;min-height:38px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;color:var(--ink);font-size:10px;text-align:left}
+.v050-top-system>div>.nav-tab:hover,.v050-top-system>div>.btn:hover{border-color:#7f9e91;background:#edf5f1;color:var(--jade-dark)}
+
+.map-controls{align-items:center;gap:7px;overflow:visible}
+.v050-control-group.navigation{gap:4px;padding:3px;background:#f7f3e9}
+.v050-control-group.tools{max-width:none!important;padding:0;border:0;background:transparent;overflow:visible!important}
+.v098-map-tools-menu>summary{display:flex;align-items:center;gap:8px;min-height:38px;padding:7px 11px;border:1px solid var(--line-strong);border-radius:9px;background:#fcfaf4;color:#435b51;white-space:nowrap}
+.v098-map-tools-menu>summary span{font-size:11px;font-weight:850}.v098-map-tools-menu>summary small{padding-left:8px;border-left:1px solid #d8d1c2;color:#7a827d;font-size:8px;font-weight:700}
+.v098-map-tools-menu>summary:after{content:"⌄";color:#71847b;font-size:9px}
+.v098-map-tools-menu[open]>summary{border-color:#276b59;background:#276b59;color:#fff}.v098-map-tools-menu[open]>summary small{border-color:rgba(255,255,255,.3);color:#dcebe5}.v098-map-tools-menu[open]>summary:after{color:#fff;transform:rotate(180deg)}
+.v098-map-tools-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:170;display:grid;width:390px;padding:8px;border:1px solid #c9c3b5;border-radius:12px;background:#fffdf8;box-shadow:0 18px 44px rgba(29,48,42,.22)}
+.v098-map-tool-group{padding:10px}.v098-map-tool-group+.v098-map-tool-group{border-top:1px solid #e0dbcf}.v098-map-tool-group>header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}.v098-map-tool-group>header strong{color:var(--jade-dark);font:850 14px var(--serif)}.v098-map-tool-group>header small{color:var(--muted);font-size:8px}
+.v098-map-tool-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.v098-map-tool-group>div>.btn,.v098-map-tool-group .research-tool-wrap>.btn{width:100%;min-height:37px;padding:8px 10px;text-align:left;font-size:10px}.v098-map-tool-group .research-tool-wrap{position:relative;min-width:0}.v098-map-tool-group .research-tool-wrap>.btn:after{content:"选择";float:right;color:var(--muted);font-size:8px;font-weight:700}
+.v098-map-tool-group #isolatedObjectsBtn b,.v098-map-tool-group #brushCollectionBtn b{float:right;margin-top:1px}
+@media(max-width:1450px){.topbar{grid-template-columns:minmax(330px,1fr) auto auto}.top-center .nav-tab{padding-inline:9px}.v050-top-data>.btn,.v098-top-data-menu>summary,.v050-top-system>summary,#finishRoundBtn{padding-inline:10px}.v098-map-tools-menu>summary small{display:none}.v098-map-tools-menu>summary span:after{content:" · 关系/核对/采集";color:#77827c;font-size:8px;font-weight:700}.v098-map-tools-menu[open]>summary span:after{color:#dcebe5}}
+@media(max-width:1180px){.top-center{display:none}.topbar{grid-template-columns:minmax(300px,1fr) auto}.v098-map-tools-panel{right:0;width:min(390px,calc(100vw - 24px))}}
+@media(max-width:760px){.top-actions{flex-wrap:wrap!important}.v050-top-data{order:1}.v098-map-tools-panel{position:fixed;right:10px;top:132px;width:calc(100vw - 20px)}.v098-map-tool-group>div{grid-template-columns:1fr}.v098-map-tool-group>header small{display:none}}

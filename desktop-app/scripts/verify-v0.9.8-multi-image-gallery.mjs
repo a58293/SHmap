@@ -21,7 +21,7 @@ const checks = [
   [sourceApp.includes("v060ImageFileToDataUrl(file)"), "图库复用自动WebP转换"],
   [sourceApp.includes("preparePatchImageAssets") && sourceApp.includes("if(Array.isArray(value))return Promise.all(value.map(transform))"), "更改包递归打包图库图片"],
   [sourceCss.includes(".v098-gallery-grid") && sourceCss.includes(".subject-image-tabs"), "图库与图片归属界面样式存在"],
-  [sourceApp.includes('version:"0.9.8"') && sourceHtml.includes("0.9.8"), "运行时与界面版本均为0.9.8"],
+  [sourceApp.includes('version:"0.9.9"') && sourceHtml.includes("0.9.9"), "运行时与界面版本均为0.9.9"],
   [distApp.includes("function normalizedImageGallery") && distHtml.includes('id="tileSubjectImageManager"') && distCss.includes(".v098-gallery-grid"), "dist已同步多图图库"],
 ];
 

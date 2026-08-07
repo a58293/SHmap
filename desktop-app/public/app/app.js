@@ -4873,9 +4873,35 @@
   function v050InjectTextScaleControl(){
     const menu=document.querySelector(".v050-top-system>div");if(!menu||menu.querySelector(".v050-text-scale-control"))return;const section=document.createElement("section");section.className="v050-text-scale-control";section.innerHTML='<span>界面字号</span><div><button type="button" data-ui-text-scale="standard">标准</button><button type="button" data-ui-text-scale="comfortable">大</button><button type="button" data-ui-text-scale="large">特大</button></div><small>地图标注、关系标签与侧栏文字同步调整</small>';menu.appendChild(section);section.querySelectorAll("[data-ui-text-scale]").forEach(button=>button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();v050ApplyTextScale(button.dataset.uiTextScale)}));v050ApplyTextScale(v050SavedTextScale(),true)
   }
+  function v098CloseCompactMenus(except=null){
+    document.querySelectorAll(".v098-top-data-menu[open],.v098-map-tools-menu[open],.v050-top-system[open]").forEach(menu=>{if(menu!==except)menu.open=false})
+  }
+  function v098ToolGroup(title,description){
+    const section=document.createElement("section");section.className="v098-map-tool-group";section.innerHTML=`<header><strong>${title}</strong><small>${description}</small></header><div></div>`;return section
+  }
   function v050OrganizeControls(){
-    const controls=document.querySelector(".map-controls");if(controls&&!controls.querySelector(".v050-control-group")){const nav=document.createElement("div"),tools=document.createElement("div");nav.className="v050-control-group navigation";tools.className="v050-control-group tools";["zoomOutBtn","zoomReadout","zoomInBtn","originBtn","jumpCoordBtn"].forEach(id=>{const el=document.getElementById(id);if(el)nav.appendChild(el)});["viewPresetBtn","viewPresetMenu","relationModeBtn","compareModeBtn","measureModeBtn","isolatedObjectsBtn","brushModeBtn","cancelBrushModeBtn","brushCollectionBtn"].forEach(id=>{const el=document.getElementById(id);if(el){if(id==="viewPresetBtn"){const wrap=el.closest(".research-tool-wrap");if(wrap)tools.appendChild(wrap);else tools.appendChild(el)}else if(!tools.contains(el))tools.appendChild(el)}});controls.append(nav,tools)}
-    const actions=document.querySelector(".top-actions");if(!actions)return;let data=actions.querySelector(".v050-top-data"),system=actions.querySelector(".v050-top-system");if(!data){data=document.createElement("div");data.className="v050-top-data";["openImportBtn","checkUpdateBtn","batchPatchBtn","exportPatchBtn"].forEach(id=>{const el=document.getElementById(id);if(el)data.appendChild(el)});actions.prepend(data)}if(!system){system=document.createElement("details");system.className="v050-top-system";system.innerHTML='<summary>系统</summary><div></div>';actions.insertBefore(system,document.getElementById("finishRoundBtn"))}const menu=system.querySelector("div");["desktopUpdateBtn","desktopBackupBtn"].forEach(id=>{const el=document.getElementById(id);if(el&&!menu.contains(el))menu.appendChild(el)});v050InjectTextScaleControl()
+    const controls=document.querySelector(".map-controls");
+    if(controls&&!controls.querySelector(".v050-control-group")){
+      const nav=document.createElement("div"),tools=document.createElement("div");
+      nav.className="v050-control-group navigation";tools.className="v050-control-group tools";
+      ["zoomOutBtn","zoomReadout","zoomInBtn","originBtn","jumpCoordBtn"].forEach(id=>{const el=document.getElementById(id);if(el)nav.appendChild(el)});
+      const toolMenu=document.createElement("details");toolMenu.className="v098-map-tools-menu";toolMenu.innerHTML='<summary><span>地图工具</span><small>关系 · 核对 · 采集</small></summary><div class="v098-map-tools-panel"></div>';
+      const panel=toolMenu.querySelector(".v098-map-tools-panel"),relation=v098ToolGroup("关系研究","关系主题与高亮"),review=v098ToolGroup("核对工具","比较、测量与孤立检查"),collect=v098ToolGroup("采集工具","画笔采集与地块集合");
+      const preset=document.getElementById("viewPresetBtn"),presetWrap=preset?.closest(".research-tool-wrap");if(presetWrap)relation.lastElementChild.appendChild(presetWrap);else if(preset)relation.lastElementChild.appendChild(preset);
+      ["relationModeBtn"].forEach(id=>{const el=document.getElementById(id);if(el)relation.lastElementChild.appendChild(el)});
+      ["compareModeBtn","measureModeBtn","isolatedObjectsBtn"].forEach(id=>{const el=document.getElementById(id);if(el)review.lastElementChild.appendChild(el)});
+      ["brushModeBtn","cancelBrushModeBtn","brushCollectionBtn"].forEach(id=>{const el=document.getElementById(id);if(el)collect.lastElementChild.appendChild(el)});
+      panel.append(relation,review,collect);toolMenu.addEventListener("toggle",()=>{if(toolMenu.open)v098CloseCompactMenus(toolMenu)});panel.addEventListener("click",event=>{if(!event.target.closest("#viewPresetBtn,#viewPresetMenu"))toolMenu.open=false});tools.appendChild(toolMenu);controls.append(nav,tools)
+    }
+    const actions=document.querySelector(".top-actions");if(!actions)return;
+    let data=actions.querySelector(".v050-top-data"),system=actions.querySelector(".v050-top-system");
+    if(!data){data=document.createElement("div");data.className="v050-top-data";actions.prepend(data)}
+    const importBtn=document.getElementById("openImportBtn");if(importBtn&&importBtn.parentElement!==data)data.prepend(importBtn);
+    let dataMenu=data.querySelector(".v098-top-data-menu");if(!dataMenu){dataMenu=document.createElement("details");dataMenu.className="v098-top-data-menu";dataMenu.innerHTML='<summary>数据与同步</summary><div><header><strong>数据与同步</strong><small>更新、批量应用与导出</small></header></div>';data.appendChild(dataMenu);dataMenu.addEventListener("toggle",()=>{if(dataMenu.open)v098CloseCompactMenus(dataMenu)});dataMenu.querySelector("div").addEventListener("click",()=>{dataMenu.open=false})}
+    const dataPanel=dataMenu.querySelector("div");["checkUpdateBtn","batchPatchBtn","exportPatchBtn"].forEach(id=>{const el=document.getElementById(id);if(el&&!dataPanel.contains(el))dataPanel.appendChild(el)});
+    if(!system){system=document.createElement("details");system.className="v050-top-system";system.innerHTML='<summary>系统</summary><div></div>';actions.insertBefore(system,document.getElementById("finishRoundBtn"));system.addEventListener("toggle",()=>{if(system.open)v098CloseCompactMenus(system)})}
+    const menu=system.querySelector("div");["openSpecTab","openTutorialTab","desktopUpdateBtn","desktopBackupBtn"].forEach(id=>{const el=document.getElementById(id);if(el&&!menu.contains(el))menu.appendChild(el)});v050InjectTextScaleControl();
+    if(!document.documentElement.dataset.v098CompactMenus){document.documentElement.dataset.v098CompactMenus="1";document.addEventListener("click",event=>{if(!event.target.closest(".v098-top-data-menu,.v098-map-tools-menu,.v050-top-system"))v098CloseCompactMenus()})}
   }
   function v050PositionRelationMenu(){
     const menu=document.getElementById("viewPresetMenu"),button=document.getElementById("viewPresetBtn");if(!menu||!button||menu.classList.contains("hidden"))return;
@@ -5277,7 +5303,7 @@
     updateTileImageMapUi()
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.8",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets",tileImageMap:"switchable-image-or-terrain-card",batchPatch:"atomic-local-and-github-oldest-first",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.9",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets",tileImageMap:"switchable-image-or-terrain-card",batchPatch:"atomic-local-and-github-oldest-first",bootGuard:true};
   setupV027State();
   init();
   bindTileImageManager();
