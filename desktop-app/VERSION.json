@@ -1,8 +1,8 @@
 {
   "product": "山海经原典地图研究台",
   "edition": "desktop",
-  "app_version": "v009",
-  "semver": "0.9.9",
+  "app_version": "v010",
+  "semver": "1.0.0",
   "frontend_base": "v077-object-role-layer",
   "data_version": "v125-r0001",
   "object_count": 617,
@@ -42,7 +42,7 @@
   "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
   "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
   "safe_import_policy": "审核正文指纹仍为硬校验；完整目标指纹变化时仅在名称、经篇、类型唯一匹配后允许补充，并显示警告；不修改坐标、名称、经篇、类型、几何或对象数量",
-  "release_scope": "批量山海经地图更改包：本地多选与GitHub pending批量检查、旧到新顺序、去重、冲突整批阻止、桌面自动备份",
+  "release_scope": "v1.0.0 多端资料三方合并：图片与内部资料按内容自动合并，真正冲突逐项选择保留本机或使用更改包",
   "dossier_topic_scope": "global owner-scoped section-06 entries; sibling subjects are navigation/relations only",
-  "batch_patch": "v0.9.6 atomic local/GitHub shjpatch batch simulation and apply"
+  "batch_patch": "v1.0.0 field-level three-way merge, per-conflict manual resolution and non-blocking safe batch apply"
 }

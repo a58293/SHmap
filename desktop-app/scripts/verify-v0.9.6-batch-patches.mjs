@@ -10,7 +10,8 @@ for (const path of ["public/app/app.js", "dist/app/app.js"]) {
   assert.ok(app.includes("patchBatchTime(a)-patchBatchTime(b)"), `${path} 未按生成时间从旧到新排序`);
   assert.ok(app.includes("function appliedPatchByContentHash(hash)"), `${path} 缺少跨来源内容指纹去重`);
   assert.ok(app.includes("status:\"duplicate\""), `${path} 缺少批内重复包识别`);
-  assert.ok(app.includes("const blocked=packages.some(item=>item.status===\"error\")"), `${path} 缺少冲突整批阻止`);
+  assert.ok(app.includes('status="partial"') || app.includes('?"partial":"conflict"'), `${path} 缺少安全项与冲突项分离`);
+  assert.ok(app.includes('data-conflict-resolution='), `${path} 缺少逐项冲突选择`);
   assert.ok(app.includes("function hydratePortablePatchAssets(pkg)"), `${path} 本地便携更改包图片未恢复`);
   assert.ok(app.includes("async function localPatchBatchFromFiles(fileList)"), `${path} 缺少本地多选入口`);
   assert.ok(app.includes("async function githubPatchBatch()"), `${path} 缺少 GitHub pending 批量入口`);
@@ -19,7 +20,7 @@ for (const path of ["public/app/app.js", "dist/app/app.js"]) {
   assert.ok(app.includes("state.objects=before.objects"), `${path} 批量保存失败时没有内存回退`);
   assert.ok(app.includes("一次最多选择100份 .shjpatch"), `${path} 缺少本地批量数量上限`);
   assert.ok(app.includes("一次选择的文件合计不能超过100MB"), `${path} 缺少本地批量体积上限`);
-  assert.ok(app.includes('batchPatch:"atomic-local-and-github-oldest-first"'), `${path} 运行信息未声明批量更改包能力`);
+  assert.ok(app.includes('batchPatch:"field-level-three-way-merge-with-manual-conflict-choice"'), `${path} 运行信息未声明v1.0合并能力`);
 }
 
 const html = read("index.html");
@@ -33,4 +34,4 @@ for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
   assert.ok(css.includes(".pending-batch-actions"), `${path} 缺少 GitHub 批量操作布局`);
 }
 
-console.log("v0.9.6 批量更改包专项校验通过：本地/GitHub、旧到新、去重、冲突整批阻止、应用前备份与失败回退均已接入。");
+console.log("v1.0.0 批量更改包专项校验通过：本地/GitHub、旧到新、去重、安全项继续应用、冲突逐项选择、应用前备份与失败回退均已接入。");

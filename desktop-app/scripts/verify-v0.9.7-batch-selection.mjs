@@ -11,7 +11,8 @@ for(const path of ["public/app/app.js","dist/app/app.js"]){
   assert.ok(app.includes('id="batchPatchSelectSafe"'),`${path} 缺少恢复安全推荐`);
   assert.ok(app.includes("renderPatchBatch(prepareSelectablePatchBatch(items,\"github\"))"),`${path} GitHub批次未接入选择器`);
   assert.ok(app.includes("renderPatchBatch(prepareSelectablePatchBatch(items,\"local\"))"),`${path} 本地批次未接入选择器`);
-  assert.ok(app.includes("session.blocked||!session.actionable.length?'disabled':''"),`${path} 所选子集冲突保护缺失`);
+  assert.ok(app.includes("session.blocked||!session.actionable.length?'disabled':''"),`${path} 无效文件保护缺失`);
+  assert.ok(app.includes('data-conflict-resolution='),`${path} 缺少逐冲突手动选择`);
 }
 for(const path of ["public/app/styles.css","dist/app/styles.css"]){
   const css=read(path);

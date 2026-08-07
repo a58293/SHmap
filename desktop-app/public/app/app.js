@@ -2214,16 +2214,105 @@
   }
   function normalizedComparable(value){
     if(Array.isArray(value))return value.map(normalizedComparable);
-    if(value&&typeof value==="object"){const out={};Object.keys(value).sort().forEach(k=>{if(k==="coordinateText"||k==="distance"||k==="originalLink")return;out[k]=normalizedComparable(value[k])});return out}
+    if(value&&typeof value==="object"){const out={};Object.keys(value).sort().forEach(k=>{if(k==="coordinateText"||k==="distance"||k==="originalLink"||k==="updatedAt")return;out[k]=normalizedComparable(value[k])});return out}
     return value===undefined?null:value
   }
   function sameValue(a,b){return JSON.stringify(normalizedComparable(a))===JSON.stringify(normalizedComparable(b))}
-  function changedTopKeys(before,after){const keys=new Set([...Object.keys(before||{}),...Object.keys(after||{})]);return [...keys].filter(k=>!["coordinateText","distance","originalLink"].includes(k)&&!sameValue(before?.[k],after?.[k]))}
+  function changedTopKeys(before,after){const keys=new Set([...Object.keys(before||{}),...Object.keys(after||{})]);return [...keys].filter(k=>!["coordinateText","distance","originalLink","updatedAt"].includes(k)&&!sameValue(before?.[k],after?.[k]))}
   function cleanTileProfile(value){if(!value||typeof value!=="object")return value;const out=cloneJSON(value);delete out.name;return out}
   function patchTargetLabel(change){return change?.after?.name||change?.before?.name||change?.after?.objects?.[0]?.name||change?.before?.objects?.[0]?.name||String(change?.entityId||"未命名对象")}
   function normalizeObjectAfterApply(obj){if(!obj)return obj;obj.x=Number(obj.x)||0;obj.y=Number(obj.y)||0;obj.coordinateText=coordText(obj.x,obj.y);if(obj.distance!==undefined)obj.distance=Math.hypot(obj.x,obj.y);return obj}
-  function patchResult(change,status,reason){return {change,status,reason,target:patchTargetLabel(change),operationLabel:change?.operationLabel||change?.operation||"更改"}}
-  function simulatePatchChange(change,draft){
+  function patchResult(change,status,reason,meta={}){return {change,status,reason,target:patchTargetLabel(change),operationLabel:change?.operationLabel||change?.operation||"更改",...meta}}
+
+  // V1.0_PATCH_MERGE_START
+  const V100_PATCH_MISSING={__shjMissing:true};
+  const V100_IMAGE_KEYS=new Set(["images","imageUrl","imageSource","imageCopyright"]);
+  function v100IsMissing(value){return value===V100_PATCH_MISSING}
+  function v100Own(object,key){return object&&Object.prototype.hasOwnProperty.call(object,key)?object[key]:V100_PATCH_MISSING}
+  function v100Clone(value){return v100IsMissing(value)?V100_PATCH_MISSING:cloneJSON(value)}
+  function v100Equal(a,b){return v100IsMissing(a)||v100IsMissing(b)?a===b:sameValue(a,b)}
+  function v100IsPlainObject(value){return !!value&&typeof value==="object"&&!Array.isArray(value)&&!v100IsMissing(value)}
+  function v100Conflict(path,localValue,remoteValue,preference){
+    if(preference==="local")return {ok:true,value:v100Clone(localValue),conflicts:[],manual:true};
+    if(preference==="remote")return {ok:true,value:v100Clone(remoteValue),conflicts:[],manual:true};
+    return {ok:false,value:v100Clone(localValue),conflicts:[path||"内容"],manual:false}
+  }
+  function v100Gallery(owner){
+    if(!v100IsPlainObject(owner))return [];
+    const rows=[],seen=new Set(),push=image=>{const url=String(image?.url||"").trim();if(!url||seen.has(url))return;seen.add(url);rows.push({id:String(image?.id||"").trim(),url,caption:String(image?.caption||"").trim(),source:String(image?.source||"").trim(),copyright:String(image?.copyright||"").trim(),createdAt:String(image?.createdAt||"").trim()})};
+    (Array.isArray(owner.images)?owner.images:[]).forEach(push);
+    if(owner.imageUrl&&!seen.has(String(owner.imageUrl).trim()))rows.unshift({id:"",url:String(owner.imageUrl).trim(),caption:"",source:String(owner.imageSource||"").trim(),copyright:String(owner.imageCopyright||"").trim(),createdAt:""});
+    return rows
+  }
+  function v100GalleryMap(owner){return new Map(v100Gallery(owner).map(image=>[image.url,image]))}
+  function v100MergeGalleryImage(baseImage,localImage,remoteImage,path,preference){
+    const baseMissing=v100IsMissing(baseImage),localMissing=v100IsMissing(localImage),remoteMissing=v100IsMissing(remoteImage);
+    if(localMissing&&remoteMissing)return {ok:true,value:V100_PATCH_MISSING,conflicts:[],autoMerged:false};
+    if(baseMissing&&localMissing)return {ok:true,value:v100Clone(remoteImage),conflicts:[],autoMerged:false};
+    if(baseMissing&&remoteMissing)return {ok:true,value:v100Clone(localImage),conflicts:[],autoMerged:false};
+    if(!baseMissing&&(localMissing||remoteMissing)){
+      const survivor=localMissing?remoteImage:localImage;if(v100Equal(survivor,baseImage))return {ok:true,value:V100_PATCH_MISSING,conflicts:[],autoMerged:false};
+      return v100Conflict(path,localImage,remoteImage,preference)
+    }
+    const value={id:localImage?.id||remoteImage?.id||baseImage?.id||"",url:localImage?.url||remoteImage?.url||baseImage?.url||"",createdAt:localImage?.createdAt||remoteImage?.createdAt||baseImage?.createdAt||""},conflicts=[];let manual=false;
+    for(const field of ["caption","source","copyright"]){const merged=v100MergeValue(baseMissing?V100_PATCH_MISSING:(baseImage?.[field]??""),localImage?.[field]??"",remoteImage?.[field]??"",`${path}.${field}`,preference);if(!merged.ok)conflicts.push(...merged.conflicts);else value[field]=v100IsMissing(merged.value)?"":merged.value;manual=manual||!!merged.manual}
+    return conflicts.length&&!preference?{ok:false,value:v100Clone(localImage),conflicts,autoMerged:false,manual:false}:{ok:true,value,conflicts:[],autoMerged:!baseMissing&&!v100Equal(localImage,baseImage)&&!v100Equal(remoteImage,baseImage),manual}
+  }
+  function v100MergeValue(baseValue,localValue,remoteValue,path,preference){
+    if(v100Equal(localValue,remoteValue))return {ok:true,value:v100Clone(localValue),conflicts:[],autoMerged:false};
+    if(v100Equal(localValue,baseValue))return {ok:true,value:v100Clone(remoteValue),conflicts:[],autoMerged:false};
+    if(v100Equal(remoteValue,baseValue))return {ok:true,value:v100Clone(localValue),conflicts:[],autoMerged:false};
+    if(v100IsMissing(baseValue)){
+      if(v100IsMissing(localValue))return {ok:true,value:v100Clone(remoteValue),conflicts:[],autoMerged:false};
+      if(v100IsMissing(remoteValue))return {ok:true,value:v100Clone(localValue),conflicts:[],autoMerged:false};
+    }else{
+      if(v100IsMissing(localValue)||v100IsMissing(remoteValue))return v100Conflict(path,localValue,remoteValue,preference)
+    }
+    if(v100IsPlainObject(localValue)&&v100IsPlainObject(remoteValue))return v100MergeObject(v100IsPlainObject(baseValue)?baseValue:{},localValue,remoteValue,path,preference);
+    if(Array.isArray(localValue)&&Array.isArray(remoteValue)&&/museumEntries$/.test(path||""))return v100MergeMuseumEntries(Array.isArray(baseValue)?baseValue:[],localValue,remoteValue,path,preference);
+    return v100Conflict(path,localValue,remoteValue,preference)
+  }
+  function v100MergeGalleryOwners(baseOwner,localOwner,remoteOwner,path,preference){
+    const baseMap=v100GalleryMap(baseOwner),localMap=v100GalleryMap(localOwner),remoteMap=v100GalleryMap(remoteOwner),urls=new Set([...baseMap.keys(),...localMap.keys(),...remoteMap.keys()]),merged=new Map(),conflicts=[];let manual=false,autoMerged=false;
+    for(const url of urls){
+      const baseImage=baseMap.get(url)||V100_PATCH_MISSING,localImage=localMap.get(url)||V100_PATCH_MISSING,remoteImage=remoteMap.get(url)||V100_PATCH_MISSING;
+      const item=v100MergeGalleryImage(baseImage,localImage,remoteImage,`${path||"图片"} · ${url.slice(0,42)}`,preference);
+      if(!item.ok)conflicts.push(...item.conflicts);manual=manual||!!item.manual;autoMerged=autoMerged||(!v100Equal(localImage,baseImage)&&!v100Equal(remoteImage,baseImage));
+      if(item.ok&&!v100IsMissing(item.value))merged.set(url,{...item.value,url,id:item.value?.id||localImage?.id||remoteImage?.id||baseImage?.id||`IMG-${Date.now()}-${Math.random().toString(36).slice(2,8)}`})
+    }
+    const basePrimary=v100Gallery(baseOwner)[0]?.url||"",localPrimary=v100Gallery(localOwner)[0]?.url||"",remotePrimary=v100Gallery(remoteOwner)[0]?.url||"";let primary=localPrimary;
+    if(localPrimary===remotePrimary)primary=localPrimary;else if(localPrimary===basePrimary)primary=remotePrimary;else if(remotePrimary===basePrimary)primary=localPrimary;else if(preference==="remote"){primary=remotePrimary;manual=true}else if(preference==="local"){primary=localPrimary;manual=true}else conflicts.push(`${path||"图片"} · 主图选择`);
+    if(conflicts.length&&!preference)return {ok:false,value:v100Clone(localOwner),conflicts,autoMerged,manual:false};
+    const order=[];[primary,...v100Gallery(localOwner).map(x=>x.url),...v100Gallery(remoteOwner).map(x=>x.url),...v100Gallery(baseOwner).map(x=>x.url)].forEach(url=>{if(url&&merged.has(url)&&!order.includes(url))order.push(url)});
+    for(const url of merged.keys())if(!order.includes(url))order.push(url);
+    const images=order.map(url=>merged.get(url)),value={images};const first=images[0];
+    if(first){value.imageUrl=first.url;value.imageSource=first.source||"";value.imageCopyright=first.copyright||""}else{value.imageUrl="";value.imageSource="";value.imageCopyright=""}
+    return {ok:true,value,conflicts:[],autoMerged:autoMerged||images.some(image=>!baseMap.has(image.url)),manual}
+  }
+  function v100MuseumEntryKey(entry,index){const category=String(entry?.sourceCategory||entry?.category||entry?.type||"").replace(/\s+/g,"").toLowerCase(),name=String(entry?.name||entry?.title||"").replace(/\s+/g,"").toLowerCase();return category&&name?`${category}::${name}`:`__index_${index}`}
+  function v100MergeMuseumEntries(baseRows,localRows,remoteRows,path,preference){
+    const makeMap=rows=>new Map(rows.map((entry,index)=>[v100MuseumEntryKey(entry,index),entry])),baseMap=makeMap(baseRows),localMap=makeMap(localRows),remoteMap=makeMap(remoteRows),keys=[];
+    [...localMap.keys(),...remoteMap.keys(),...baseMap.keys()].forEach(key=>{if(!keys.includes(key))keys.push(key)});const value=[],conflicts=[];let autoMerged=false,manual=false;
+    for(const key of keys){const merged=v100MergeValue(baseMap.get(key)||V100_PATCH_MISSING,localMap.get(key)||V100_PATCH_MISSING,remoteMap.get(key)||V100_PATCH_MISSING,`${path} · ${key}`,preference);if(!merged.ok)conflicts.push(...merged.conflicts);else if(!v100IsMissing(merged.value))value.push(merged.value);autoMerged=autoMerged||!!merged.autoMerged;manual=manual||!!merged.manual}
+    return conflicts.length&&!preference?{ok:false,value:cloneJSON(localRows),conflicts,autoMerged,manual:false}:{ok:true,value,conflicts:[],autoMerged:true,manual}
+  }
+  function v100MergeObject(baseObject,localObject,remoteObject,path,preference){
+    const value={},keys=new Set([...Object.keys(baseObject||{}),...Object.keys(localObject||{}),...Object.keys(remoteObject||{})]),conflicts=[];let autoMerged=false,manual=false;
+    if([...keys].some(key=>V100_IMAGE_KEYS.has(key))){
+      const gallery=v100MergeGalleryOwners(baseObject,localObject,remoteObject,`${path||"对象"}.图片`,preference);if(!gallery.ok)conflicts.push(...gallery.conflicts);else Object.assign(value,gallery.value);autoMerged=autoMerged||!!gallery.autoMerged;manual=manual||!!gallery.manual
+    }
+    for(const key of keys){if(V100_IMAGE_KEYS.has(key)||key==="updatedAt")continue;const merged=v100MergeValue(v100Own(baseObject,key),v100Own(localObject,key),v100Own(remoteObject,key),path?`${path}.${key}`:key,preference);if(!merged.ok)conflicts.push(...merged.conflicts);else if(!v100IsMissing(merged.value))value[key]=merged.value;autoMerged=autoMerged||!!merged.autoMerged;manual=manual||!!merged.manual}
+    return conflicts.length&&!preference?{ok:false,value:cloneJSON(localObject),conflicts,autoMerged,manual:false}:{ok:true,value,conflicts:[],autoMerged,manual}
+  }
+  function v100MergeChangedKeys(current,before,after,keys,preference=null){
+    const next=cloneJSON(current||{}),conflicts=[];let autoMerged=false,manual=false;
+    const changed=new Set((keys||[]).filter(key=>key!=="updatedAt")),imageChanged=[...changed].some(key=>V100_IMAGE_KEYS.has(key));
+    if(imageChanged){const gallery=v100MergeGalleryOwners(before||{},current||{},after||{},"图片图库",preference);if(!gallery.ok)conflicts.push(...gallery.conflicts);else{V100_IMAGE_KEYS.forEach(key=>{if(Object.prototype.hasOwnProperty.call(gallery.value,key))next[key]=cloneJSON(gallery.value[key]);else delete next[key]})}autoMerged=autoMerged||!!gallery.autoMerged;manual=manual||!!gallery.manual}
+    for(const key of changed){if(V100_IMAGE_KEYS.has(key))continue;const merged=v100MergeValue(v100Own(before||{},key),v100Own(current||{},key),v100Own(after||{},key),key,preference);if(!merged.ok)conflicts.push(...merged.conflicts);else if(v100IsMissing(merged.value))delete next[key];else next[key]=merged.value;autoMerged=autoMerged||!!merged.autoMerged;manual=manual||!!merged.manual}
+    return {ok:!conflicts.length,next,conflicts,autoMerged,manual}
+  }
+  // V1.0_PATCH_MERGE_END
+  function simulatePatchChange(change,draft,resolution=null){
     if(!change||typeof change!=="object")return patchResult(change,"conflict","更改记录格式无效");
     const op=String(change.operation||"").toLowerCase(),label=String(change.operationLabel||""),entityId=String(change.entityId||change.after?.id||change.before?.id||""),entityType=String(change.entityType||"");
     const isCell=entityId.startsWith("CELL-"),cellKeyValue=isCell?entityId.slice(5):"";
@@ -2264,8 +2353,8 @@
       if(op==="update"){
         if(!current)return patchResult(change,"conflict","本地不存在要更新的地块档案");
         const keys=changedTopKeys(before,after);if(keys.every(k=>sameValue(current[k],after?.[k])))return patchResult(change,"skip","本地已经包含该档案修改");
-        const conflicts=keys.filter(k=>!sameValue(current[k],before?.[k])&&!sameValue(current[k],after?.[k]));if(conflicts.length)return patchResult(change,"conflict",`字段已被本地修改：${conflicts.join("、")}`);
-        keys.forEach(k=>{if(after&&Object.prototype.hasOwnProperty.call(after,k))current[k]=cloneJSON(after[k]);else delete current[k]});return patchResult(change,"apply",`更新地块 ${cellKeyValue} 档案`)
+        const merged=v100MergeChangedKeys(current,before,after,keys,resolution);if(!merged.ok)return patchResult(change,"conflict",`字段已被本地修改：${merged.conflicts.join("、")}`);
+        draft.tileProfiles[cellKeyValue]=merged.next;const changed=!sameValue(current,merged.next),note=merged.manual?"（已按手动选择处理冲突）":merged.autoMerged?"（已自动合并多端资料）":"";return patchResult(change,changed?"apply":"skip",changed?`更新地块 ${cellKeyValue} 档案${note}`:`已保留本机内容，没有需要写入的变化`,{autoMerged:merged.autoMerged,manualResolution:merged.manual})
       }
       return patchResult(change,"conflict",`暂不支持地块档案操作：${op||"未标注"}`)
     }
@@ -2281,9 +2370,8 @@
       if(!after||typeof after!=="object")return patchResult(change,"conflict","缺少更新后的对象内容");
       const keys=changedTopKeys(before,after);if(!keys.length)return patchResult(change,"skip","更改包没有实际字段变化");
       if(keys.every(k=>sameValue(current[k],after[k])))return patchResult(change,"skip","本地已经包含该对象修改");
-      const conflicts=keys.filter(k=>!sameValue(current[k],before?.[k])&&!sameValue(current[k],after?.[k]));
-      if(conflicts.length)return patchResult(change,"conflict",`字段已被本地修改：${conflicts.join("、")}`);
-      keys.forEach(k=>{if(Object.prototype.hasOwnProperty.call(after,k))current[k]=cloneJSON(after[k]);else delete current[k]});normalizeObjectAfterApply(current);return patchResult(change,"apply",`更新对象“${current.name||entityId}”`)
+      const merged=v100MergeChangedKeys(current,before,after,keys,resolution);if(!merged.ok)return patchResult(change,"conflict",`字段已被本地修改：${merged.conflicts.join("、")}`);
+      normalizeObjectAfterApply(merged.next);draft.objects[index]=merged.next;const changed=!sameValue(current,merged.next),note=merged.manual?"（已按手动选择处理冲突）":merged.autoMerged?"（已自动合并多端图片或资料）":"";return patchResult(change,changed?"apply":"skip",changed?`更新对象“${merged.next.name||entityId}”${note}`:"已保留本机内容，没有需要写入的变化",{autoMerged:merged.autoMerged,manualResolution:merged.manual})
     }
     if(op==="delete"){
       if(!current)return patchResult(change,"skip","对象已不存在");
@@ -2292,12 +2380,32 @@
     }
     return patchResult(change,"conflict",`暂不支持对象操作：${op||"未标注"}`)
   }
+  function v100ForceApplyPatchChange(change,draft){
+    if(!change||typeof change!=="object")return patchResult(change,"conflict","更改记录格式无效，不能强制应用");
+    const op=String(change.operation||"").toLowerCase(),label=String(change.operationLabel||""),entityId=String(change.entityId||change.after?.id||change.before?.id||""),entityType=String(change.entityType||""),isCell=entityId.startsWith("CELL-"),cellKeyValue=isCell?entityId.slice(5):"",tileBundle=isCell&&(Array.isArray(change.before?.objects)||Array.isArray(change.after?.objects)||/清空地块|恢复地块/.test(label)),tileProfile=isCell&&!tileBundle&&(entityType==="tile_profile"||/地块档案/.test(label));
+    if(tileBundle){
+      const rows=op==="delete"?(change.before?.objects||[]):(change.after?.objects||[]),ids=new Set(rows.map(row=>row?.id).filter(Boolean));draft.objects=draft.objects.filter(row=>!ids.has(row.id));
+      if(op!=="delete")rows.forEach(row=>draft.objects.push(normalizeObjectAfterApply(cloneJSON(row))));
+      const profile=cleanTileProfile(op==="delete"?change.before?.profile:change.after?.profile);if(op==="delete")delete draft.tileProfiles[cellKeyValue];else if(profile)draft.tileProfiles[cellKeyValue]=cloneJSON(profile);
+      return patchResult(change,"apply",`已手动选择使用更改包：${op==="delete"?"清空":"恢复"}地块 ${cellKeyValue}`,{manualResolution:true})
+    }
+    if(tileProfile){
+      if(op==="delete")delete draft.tileProfiles[cellKeyValue];else if(change.after&&typeof change.after==="object")draft.tileProfiles[cellKeyValue]=cleanTileProfile(change.after);else return patchResult(change,"conflict","更改包缺少可写入的地块档案");
+      return patchResult(change,"apply",`已手动选择使用更改包：地块 ${cellKeyValue} 档案`,{manualResolution:true})
+    }
+    if(!entityId)return patchResult(change,"conflict","更改包缺少对象ID，不能强制应用");
+    const index=draft.objects.findIndex(row=>row.id===entityId);
+    if(op==="delete"){if(index>=0)draft.objects.splice(index,1);return patchResult(change,index>=0?"apply":"skip","已手动选择使用更改包：删除对象",{manualResolution:true})}
+    if(!change.after||typeof change.after!=="object")return patchResult(change,"conflict","更改包缺少更新后的对象内容");
+    const incoming=normalizeObjectAfterApply(cloneJSON(change.after));if(index>=0)draft.objects[index]=incoming;else draft.objects.push(incoming);return patchResult(change,"apply",`已手动选择使用更改包：对象“${incoming.name||entityId}”`,{manualResolution:true})
+  }
   function simulatePatchPackage(pkg,baseSnapshot=null){
+    const options=arguments[2]||{},resolutions=options.resolutions||{},batchKey=options.batchKey||"patch",resolveConflicts=!!options.resolveConflicts;
     const packageErrors=[];if(!pkg||typeof pkg!=="object")packageErrors.push("文件内容不是对象");if(pkg?.package_type!=="shjpatch")packageErrors.push("package_type 必须为 shjpatch");if(!Array.isArray(pkg?.changes))packageErrors.push("changes 必须是数组");
     const base=baseSnapshot||{objects:state.objects,tileProfiles:state.tileProfiles},initial={objects:cloneJSON(base.objects),tileProfiles:cloneJSON(base.tileProfiles)},draft={objects:cloneJSON(base.objects),tileProfiles:cloneJSON(base.tileProfiles)},results=[];
-    if(!packageErrors.length)(pkg.changes||[]).forEach(change=>results.push(simulatePatchChange(change,draft)));
+    if(!packageErrors.length)(pkg.changes||[]).forEach((change,index)=>{const conflictKey=`${batchKey}::${index}`,resolution=resolveConflicts?(resolutions[conflictKey]||"local"):null;let result=simulatePatchChange(change,draft,resolution);if(result.status==="conflict"&&resolveConflicts){result=resolution==="remote"?v100ForceApplyPatchChange(change,draft):patchResult(change,"skip",`已手动选择保留本机；${result.reason}`,{manualResolution:true})}results.push({...result,conflictKey,resolution:result.status==="conflict"?"":resolution})});
     const applyCount=results.filter(x=>x.status==="apply").length,skipCount=results.filter(x=>x.status==="skip").length,conflictCount=results.filter(x=>x.status==="conflict").length;
-    const netNoop=sameValue(initial,draft);return {pkg,draft,results,packageErrors,applyCount,skipCount,conflictCount,netNoop,baseMismatch:!!pkg?.base_data_version&&pkg.base_data_version!==state.dataVersion}
+    const autoMergedCount=results.filter(x=>x.autoMerged).length,manualCount=results.filter(x=>x.manualResolution).length,netNoop=sameValue(initial,draft);return {pkg,draft,results,packageErrors,applyCount,skipCount,conflictCount,autoMergedCount,manualCount,netNoop,baseMismatch:!!pkg?.base_data_version&&pkg.base_data_version!==state.dataVersion}
   }
   function rememberRemotePatch(entry,pkg,simulation){
     const key=remotePatchKey(entry),source=entry?.source||"github",contentHash=entry?.contentHash||"";if(!state.appliedRemotePatches.some(x=>x.key===key||contentHash&&x.contentHash===contentHash))state.appliedRemotePatches.unshift({key,sha:entry?.sha||"",contentHash,path:entry?.path||"",name:entry?.name||"",source,appliedAt:new Date().toISOString(),packageCreatedAt:pkg?.created_at||"",changeCount:Number(pkg?.change_count)||pkg?.changes?.length||0,summary:pkg?.summary||"",baseVersion:pkg?.base_data_version||"",netNoop:!!simulation?.netNoop});
@@ -2311,26 +2419,28 @@
   }
   function appliedPatchByContentHash(hash){return !!hash&&state.appliedRemotePatches.some(record=>record.contentHash===hash)}
   function patchBatchTime(item){const time=Date.parse(item?.pkg?.created_at||"");return Number.isFinite(time)?time:0}
-  function patchBatchStatusLabel(status){return status==="apply"?"可应用":status==="noop"?"本机已包含":status==="applied"?"以前已应用":status==="duplicate"?"批内重复":"阻止"}
+  function patchBatchStatusLabel(status){return status==="apply"?"可应用":status==="noop"?"本机已包含":status==="partial"?"部分需选择":status==="conflict"?"需手动选择":status==="applied"?"以前已应用":status==="duplicate"?"批内重复":"文件错误"}
   let batchPatchSession=null;
   function simulatePatchBatch(items,source="local"){
+    const options=arguments[2]||{},resolutions=options.resolutions||{},resolveConflicts=!!options.resolveConflicts;
     const ordered=[...(items||[])].sort((a,b)=>patchBatchTime(a)-patchBatchTime(b)||String(a.entry?.name||"").localeCompare(String(b.entry?.name||""),"zh-CN")),seen=new Set(),initial={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles)};let working=initial;const packages=[];
-    ordered.forEach(item=>{const hash=item.contentHash||item.entry?.contentHash||"",entry={...(item.entry||{}),contentHash:hash,source:item.entry?.source||source};if(item.loadError){packages.push({...item,entry,status:"error",reason:item.loadError});return}if(hash&&appliedPatchByContentHash(hash)||isRemotePatchApplied(entry)){packages.push({...item,entry,status:"applied",reason:"本机历史记录已包含相同更改包"});return}if(hash&&seen.has(hash)){packages.push({...item,entry,status:"duplicate",reason:"与本批前面的文件内容完全相同"});return}if(hash)seen.add(hash);const simulation=simulatePatchPackage(item.pkg,working),blocked=simulation.packageErrors.length||simulation.conflictCount;if(blocked){packages.push({...item,entry,simulation,status:"error",reason:simulation.packageErrors.join("；")||`${simulation.conflictCount}项更改存在冲突`});return}working=simulation.draft;packages.push({...item,entry,simulation,status:simulation.netNoop?"noop":"apply",reason:simulation.netNoop?"当前地图已经包含最终结果":`应用${simulation.applyCount}项，跳过${simulation.skipCount}项`})});
-    const blocked=packages.some(item=>item.status==="error"),actionable=packages.filter(item=>item.status==="apply"||item.status==="noop"),applyCount=actionable.reduce((sum,item)=>sum+(item.simulation?.applyCount||0),0),skipCount=actionable.reduce((sum,item)=>sum+(item.simulation?.skipCount||0),0);return {source,packages,draft:working,blocked,actionable,applyCount,skipCount}
+    ordered.forEach(item=>{const hash=item.contentHash||item.entry?.contentHash||"",entry={...(item.entry||{}),contentHash:hash,source:item.entry?.source||source};if(item.loadError){packages.push({...item,entry,status:"error",reason:item.loadError});return}if(hash&&appliedPatchByContentHash(hash)||isRemotePatchApplied(entry)){packages.push({...item,entry,status:"applied",reason:"本机历史记录已包含相同更改包"});return}if(hash&&seen.has(hash)){packages.push({...item,entry,status:"duplicate",reason:"与本批前面的文件内容完全相同"});return}if(hash)seen.add(hash);const simulation=simulatePatchPackage(item.pkg,working,{resolutions,batchKey:item.batchKey||hash||entry.name,resolveConflicts});if(simulation.packageErrors.length){packages.push({...item,entry,simulation,status:"error",reason:simulation.packageErrors.join("；")});return}working=simulation.draft;const status=simulation.conflictCount?(simulation.applyCount?"partial":"conflict"):(simulation.netNoop?"noop":"apply"),reason=simulation.conflictCount?`${simulation.applyCount}项可直接合并，${simulation.conflictCount}项需要选择`:simulation.netNoop?"当前地图已经包含最终结果":`应用${simulation.applyCount}项，跳过${simulation.skipCount}项${simulation.autoMergedCount?`，自动合并${simulation.autoMergedCount}项`:""}`;packages.push({...item,entry,simulation,status,reason})});
+    const blocked=packages.some(item=>item.status==="error"&&item.selected!==false),actionable=packages.filter(item=>item.status==="apply"||item.status==="noop"),applyCount=actionable.reduce((sum,item)=>sum+(item.simulation?.applyCount||0),0),skipCount=actionable.reduce((sum,item)=>sum+(item.simulation?.skipCount||0),0),autoMergedCount=actionable.reduce((sum,item)=>sum+(item.simulation?.autoMergedCount||0),0),manualCount=actionable.reduce((sum,item)=>sum+(item.simulation?.manualCount||0),0);return {source,packages,draft:working,blocked,actionable,applyCount,skipCount,autoMergedCount,manualCount}
   }
   function prepareSelectablePatchBatch(items,source="local"){
-    const sourceItems=[...(items||[])].map((item,index)=>({...item,batchKey:item.batchKey||`${index}:${item.contentHash||item.entry?.contentHash||item.entry?.sha||item.entry?.path||item.entry?.name||"patch"}`})),overview=simulatePatchBatch(sourceItems,source),selectedKeys=overview.packages.filter(item=>item.status==="apply"||item.status==="noop").map(item=>item.batchKey);
-    return rebuildPatchBatchSelection({source,sourceItems,overviewPackages:overview.packages},selectedKeys)
+    const sourceItems=[...(items||[])].map((item,index)=>({...item,batchKey:item.batchKey||`${index}:${item.contentHash||item.entry?.contentHash||item.entry?.sha||item.entry?.path||item.entry?.name||"patch"}`})),overview=simulatePatchBatch(sourceItems,source),selectableStatuses=new Set(["apply","noop","partial","conflict"]),selectedKeys=overview.packages.filter(item=>selectableStatuses.has(item.status)).map(item=>item.batchKey),conflictResolutions={};
+    overview.packages.forEach(item=>(item.simulation?.results||[]).filter(result=>result.status==="conflict").forEach(result=>{conflictResolutions[result.conflictKey]="local"}));return rebuildPatchBatchSelection({source,sourceItems,overviewPackages:overview.packages,conflictResolutions},selectedKeys)
   }
   function rebuildPatchBatchSelection(base,selectedKeys){
-    const selectedSet=new Set(selectedKeys||[]),selectedItems=(base.sourceItems||[]).filter(item=>selectedSet.has(item.batchKey)),selected=simulatePatchBatch(selectedItems,base.source||"local"),overviewPackages=base.overviewPackages||simulatePatchBatch(base.sourceItems||[],base.source||"local").packages;
-    return {...selected,sourceItems:base.sourceItems||[],overviewPackages,selectedKeys:[...selectedSet],unselectedConflictCount:overviewPackages.filter(item=>item.status==="error"&&!selectedSet.has(item.batchKey)).length}
+    const selectedSet=new Set(selectedKeys||[]),conflictResolutions=arguments[2]||base.conflictResolutions||{},selectedItems=(base.sourceItems||[]).filter(item=>selectedSet.has(item.batchKey)),selected=simulatePatchBatch(selectedItems,base.source||"local",{resolutions:conflictResolutions,resolveConflicts:true}),overviewPackages=base.overviewPackages||simulatePatchBatch(base.sourceItems||[],base.source||"local").packages;
+    return {...selected,sourceItems:base.sourceItems||[],overviewPackages,selectedKeys:[...selectedSet],conflictResolutions,unselectedConflictCount:overviewPackages.reduce((sum,item)=>sum+(!selectedSet.has(item.batchKey)?item.simulation?.conflictCount||0:0),0)}
   }
   function batchPatchPreviewHtml(session){
-    const sourceLabel=session.source==="github"?"GitHub待处理目录":"本地文件",packages=session.overviewPackages||session.packages,selected=new Set(session.selectedKeys||[]),selectable=packages.filter(item=>item.status==="apply"||item.status==="noop"),rows=packages.map(item=>{const canSelect=item.status==="apply"||item.status==="noop",checked=canSelect&&selected.has(item.batchKey);return `<tr class="${checked?'selected':''}"><td><label class="batch-patch-check"><input type="checkbox" data-batch-patch-key="${esc(item.batchKey||'')}" ${checked?'checked':''} ${canSelect?'':'disabled'}><span class="patch-status ${item.status==='apply'||item.status==='noop'?'apply':item.status==='applied'||item.status==='duplicate'?'skip':'conflict'}">${patchBatchStatusLabel(item.status)}</span></label></td><td><strong>${esc(item.entry?.name||"未命名更改包")}</strong><small>${esc(item.pkg?.created_at||"未标生成时间")}</small></td><td>${Number(item.pkg?.change_count)||item.pkg?.changes?.length||0}</td><td>${esc(item.reason||"")}</td></tr>`}).join("");
-    return `<div class="batch-patch-head"><div><span class="eyebrow">BATCH SHJPATCH</span><h3>批量更改包安全设置</h3><p>来源：${sourceLabel} · 勾选后按生成时间从旧到新重新模拟。</p></div><button class="btn secondary compact" id="batchPatchChooseAgain">${session.source==='github'?'返回更新列表':'重新选择文件'}</button></div><div class="batch-patch-rules"><span><b>1</b> 冲突包默认不选且不能误选</span><span><b>2</b> 每次勾选都重新检查旧值与新值</span><span><b>3</b> 所选子集任一冲突则整批停止</span><span><b>4</b> 桌面端应用前自动建立备份</span></div><div class="batch-selection-tools"><label><input type="checkbox" id="batchPatchSelectAllSafe" ${selected.size&&selected.size===selectable.length?'checked':''}> 全选可安全处理</label><button class="btn secondary compact" id="batchPatchSelectSafe">恢复安全推荐</button><span>已选 <b>${selected.size}</b>／${selectable.length} 份</span></div><div class="patch-counts"><span class="apply">所选可处理 ${session.actionable.length}包／${session.applyCount}项</span><span class="skip">本机已处理 ${packages.filter(item=>item.status==='applied'||item.status==='duplicate').length}包</span><span class="conflict">未选冲突 ${packages.filter(item=>item.status==='error').length}包</span></div>${session.blocked?`<div class="patch-error-box"><strong>所选更改包仍有依赖冲突</strong><p>请减少勾选或恢复安全推荐；程序没有写入任何内容。</p></div>`:session.unselectedConflictCount?`<div class="patch-selection-safe"><strong>冲突包已排除</strong><p>只会应用当前勾选且重新模拟通过的更改包，未勾选内容不会写入。</p></div>`:""}<table class="change-table patch-table batch-patch-table"><thead><tr><th>选择／状态</th><th>更改包</th><th>记录</th><th>检查结果</th></tr></thead><tbody>${rows}</tbody></table><div class="pending-preview-footer"><p>${session.blocked?'所选子集未通过连续模拟，不能应用。':session.actionable.length?'确认后只应用勾选的安全包，并逐份记录同步历史。':'尚未勾选需要处理的新更改包。'}</p><button class="btn primary" id="batchPatchApplyBtn" ${session.blocked||!session.actionable.length?'disabled':''}>安全应用已选 ${session.actionable.length} 份</button></div>`
+    const sourceLabel=session.source==="github"?"GitHub待处理目录":"本地文件",packages=session.overviewPackages||session.packages,selected=new Set(session.selectedKeys||[]),selectableStatuses=new Set(["apply","noop","partial","conflict"]),selectable=packages.filter(item=>selectableStatuses.has(item.status)),rows=packages.map(item=>{const canSelect=selectableStatuses.has(item.status),checked=canSelect&&selected.has(item.batchKey),statusClass=item.status==='apply'||item.status==='noop'?'apply':item.status==='applied'||item.status==='duplicate'?'skip':'conflict';return `<tr class="${checked?'selected':''}"><td><label class="batch-patch-check"><input type="checkbox" data-batch-patch-key="${esc(item.batchKey||'')}" ${checked?'checked':''} ${canSelect?'':'disabled'}><span class="patch-status ${statusClass}">${patchBatchStatusLabel(item.status)}</span></label></td><td><strong>${esc(item.entry?.name||"未命名更改包")}</strong><small>${esc(item.pkg?.created_at||"未标生成时间")}</small></td><td>${Number(item.pkg?.change_count)||item.pkg?.changes?.length||0}</td><td>${esc(item.reason||"")}</td></tr>`}).join(""),conflictRows=[];
+    packages.forEach(item=>(item.simulation?.results||[]).filter(result=>result.status==="conflict").forEach(result=>{const choice=session.conflictResolutions?.[result.conflictKey]||"local";conflictRows.push(`<article class="batch-conflict-item"><div><strong>${esc(result.target)}</strong><span>${esc(item.entry?.name||"更改包")} · ${esc(result.operationLabel)}</span><p>${esc(result.reason)}</p></div><label>处理方式<select data-conflict-resolution="${esc(result.conflictKey)}"><option value="local" ${choice==='local'?'selected':''}>保留本机（推荐）</option><option value="remote" ${choice==='remote'?'selected':''}>使用更改包</option></select></label></article>`) }));
+    return `<div class="batch-patch-head"><div><span class="eyebrow">BATCH SHJPATCH · v1.0</span><h3>批量更改包合并与冲突选择</h3><p>来源：${sourceLabel} · 安全内容照常合并，真正冲突逐项选择。</p></div><button class="btn secondary compact" id="batchPatchChooseAgain">${session.source==='github'?'返回更新列表':'重新选择文件'}</button></div><div class="batch-patch-rules"><span><b>1</b> 不同图片与资料项自动合并</span><span><b>2</b> 安全内容不会因其他冲突被拦截</span><span><b>3</b> 每个冲突独立选择，默认保留本机</span><span><b>4</b> 桌面端写入前自动建立备份</span></div><div class="batch-selection-tools"><label><input type="checkbox" id="batchPatchSelectAllSafe" ${selected.size&&selected.size===selectable.length?'checked':''}> 全选可处理更改包</label><button class="btn secondary compact" id="batchPatchSelectSafe">恢复推荐选择</button><span>已选 <b>${selected.size}</b>／${selectable.length} 份</span></div><div class="patch-counts"><span class="apply">将写入 ${session.applyCount}项</span><span class="skip">自动合并 ${session.autoMergedCount||0}项</span><span class="conflict">手动裁定 ${session.manualCount||0}项</span></div>${conflictRows.length?`<section class="batch-conflict-panel"><div class="batch-conflict-title"><strong>逐项处理冲突</strong><span>${conflictRows.length}项 · 不选择时保留本机</span></div>${conflictRows.join("")}</section>`:`<div class="patch-selection-safe"><strong>没有剩余冲突</strong><p>图片图库和不同资料项已按内容自动合并。</p></div>`}<table class="change-table patch-table batch-patch-table"><thead><tr><th>选择／状态</th><th>更改包</th><th>记录</th><th>检查结果</th></tr></thead><tbody>${rows}</tbody></table><div class="pending-preview-footer"><p>${session.blocked?'所选文件本身格式错误，不能应用。':session.actionable.length?'确认后应用安全内容和上面的逐项选择；未选更改包不会写入。':'尚未选择需要处理的新更改包。'}</p><button class="btn primary" id="batchPatchApplyBtn" ${session.blocked||!session.actionable.length?'disabled':''}>应用已选 ${session.actionable.length} 份更改包</button></div>`
   }
-  function renderPatchBatch(session){batchPatchSession=session;els.infoEyebrow.textContent="BATCH CHANGE PACKAGES";els.infoTitle.textContent="批量山海经地图更改包";els.infoBody.innerHTML=batchPatchPreviewHtml(session);$("#batchPatchApplyBtn")?.addEventListener("click",applyPatchBatch);$("#batchPatchChooseAgain")?.addEventListener("click",()=>{if(session.source==="github")renderGithubUpdateModal();else{els.batchPatchInput.value="";els.batchPatchInput.click()}});const refresh=keys=>renderPatchBatch(rebuildPatchBatchSelection(session,keys));$$('[data-batch-patch-key]').forEach(input=>input.addEventListener('change',()=>refresh($$('[data-batch-patch-key]:checked').map(node=>node.dataset.batchPatchKey))));$("#batchPatchSelectSafe")?.addEventListener("click",()=>refresh((session.overviewPackages||[]).filter(item=>item.status==="apply"||item.status==="noop").map(item=>item.batchKey)));$("#batchPatchSelectAllSafe")?.addEventListener("change",event=>refresh(event.currentTarget.checked?(session.overviewPackages||[]).filter(item=>item.status==="apply"||item.status==="noop").map(item=>item.batchKey):[]))}
+  function renderPatchBatch(session){batchPatchSession=session;els.infoEyebrow.textContent="BATCH CHANGE PACKAGES";els.infoTitle.textContent="批量山海经地图更改包";els.infoBody.innerHTML=batchPatchPreviewHtml(session);$("#batchPatchApplyBtn")?.addEventListener("click",applyPatchBatch);$("#batchPatchChooseAgain")?.addEventListener("click",()=>{if(session.source==="github")renderGithubUpdateModal();else{els.batchPatchInput.value="";els.batchPatchInput.click()}});const selectedKeys=()=>$$('[data-batch-patch-key]:checked').map(node=>node.dataset.batchPatchKey),refresh=(keys=selectedKeys(),resolutions=session.conflictResolutions)=>renderPatchBatch(rebuildPatchBatchSelection(session,keys,resolutions));$$('[data-batch-patch-key]').forEach(input=>input.addEventListener('change',()=>refresh()));$$('[data-conflict-resolution]').forEach(select=>select.addEventListener('change',()=>{const resolutions={...(session.conflictResolutions||{}),[select.dataset.conflictResolution]:select.value};refresh(selectedKeys(),resolutions)}));const recommended=()=> (session.overviewPackages||[]).filter(item=>["apply","noop","partial","conflict"].includes(item.status)).map(item=>item.batchKey);$("#batchPatchSelectSafe")?.addEventListener("click",()=>refresh(recommended()));$("#batchPatchSelectAllSafe")?.addEventListener("change",event=>refresh(event.currentTarget.checked?recommended():[]))}
   async function localPatchBatchFromFiles(fileList){
     const files=[...(fileList||[])];if(!files.length)return;if(files.length>100){toast("更改包数量过多","一次最多选择100份 .shjpatch。","error");return}const total=files.reduce((sum,file)=>sum+(file.size||0),0);if(total>100*1024*1024){toast("更改包总体积过大","一次选择的文件合计不能超过100MB。","error");return}els.infoEyebrow.textContent="LOCAL PATCH BATCH";els.infoTitle.textContent="正在读取本地更改包";els.infoBody.innerHTML=`<div class="info-section"><h3>正在校验 ${files.length} 份文件</h3><p>检查格式、内容指纹、时间顺序和字段冲突……</p></div>`;openModal("infoModal");const items=[];for(const file of files){let pkg=null,loadError="",contentHash="";try{if(!/\.shjpatch$/i.test(file.name))throw new Error("扩展名不是 .shjpatch");if(file.size>25*1024*1024)throw new Error("单个更改包超过25MB");const text=await file.text();contentHash=await sha256Hex(new TextEncoder().encode(text));pkg=hydratePortablePatchAssets(JSON.parse(text))}catch(error){loadError=String(error?.message||error||"读取失败")}items.push({entry:{name:file.name,path:`local/${file.name}`,sha:contentHash,contentHash,source:"local",size:file.size},pkg,contentHash,loadError})}renderPatchBatch(prepareSelectablePatchBatch(items,"local"))
   }
@@ -2368,7 +2478,7 @@
   function renderGithubUpdateModal(){els.infoEyebrow.textContent="GITHUB DATA & PATCHES";els.infoTitle.textContent="GitHub数据与更改包";els.infoBody.innerHTML=githubStatusHtml(state.githubCurrent,state.githubPendingFiles,state.githubCurrentError||"",state.githubPendingError||"");bindPendingListActions()}
   async function openPendingPatchPreview(index){
     const entry=state.githubPendingFiles[index];if(!entry)return;els.infoEyebrow.textContent="GITHUB PENDING PATCH";els.infoTitle.textContent="正在下载更改包";els.infoBody.innerHTML=`<div class="info-section"><h3>${esc(entry.name)}</h3><p>正在从GitHub读取并校验内容……</p></div>`;
-    try{const pkg=await fetchGithubPatch(entry),simulation=simulatePatchPackage(pkg);markRemotePatchViewed(entry);els.infoTitle.textContent="待处理更改包预览";els.infoBody.innerHTML=patchPreviewHtml(entry,pkg,simulation);$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal);$("#pendingApplyBtn")?.addEventListener("click",()=>applyGithubPatch(index,pkg,simulation))}
+    try{const pkg=hydratePortablePatchAssets(await fetchGithubPatch(entry)),contentHash=await sha256Hex(new TextEncoder().encode(JSON.stringify(pkg)));markRemotePatchViewed(entry);renderPatchBatch(prepareSelectablePatchBatch([{entry:{...entry,contentHash,source:"github"},pkg,contentHash}],"github"))}
     catch(error){els.infoTitle.textContent="更改包读取失败";els.infoBody.innerHTML=`<div class="github-update-actions"><button class="btn secondary compact" id="pendingBackBtn">← 返回更新列表</button></div><div class="patch-error-box"><strong>无法读取 ${esc(entry.name)}</strong><p>${esc(error?.message||"未知错误")}</p></div>`;$("#pendingBackBtn")?.addEventListener("click",renderGithubUpdateModal)}
   }
   function applyGithubPatch(index,pkg,simulation){
@@ -5303,7 +5413,7 @@
     updateTileImageMapUi()
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"0.9.9",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets",tileImageMap:"switchable-image-or-terrain-card",batchPatch:"atomic-local-and-github-oldest-first",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"1.0.0",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge",tileImageMap:"switchable-image-or-terrain-card",batchPatch:"field-level-three-way-merge-with-manual-conflict-choice",bootGuard:true};
   setupV027State();
   init();
   bindTileImageManager();
