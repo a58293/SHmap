@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use chrono::{DateTime, SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -134,7 +135,21 @@ struct PublishPatchResponse {
 #[serde(rename_all = "camelCase")]
 struct PublishAssetInput {
     file_name: String,
+    #[serde(default)]
+    data_base64: String,
+    #[serde(default)]
     bytes: Vec<u8>,
+}
+
+fn decode_publish_assets(mut assets: Vec<PublishAssetInput>) -> Result<Vec<PublishAssetInput>, String> {
+    for asset in &mut assets {
+        if asset.bytes.is_empty() && !asset.data_base64.trim().is_empty() {
+            asset.bytes = BASE64_STANDARD.decode(asset.data_base64.trim())
+                .map_err(|error| format!("图片资源Base64无效（{}）：{error}", asset.file_name))?;
+        }
+        asset.data_base64.clear();
+    }
+    Ok(assets)
 }
 
 fn now_text() -> String { Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true) }
@@ -227,7 +242,7 @@ fn run_git(git: &Path, repo: &Path, args: &[String]) -> Result<String, String> {
         .args(args)
         .current_dir(repo)
         .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GCM_INTERACTIVE", "always")
+        .env("GCM_INTERACTIVE", "never")
         .output()
         .map_err(|error| format!("无法启动 Git：{error}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -241,15 +256,15 @@ fn run_git(git: &Path, repo: &Path, args: &[String]) -> Result<String, String> {
 fn git_args(values: &[&str]) -> Vec<String> { values.iter().map(|value| (*value).to_string()).collect() }
 
 fn run_git_network(git: &Path, repo: &Path, operation: &[&str]) -> Result<String, String> {
-    let mut args = git_args(&["-c", "http.version=HTTP/1.1", "-c", "http.lowSpeedLimit=0", "-c", "http.lowSpeedTime=999999"]);
+    let mut args = git_args(&["-c", "http.version=HTTP/1.1", "-c", "http.lowSpeedLimit=1", "-c", "http.lowSpeedTime=30"]);
     args.extend(operation.iter().map(|value| (*value).to_string()));
     let mut failures = Vec::new();
-    for attempt in 1..=3 {
+    for attempt in 1..=2 {
         match run_git(git, repo, &args) {
             Ok(value) => return Ok(value),
             Err(error) => {
                 failures.push(format!("第{attempt}次：{error}"));
-                if attempt < 3 { std::thread::sleep(Duration::from_millis(900 * attempt as u64)); }
+                if attempt < 2 { std::thread::sleep(Duration::from_millis(900 * attempt as u64)); }
             }
         }
     }
@@ -321,6 +336,7 @@ fn publish_patch_blocking(
     commit_message: String,
 ) -> Result<PublishPatchResponse, String> {
     let _payload = validate_patch_file(&file_name, &content)?;
+    let assets = decode_publish_assets(assets)?;
     validate_publish_assets(&assets)?;
     let repo = find_repo_root(repo_path)?;
     let git = find_git_executable()?;

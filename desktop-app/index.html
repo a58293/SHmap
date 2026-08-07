@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.7</title>
+  <title>山海经原典地图研究台 · 桌面版 v009 · 0.9.8</title>
   <link rel="stylesheet" href="/app/styles.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="seal">山<br>海</div>
         <div class="brand-copy">
           <div class="brand-kicker"><span>原典地理研究工具 · 桌面版</span><i></i><span id="saveState">桌面数据库</span></div>
-          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.7</small></h1>
+          <h1>山海经原典地图研究台 <small>DESKTOP v009 · 0.9.8</small></h1>
           <p id="versionLine">载入地图数据中……</p>
         </div>
       </div>
@@ -340,6 +340,13 @@
             </div>
             <label class="field"><span>图片来源</span><input id="tileImageSource" placeholder="例如：自制地块图／文献扫描／授权素材" /></label>
             <label class="field"><span>版权与使用备注</span><input id="tileImageCopyright" placeholder="作者、授权范围或仅供内部研究" /></label>
+          </section>
+          <section class="subject-image-manager" id="tileSubjectImageManager" aria-label="本格主题图库">
+            <div class="subject-image-manager-head">
+              <div><strong>本格主题图库</strong><p>地块封面、独立对象和第06节内部条目分别管理；每个主题都可保存多张图片。</p></div>
+              <span id="tileSubjectImageCount">0个主题</span>
+            </div>
+            <div class="subject-image-tabs" id="tileSubjectImageTabs"></div>
           </section>
           <label class="field"><span>简要</span><textarea id="tileBriefSummary" rows="3" placeholder="一句话或极短摘要"></textarea></label>
           <label class="field"><span>基础</span><textarea id="tileBasicSummary" rows="5" placeholder="基础地理与主要对象"></textarea></label>

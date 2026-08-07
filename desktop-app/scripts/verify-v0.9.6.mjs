@@ -14,10 +14,10 @@ const desktopCss = read("src/desktop-ui.css");
 const rust = read("src-tauri/src/lib.rs");
 
 const checks = [
-["package 版本", pkg.version === "0.9.7"],
-["Tauri 版本", tauri.version === "0.9.7"],
-["VERSION 版本", version.semver === "0.9.7" && version.app_version === "v009"],
-["界面版本", html.includes("DESKTOP v009 · 0.9.7")],
+["package 版本", pkg.version === "0.9.8"],
+["Tauri 版本", tauri.version === "0.9.8"],
+["VERSION 版本", version.semver === "0.9.8" && version.app_version === "v009"],
+["界面版本", html.includes("DESKTOP v009 · 0.9.8")],
   ["查询／专注按钮", html.includes('id="queryModeBtn"') && html.includes('id="focusModeBtn"') && app.includes("v071SetWorkspaceMode")],
   ["多总览模式", html.includes('data-overview-mode="region"') && html.includes('data-overview-mode="domain"') && html.includes('data-overview-mode="chapter"') && html.includes('data-overview-mode="hydrology"') && html.includes('data-overview-mode="civilization"')],
   ["真实区域总览", app.includes('h.regions.filter(r=>r.level===2)') && app.includes("cleanRegionOverviewName(region.name)")],
@@ -51,7 +51,7 @@ const checks = [
   ["旧水系层级兼容", app.includes("object?.waterHierarchy?.segments") && app.includes("hierarchyChildren(object)")],
   ["仅显示有内容分类", app.includes("filter(cat=>cat.objects.length)") && !app.includes("六类同时保留，未载内容明确标示")],
   ["无条目整块隐藏", app.includes('if(!total)return ""')],
-  ["导入条目正文不回退母表", (app.includes("const linked=resolvedDossierEntryObject(e,main)") || app.includes("linked:resolvedDossierEntryObject(entry,main)")) && app.includes('coreFeatures:e.coreFeatures||""') && app.includes('evidence:e.evidence||""') && app.includes("e.imageUrl||objectImageSource(linked)")],
+  ["导入条目正文不回退母表", (app.includes("const linked=resolvedDossierEntryObject(e,main)") || app.includes("linked:resolvedDossierEntryObject(entry,main)")) && app.includes('coreFeatures:e.coreFeatures||""') && app.includes('evidence:e.evidence||""') && (app.includes("e.imageUrl||objectImageSource(linked)") || app.includes("normalizedImageGallery(e)[0]?.url||objectImageSource(linked)"))],
   ["地块属性完整展示", app.includes('["区域定位",profile.regionPosition]') && app.includes('["水文特征",profile.hydrology]') && app.includes('["典籍出处",profile.sourceCitation]')],
   ["数据关系完整展示", app.includes('identityTagGroupHTML("父级区域"') && app.includes('identityTagGroupHTML("相关水域"') && app.includes('identityTagGroupHTML("相关生灵"')],
   ["摘要与详细描述", app.includes('<p>${esc(oneLine)}</p>') && app.includes("identity-detailed-summary") && css.includes(".identity-detailed-summary")],
