@@ -13,7 +13,7 @@ use std::{
 };
 use tauri::{ipc::Channel, AppHandle, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 use url::Url;
 
 mod github_auth;
@@ -237,14 +237,21 @@ async fn publish_patch_to_github(
         })
         .collect::<Vec<_>>();
 
-    let result = github_auth::publish_private_submission(
-        &github_state,
-        &file_name,
-        content.as_bytes(),
-        publish_assets,
-        &commit_message,
+    // Stage3.1: 给整轮 GitHub 私有上传设置总超时。
+    // reqwest 客户端本身已有单请求超时；这里再给“多图片 + patch”的完整发布过程加上上限，
+    // 避免慢速、半断开或失速网络导致桌面端一直等待。
+    let result = timeout(
+        Duration::from_secs(180),
+        github_auth::publish_private_submission(
+            &github_state,
+            &file_name,
+            content.as_bytes(),
+            publish_assets,
+            &commit_message,
+        ),
     )
-    .await?;
+    .await
+    .map_err(|_| "GitHub 私有更改包上传超过 180 秒，已自动停止。请检查网络后重试；本地更改包不会丢失。".to_string())??;
 
     Ok(PublishPatchResponse {
         repo_path: result.repository,
