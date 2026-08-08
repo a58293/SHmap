@@ -12,9 +12,9 @@ for (const path of ["public/app/app.js", "dist/app/app.js"]) {
     "function v100MergeChangedKeys",
     "function v100ForceApplyPatchChange",
     'data-conflict-resolution=',
-    "保留本机（推荐）",
-    "使用更改包",
-    "安全内容不会因其他冲突被拦截",
+    "本机当前内容",
+    "更改包内容",
+    "function v101ConflictResolutionKey",
   ]) assert.ok(app.includes(marker), `${path} 缺少冲突合并标记：${marker}`);
   assert.ok(app.includes('k==="updatedAt"'), `${path} 没有排除更新时间虚假冲突`);
 }
@@ -57,8 +57,15 @@ assert.equal(dossier.next.dossier.museumEntries.length,2);
 assert.equal(dossier.next.dossier.museumEntries.find(row=>row.name==="甲").images.length,2);
 
 const captionBase={images:[image("asset-a","原说明")]},captionLocal={images:[image("asset-a","本机说明")]},captionRemote={images:[image("asset-a","更改包说明")]};
-assert.equal(context.merge(captionLocal,captionBase,captionRemote,["images"]).ok,false);
+const unresolved=context.merge(captionLocal,captionBase,captionRemote,["images"]);
+assert.equal(unresolved.ok,false);
+assert.equal(unresolved.details[0].localValue,"本机说明");
+assert.equal(unresolved.details[0].remoteValue,"更改包说明");
 const chosen=context.merge(captionLocal,captionBase,captionRemote,["images"],"remote");
 assert.equal(chosen.ok,true);
 assert.equal(chosen.next.images[0].caption,"更改包说明");
-console.log("v1.0.0 图片、内部资料三方合并与逐项冲突选择校验通过。");
+const mixed=context.merge({dossier:{profile:{briefSummary:"本机摘要",detailedSummary:"本机详细"}}},{dossier:{profile:{briefSummary:"原摘要",detailedSummary:"原详细"}}},{dossier:{profile:{briefSummary:"包摘要",detailedSummary:"包详细"}}},["dossier"],path=>path.endsWith("briefSummary")?"remote":"local");
+assert.equal(mixed.ok,true);
+assert.equal(mixed.next.dossier.profile.briefSummary,"包摘要");
+assert.equal(mixed.next.dossier.profile.detailedSummary,"本机详细");
+console.log("v1.0.1 图片、内部资料三方合并与逐字段冲突选择校验通过。");
