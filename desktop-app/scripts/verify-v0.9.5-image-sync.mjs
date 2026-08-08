@@ -5,6 +5,7 @@ const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), "ut
 const publicApp = read("public/app/app.js");
 const distApp = read("dist/app/app.js");
 const rust = read("src-tauri/src/lib.rs");
+const rustAuth = read("src-tauri/src/github_auth.rs");
 const bootstrap = read("src/desktop-bootstrap.js");
 
 for (const [label, app] of [["public", publicApp], ["dist", distApp]]) {
@@ -24,11 +25,16 @@ for (const [label, app] of [["public", publicApp], ["dist", distApp]]) {
 
 assert.ok(bootstrap.includes('invoke("publish_patch_to_github",args)'), "桌面桥接未转交图片发布参数");
 assert.ok(rust.includes("struct PublishAssetInput"), "Rust缺少图片发布输入");
+assert.ok(rust.includes("data_base64: String") && rust.includes("decode_publish_assets"), "Rust缺少Base64图片负载解码");
 assert.ok(rust.includes("fn validate_publish_assets"), "Rust缺少图片资源安全校验");
-assert.ok(rust.includes('format!("submissions/assets/{}", asset.file_name)'), "Rust未写入同步资源目录");
 assert.ok(rust.includes("Sha256::digest(&asset.bytes)"), "Rust未复核图片指纹");
 assert.ok(rust.includes("asset.bytes.len() > 2 * 1024 * 1024"), "Rust缺少单张图片大小上限");
 assert.ok(rust.includes("assets.len() > 64"), "Rust缺少单轮图片数量上限");
-assert.ok(rust.includes("asset_count: assets.len()"), "发布结果未返回图片数量");
+assert.ok(rust.includes("github_auth::PrivatePublishAsset"), "Rust未把验证后的图片交给私有仓库发布层");
+assert.ok(rust.includes("github_auth::publish_private_submission"), "Rust未调用私有仓库发布接口");
+assert.ok(rust.includes("asset_count: result.asset_count"), "发布结果未返回私有仓库实际图片数量");
+assert.ok(rustAuth.includes("submissions/assets/"), "GitHub Auth层未写入 SHmap-Data/submissions/assets");
+assert.ok(rustAuth.includes("submissions/pending/"), "GitHub Auth层未写入 SHmap-Data/submissions/pending");
+assert.ok(rustAuth.includes("publish_private_submission"), "GitHub Auth层缺少私有发布实现");
 
-console.log("v0.9.5 自动WebP与多端图片同步专项校验通过。");
+console.log("v0.9.5 自动WebP与多端图片同步专项校验通过：发布目标已适配 Private SHmap-Data。");

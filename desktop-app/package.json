@@ -10,13 +10,14 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "verify": "npm run build && npm run verify:auth && npm run verify:private-data && npm run verify:private-submissions && npm run verify:checks",
+    "verify": "npm run build && npm run verify:auth && npm run verify:private-data && npm run verify:private-submissions && npm run verify:architecture && npm run verify:checks",
     "verify:auth": "node scripts/verify-github-auth-stage1.mjs",
     "import:master": "node scripts/import-master-v053.mjs",
     "verify:checks": "node scripts/verify-v0.9.6-dist-output.mjs && node scripts/verify-v1.0.5-update-notes.mjs && node scripts/verify-v0.9.8-multi-image-gallery.mjs && node scripts/verify-v1.0.2-gallery-autosave.mjs && node scripts/verify-v1.0.3-precision-card-images.mjs && node scripts/verify-v1.0.4-content-conflict-bulk.mjs && node scripts/verify-v1.0.5-precision-tile-image-fallback.mjs && node scripts/verify-v0.9.9-toolbar-hierarchy.mjs && node scripts/verify-v1.0.0-conflict-resolution.mjs && node scripts/verify-v1.0.1-conflict-preview.mjs && node scripts/verify-project.mjs && node scripts/verify-v0.7.6-card-fields.mjs && node scripts/verify-v0.7.6-compact-image.mjs && node scripts/verify-v0.7.6-detail-category-grid.mjs && node scripts/verify-v0.7.6-dossier-interaction.mjs && node scripts/verify-v0.7.6-entry-binding.mjs && node scripts/verify-v0.9.6-mdcompat.mjs && node scripts/verify-v0.7.6-museum-accordion.mjs && node scripts/verify-v0.7.6-original-quote.mjs && node scripts/verify-v0.7.6-scripture-pages.mjs && node scripts/verify-v0.7.6-vertical-museum.mjs && node scripts/verify-v0.8.0-dossier-normalization.mjs && node scripts/verify-v0.9.6.mjs && node scripts/verify-v0.8.0-object-roles.mjs && node scripts/verify-v0.8.1-multi-topic-dossier.mjs && node scripts/verify-v0.8.7-organized-object-drawer.mjs && node scripts/verify-v0.8.7-unified-detail-order.mjs && node scripts/verify-v0.9.6-water-special-model.mjs && node scripts/verify-v0.9.5-visual-clarity.mjs && node scripts/verify-v0.9.5-image-sync.mjs && node scripts/verify-v0.9.5-tile-image-map.mjs && node scripts/verify-v0.9.5-dossier-topic-scope.mjs && node scripts/verify-v0.9.6-batch-patches.mjs && node scripts/verify-v0.9.7-batch-selection.mjs && node scripts/verify-v1.0.5-release.mjs && node scripts/verify-v0.7.6-internal-entry-detail-and-placeholder.mjs && node scripts/verify-v0.7.6-placeholder-variants-v2.mjs",
     "verify:private-data": "node scripts/verify-github-private-data-stage2.mjs",
     "data:private": "node scripts/build-private-map-bundle.mjs",
-    "verify:private-submissions": "node scripts/verify-github-private-submissions-stage3.mjs"
+    "verify:private-submissions": "node scripts/verify-github-private-submissions-stage3.mjs",
+    "verify:architecture": "node scripts/verify-private-architecture-consistency.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1"
