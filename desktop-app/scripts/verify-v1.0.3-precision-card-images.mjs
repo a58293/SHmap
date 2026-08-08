@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
 for(const path of ["public/app/app.js","dist/app/app.js"]){
   const app=read(path);
-  for(const marker of ["precision-hover-cards ${ordered.some(o=>!!objectImageSource(o))?'has-images':''}","data-precision-image-preview","data-precision-image-name","openMuseumImageViewer(frame.dataset.precisionImagePreview","mapDetailImages:\"object-primary-image-in-precision-preview-cards\""]){
+  for(const marker of ["precision-hover-cards ${ordered.some(o=>!!precisionCardImageSource(o))?'has-images':''}","data-precision-image-preview","data-precision-image-name","openMuseumImageViewer(frame.dataset.precisionImagePreview","mapDetailImages:\"object-primary-then-tile-primary-in-precision-preview-cards\""]){
     assert.ok(app.includes(marker),`${path} 缺少精细地图图片标记：${marker}`);
   }
 }
