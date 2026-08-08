@@ -14,10 +14,10 @@ const desktopCss = read("src/desktop-ui.css");
 const rust = read("src-tauri/src/lib.rs");
 
 const checks = [
-["package 版本", pkg.version === "1.0.3"],
-["Tauri 版本", tauri.version === "1.0.3"],
-["VERSION 版本", version.semver === "1.0.3" && version.app_version === "v010"],
-["界面版本", html.includes("DESKTOP v010 · 1.0.3")],
+["package 版本", pkg.version === "1.0.4"],
+["Tauri 版本", tauri.version === "1.0.4"],
+["VERSION 版本", version.semver === "1.0.4" && version.app_version === "v010"],
+["界面版本", html.includes("DESKTOP v010 · 1.0.4")],
   ["查询／专注按钮", html.includes('id="queryModeBtn"') && html.includes('id="focusModeBtn"') && app.includes("v071SetWorkspaceMode")],
   ["多总览模式", html.includes('data-overview-mode="region"') && html.includes('data-overview-mode="domain"') && html.includes('data-overview-mode="chapter"') && html.includes('data-overview-mode="hydrology"') && html.includes('data-overview-mode="civilization"')],
   ["真实区域总览", app.includes('h.regions.filter(r=>r.level===2)') && app.includes("cleanRegionOverviewName(region.name)")],

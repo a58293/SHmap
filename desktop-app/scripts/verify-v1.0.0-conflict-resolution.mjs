@@ -12,11 +12,11 @@ for (const path of ["public/app/app.js", "dist/app/app.js"]) {
     "function v100MergeChangedKeys",
     "function v100ForceApplyPatchChange",
     'data-conflict-resolution=',
-    "本机当前内容",
-    "更改包内容",
+    "本机地块现有内容",
+    "更改包拟写入内容",
     "function v101ConflictResolutionKey",
   ]) assert.ok(app.includes(marker), `${path} 缺少冲突合并标记：${marker}`);
-  assert.ok(app.includes('k==="updatedAt"'), `${path} 没有排除更新时间虚假冲突`);
+  assert.ok(app.includes('V104_SYNC_METADATA_KEYS.has(k)'), `${path} 没有排除更新时间、创建时间和导入时间虚假冲突`);
 }
 for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
   const css = read(path);
@@ -29,6 +29,7 @@ const snippet = app.split("// V1.0_PATCH_MERGE_START")[1].split("// V1.0_PATCH_M
 const context = {
   cloneJSON: value => value === undefined ? undefined : JSON.parse(JSON.stringify(value)),
   sameValue: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+  V104_SYNC_METADATA_KEYS: new Set(["updatedAt","createdAt","importedAt"]),
   console,
 };
 vm.createContext(context);

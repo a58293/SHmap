@@ -2,7 +2,7 @@
   "product": "山海经原典地图研究台",
   "edition": "desktop",
   "app_version": "v010",
-  "semver": "1.0.3",
+  "semver": "1.0.4",
   "frontend_base": "v077-object-role-layer",
   "data_version": "v125-r0001",
   "object_count": 617,
@@ -42,9 +42,10 @@
   "museum_interaction": "category headers expand/collapse natively; right click returns by layer and closes image preview first; expanded category lists and item details retain vertical wheel reading",
   "scripture_pages": "18 full content pages with chapter navigation and right-click return; content links remain connected to object detail and map filtering",
   "safe_import_policy": "审核正文指纹仍为硬校验；完整目标指纹变化时仅在名称、经篇、类型唯一匹配后允许补充，并显示警告；不修改坐标、名称、经篇、类型、几何或对象数量",
-  "release_scope": "v1.0.3 整合更新：冲突内容对照、图片图库自动保存、精细地图对象卡主题缩略图",
+  "release_scope": "v1.0.4 冲突只显示实际地块内容，并支持多选字段统一保留或替换",
   "dossier_topic_scope": "global owner-scoped section-06 entries; sibling subjects are navigation/relations only",
   "batch_patch": "v1.0.1 field-level three-way merge with readable local/incoming value comparison and per-field manual resolution",
   "gallery_autosave": "v1.0.2 immediate persistence for add/delete/primary changes and debounced persistence for image metadata",
-  "precision_card_images": "v1.0.3 object primary image thumbnail and full-image preview in precision map cards"
+  "precision_card_images": "v1.0.3 object primary image thumbnail and full-image preview in precision map cards",
+  "conflict_content_bulk": "v1.0.4 metadata-free content previews with multi-select bulk resolution"
 }

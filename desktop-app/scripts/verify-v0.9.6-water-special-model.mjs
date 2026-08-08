@@ -29,7 +29,7 @@ for (const path of ["public/app/app.js", "dist/app/app.js"]) {
     'displayMode:"water-point"',
     'candidateCircle:true',
   ]) assert.ok(app.includes(marker), `${path} 缺少水体转换标记：${marker}`);
-  assert.ok(app.includes('window.__SHJ_APP_RUNTIME_INFO__={version:"1.0.3"'), `${path} 运行版本未同步`);
+  assert.ok(app.includes('window.__SHJ_APP_RUNTIME_INFO__={version:"1.0.4"'), `${path} 运行版本未同步`);
   assert.ok(app.includes('waterDisplay:"special-model-audited-dossier-and-render-tiers"'), `${path} 缺少水系特殊模型运行标记`);
 }
 for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
