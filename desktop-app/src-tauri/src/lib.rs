@@ -17,6 +17,8 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 use tokio::time::sleep;
 use url::Url;
 
+mod github_auth;
+
 const APP_SCHEMA_VERSION: i64 = 1;
 const AUTO_BACKUP_MINUTES: i64 = 60;
 const MAX_AUTO_BACKUPS: usize = 48;
@@ -429,15 +431,23 @@ fn publish_patch_blocking(
 
 #[tauri::command]
 async fn publish_patch_to_github(
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
     repo_path: Option<String>,
     file_name: String,
     content: String,
     assets: Vec<PublishAssetInput>,
     commit_message: String,
 ) -> Result<PublishPatchResponse, String> {
-    tauri::async_runtime::spawn_blocking(move || publish_patch_blocking(repo_path, file_name, content, assets, commit_message))
-        .await
-        .map_err(|error| format!("自动上传任务异常：{error}"))?
+    github_auth::require_authorized_session(&github_state)?;
+    let _ = (repo_path, file_name, content, assets, commit_message);
+    Err("安全保护：旧版更改包会写入 a58293/SHmap 公共仓库，私有数据迁移期间已暂停自动上传。下一阶段将改为写入 SHmap-Data。".to_string())
+}
+
+#[tauri::command]
+async fn load_private_map_bundle(
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+) -> Result<github_auth::PrivateMapBundleResponse, String> {
+    github_auth::load_private_map_bundle(&github_state).await
 }
 
 fn initialize_database(path: &Path) -> Result<(), String> {
@@ -509,7 +519,13 @@ fn should_auto_backup(conn: &Connection, payload_hash: &str) -> Result<bool, Str
 }
 
 #[tauri::command]
-fn bootstrap_workspace(state: tauri::State<'_, AppState>, legacy_snapshot: Option<String>, seed_snapshot: String) -> Result<BootstrapResponse, String> {
+fn bootstrap_workspace(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+    legacy_snapshot: Option<String>,
+    seed_snapshot: String,
+) -> Result<BootstrapResponse, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
     if let Some(payload) = current_payload(&conn)? {
@@ -518,7 +534,7 @@ fn bootstrap_workspace(state: tauri::State<'_, AppState>, legacy_snapshot: Optio
     }
     let (payload, source) = match legacy_snapshot.filter(|s| !s.trim().is_empty()) {
         Some(v) if parse_payload(&v).is_ok() => (v, "legacy-cache"),
-        _ => (seed_snapshot, "v075-seed"),
+        _ => (seed_snapshot, "private-repo-seed"),
     };
     let parsed = parse_payload(&payload)?;
     let now = now_text();
@@ -530,7 +546,12 @@ fn bootstrap_workspace(state: tauri::State<'_, AppState>, legacy_snapshot: Optio
 }
 
 #[tauri::command]
-fn save_workspace(state: tauri::State<'_, AppState>, payload: String) -> Result<SaveResponse, String> {
+fn save_workspace(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+    payload: String,
+) -> Result<SaveResponse, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let parsed = parse_payload(&payload)?;
     let hash = hash_payload(&payload);
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
@@ -545,7 +566,12 @@ fn save_workspace(state: tauri::State<'_, AppState>, payload: String) -> Result<
 }
 
 #[tauri::command]
-fn create_backup(state: tauri::State<'_, AppState>, label: Option<String>) -> Result<BackupSummary, String> {
+fn create_backup(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+    label: Option<String>,
+) -> Result<BackupSummary, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
     let payload = current_payload(&conn)?.ok_or_else(|| "当前工作区尚未建立".to_string())?;
@@ -557,7 +583,12 @@ fn create_backup(state: tauri::State<'_, AppState>, label: Option<String>) -> Re
 }
 
 #[tauri::command]
-fn list_backups(state: tauri::State<'_, AppState>, limit: Option<u32>) -> Result<Vec<BackupSummary>, String> {
+fn list_backups(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+    limit: Option<u32>,
+) -> Result<Vec<BackupSummary>, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
     let mut stmt = conn.prepare("SELECT backup_id,created_at,label,kind,object_count,payload_sha256 FROM backups ORDER BY backup_id DESC LIMIT ?1").map_err(|e| e.to_string())?;
@@ -566,7 +597,12 @@ fn list_backups(state: tauri::State<'_, AppState>, limit: Option<u32>) -> Result
 }
 
 #[tauri::command]
-fn restore_backup(state: tauri::State<'_, AppState>, backup_id: i64) -> Result<RestoreResponse, String> {
+fn restore_backup(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+    backup_id: i64,
+) -> Result<RestoreResponse, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
     let target: String = conn.query_row("SELECT payload FROM backups WHERE backup_id=?1", [backup_id], |r| r.get(0)).map_err(|e| format!("未找到该备份：{e}"))?;
@@ -582,7 +618,11 @@ fn restore_backup(state: tauri::State<'_, AppState>, backup_id: i64) -> Result<R
 }
 
 #[tauri::command]
-fn storage_status(state: tauri::State<'_, AppState>) -> Result<StorageStatus, String> {
+fn storage_status(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+) -> Result<StorageStatus, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
     let current: Option<(String,i64)> = conn.query_row("SELECT updated_at,object_count FROM current_workspace WHERE singleton_id=1", [], |r| Ok((r.get(0)?,r.get(1)?))).optional().map_err(|e| e.to_string())?;
@@ -591,7 +631,11 @@ fn storage_status(state: tauri::State<'_, AppState>) -> Result<StorageStatus, St
 }
 
 #[tauri::command]
-fn check_database(state: tauri::State<'_, AppState>) -> Result<CheckResult, String> {
+fn check_database(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+) -> Result<CheckResult, String> {
+    github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
     let result: String = conn.query_row("PRAGMA quick_check", [], |r| r.get(0)).map_err(|e| e.to_string())?;
@@ -599,7 +643,11 @@ fn check_database(state: tauri::State<'_, AppState>) -> Result<CheckResult, Stri
 }
 
 #[tauri::command]
-fn open_data_directory(state: tauri::State<'_, AppState>) -> Result<(), String> {
+fn open_data_directory(
+    state: tauri::State<'_, AppState>,
+    github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+) -> Result<(), String> {
+    github_auth::require_authorized_session(&github_state)?;
     #[cfg(target_os = "windows")]
     { Command::new("explorer").arg(state.database_path.parent().unwrap_or(&state.backup_dir)).spawn().map_err(|e| format!("打开目录失败：{e}"))?; }
     #[cfg(target_os = "macos")]
@@ -755,10 +803,31 @@ pub fn run() {
             let database_path = data_dir.join("shmap.db");
             initialize_database(&database_path).map_err(std::io::Error::other)?;
             app.manage(AppState{database_path,backup_dir,operation_lock:Mutex::new(())});
+            app.manage(github_auth::GitHubAuthState::new().map_err(std::io::Error::other)?);
             app.manage(PendingUpdate(Mutex::new(None)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![bootstrap_workspace,save_workspace,create_backup,list_backups,restore_backup,storage_status,check_database,open_data_directory,app_version,publish_patch_to_github,check_for_update,install_update])
+        .invoke_handler(tauri::generate_handler![
+            load_private_map_bundle,
+            bootstrap_workspace,
+            save_workspace,
+            create_backup,
+            list_backups,
+            restore_backup,
+            storage_status,
+            check_database,
+            open_data_directory,
+            app_version,
+            publish_patch_to_github,
+            check_for_update,
+            install_update,
+            github_auth::github_auth_status,
+            github_auth::github_begin_device_flow,
+            github_auth::github_complete_device_flow,
+            github_auth::github_logout,
+            github_auth::open_github_device_page,
+            github_auth::github_auth_configuration
+        ])
         .run(tauri::generate_context!())
         .expect("山海经原典地图研究台启动失败");
 }

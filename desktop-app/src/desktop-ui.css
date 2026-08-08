@@ -54,3 +54,68 @@ html.desktop-shell body{overscroll-behavior:none}
   color:#fffdf4;
   cursor:pointer;
 }
+
+/* GitHub 私有地图访问锁：认证完成前不初始化地图工作区。 */
+body.desktop-auth-locked{overflow:hidden}
+.desktop-auth-gate{
+  position:fixed;
+  inset:0;
+  z-index:40000;
+  display:grid;
+  place-items:center;
+  padding:28px;
+  color:#173f38;
+  font-family:"Noto Serif SC","Songti SC",serif;
+  opacity:1;
+  transition:opacity .2s ease;
+}
+.desktop-auth-gate.authorized{opacity:0;pointer-events:none}
+.desktop-auth-backdrop{
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 15%,rgba(190,158,91,.18),transparent 31%),
+    linear-gradient(145deg,#0c3d35 0%,#174f43 52%,#0b302a 100%);
+}
+.desktop-auth-backdrop::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  opacity:.16;
+  background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:42px 42px;
+}
+.desktop-auth-card{
+  position:relative;
+  width:min(650px,calc(100vw - 40px));
+  max-height:calc(100vh - 48px);
+  overflow:auto;
+  padding:30px;
+  border:1px solid rgba(218,196,143,.9);
+  border-radius:22px;
+  background:#fbf7ec;
+  box-shadow:0 28px 80px rgba(0,20,17,.38);
+}
+.desktop-auth-brand{display:flex;align-items:center;gap:14px;padding-bottom:22px;border-bottom:1px solid #d9caa8}
+.desktop-auth-brand>span{display:grid;place-items:center;width:54px;height:54px;border:1px solid #b68b43;background:#fffaf0;color:#915733;font-size:18px;font-weight:800;letter-spacing:.15em}
+.desktop-auth-brand div{display:grid;gap:2px}
+.desktop-auth-brand small,.desktop-auth-copy .eyebrow{font:700 11px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.18em;color:#a06f39}
+.desktop-auth-brand strong{font-size:21px}
+.desktop-auth-copy{padding:26px 0 12px}
+.desktop-auth-copy h1{margin:7px 0 10px;font-size:34px;line-height:1.2;color:#103e36}
+.desktop-auth-copy p{margin:0;color:#52645e;font-size:15px;line-height:1.8}
+.desktop-auth-status{margin:12px 0 18px;padding:13px 15px;border:1px solid #b8cec4;border-radius:11px;background:#edf5f0;color:#285f54;font-size:14px;line-height:1.55}
+.desktop-auth-status[data-type="warning"]{border-color:#dcc07a;background:#fff7df;color:#765323}
+.desktop-auth-status[data-type="error"]{border-color:#e0a498;background:#fff0ec;color:#923c31}
+.desktop-auth-code{display:grid;justify-items:center;gap:13px;margin:0 0 18px;padding:20px;border:1px solid #cbb98d;border-radius:14px;background:#fffdf6}
+.desktop-auth-code.hidden,.desktop-auth-actions .hidden{display:none!important}
+.desktop-auth-code p,.desktop-auth-code small{margin:0;color:#596862}
+.desktop-auth-user-code{padding:10px 20px;border:1px dashed #a77a31;border-radius:10px;background:#f8efd9;color:#174c42;font:800 28px/1.1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.18em;cursor:pointer}
+.desktop-auth-code-actions,.desktop-auth-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.desktop-auth-card button{min-height:42px;padding:9px 16px;border:1px solid #bda97d;border-radius:9px;background:#fffaf0;color:#244b43;font:700 14px/1.2 inherit;cursor:pointer}
+.desktop-auth-card button.primary,.desktop-auth-code-actions button:first-child{border-color:#205e51;background:#155548;color:#fffdf6;box-shadow:0 6px 14px rgba(18,72,61,.18)}
+.desktop-auth-card button:disabled{opacity:.55;cursor:wait}
+.desktop-auth-actions{padding:2px 0 20px}
+.desktop-auth-card footer{display:flex;flex-wrap:wrap;gap:8px 16px;padding-top:18px;border-top:1px solid #ded2b8;color:#65746e;font-size:12px}
+.desktop-github-account{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:620px){.desktop-auth-card{padding:22px}.desktop-auth-copy h1{font-size:27px}.desktop-auth-card footer{display:grid}.desktop-auth-code-actions,.desktop-auth-actions{display:grid}.desktop-auth-card button{width:100%}}

@@ -13,9 +13,11 @@ let nativeStorageReady = !isTauri;
 let startupFallback = false;
 let bootstrapRecoveryTask = null;
 const BOOTSTRAP_TIMEOUT_MS = 8000;
+const PRIVATE_DATA_TIMEOUT_MS = 20000;
 const MAIN_SCRIPT_TIMEOUT_MS = 8000;
 const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
+const AUTH_REPOSITORY = "a58293/SHmap-Data";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -25,6 +27,20 @@ function seedSnapshot(){
     dataVersion:initial.metadata?.dataVersion||"v075-r0001",camera:{x:0,y:0,zoom:.92},selectedId:objects[0]?.id||null,
     selectedCell:null,tileProfiles:{},trash:[],trashRetentionDays:0,nextIdCounter:0,dossierMode:"brief",brushKeys:[],brushStrokes:[],viewPreset:"all",compareKeys:[]
   };
+}
+
+function hydratePrivateMapBundle(payload){
+  const bundle=typeof payload==="string"?JSON.parse(payload):payload;
+  if(bundle?.format!=="shmap-private-bootstrap-v1")throw new Error("私有地图数据格式不受支持");
+  const globals=bundle?.globals;
+  if(!globals||typeof globals!=="object")throw new Error("私有地图数据缺少 globals");
+  const required=["SHJ_INITIAL_DATA","SHJ_WATER_PATHS","SHJ_WORLD_HIERARCHY","SHJ_ORIGINAL_LIBRARY","SHJ_SPEC_SUMMARY"];
+  for(const name of required){
+    if(!(name in globals))throw new Error(`私有地图数据缺少 ${name}`);
+    window[name]=globals[name];
+  }
+  if(!Array.isArray(window.SHJ_INITIAL_DATA?.objects)||window.SHJ_INITIAL_DATA.objects.length===0)throw new Error("私有地图对象为空");
+  return bundle;
 }
 function toast(message,error=false){
   const n=document.createElement("div");n.className=`desktop-toast${error?" error":""}`;n.textContent=message;document.body.appendChild(n);setTimeout(()=>n.remove(),3200)
@@ -44,6 +60,68 @@ function queueSave(payload){
 }
 function formatTime(value){try{return new Intl.DateTimeFormat("zh-CN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value||""}}
 function escapeHtml(v){return String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+function authGateTemplate(){
+  return `<div class="desktop-auth-backdrop"></div>
+    <main class="desktop-auth-card" role="dialog" aria-modal="true" aria-labelledby="desktopAuthTitle">
+      <div class="desktop-auth-brand"><span>山海</span><div><small>SHMAP SECURE ACCESS</small><strong>山海经原典地图</strong></div></div>
+      <section class="desktop-auth-copy"><span class="eyebrow">PRIVATE MAP ACCESS</span><h1 id="desktopAuthTitle">登录后查看正式地图</h1><p>使用你自己的 GitHub 账号登录。只有获得 <b>${AUTH_REPOSITORY}</b> 私有仓库权限的成员才能进入。</p></section>
+      <div class="desktop-auth-status" id="desktopAuthStatus">正在检查本机登录状态……</div>
+      <section class="desktop-auth-code hidden" id="desktopAuthCodePanel">
+        <p>浏览器打开后，输入以下一次性验证码：</p>
+        <button type="button" class="desktop-auth-user-code" id="desktopAuthUserCode" title="点击复制验证码">----</button>
+        <div class="desktop-auth-code-actions"><button type="button" id="desktopAuthOpenBrowser">打开 GitHub 登录页</button><button type="button" class="secondary" id="desktopAuthCopyCode">复制验证码</button></div>
+        <small>正在等待你在 GitHub 完成确认。请不要关闭程序。</small>
+      </section>
+      <div class="desktop-auth-actions"><button type="button" class="primary" id="desktopAuthLogin">使用 GitHub 登录</button><button type="button" class="secondary hidden" id="desktopAuthRetry">重新检查权限</button><button type="button" class="secondary hidden" id="desktopAuthSwitch">切换 GitHub 账号</button></div>
+      <footer><span>✓ 客户端不保存你的密码</span><span>✓ 不使用共享 Token</span><span>✓ 权限由私有仓库控制</span></footer>
+    </main>`;
+}
+
+function createAuthGate(){
+  let gate=document.querySelector("#desktopAuthGate");
+  if(gate)return gate;
+  gate=document.createElement("section");gate.id="desktopAuthGate";gate.className="desktop-auth-gate";gate.innerHTML=authGateTemplate();document.body.appendChild(gate);return gate
+}
+
+function setAuthGateMessage(gate,message,type="info"){
+  const host=gate.querySelector("#desktopAuthStatus");if(!host)return;host.textContent=message;host.dataset.type=type
+}
+
+async function copyAuthCode(value){
+  try{await navigator.clipboard.writeText(value);return true}catch{return false}
+}
+
+async function ensureGitHubAccess(){
+  document.body.classList.add("desktop-auth-locked");
+  const gate=createAuthGate(),login=gate.querySelector("#desktopAuthLogin"),retry=gate.querySelector("#desktopAuthRetry"),switchAccount=gate.querySelector("#desktopAuthSwitch"),codePanel=gate.querySelector("#desktopAuthCodePanel"),userCode=gate.querySelector("#desktopAuthUserCode"),openBrowser=gate.querySelector("#desktopAuthOpenBrowser"),copyCode=gate.querySelector("#desktopAuthCopyCode");
+  if(!isTauri){login.classList.add("hidden");setAuthGateMessage(gate,"正式地图只允许在 SHmap 桌面客户端中通过 GitHub 授权访问。","warning");return new Promise(()=>{})}
+  let currentCode="",verificationUri="https://github.com/login/device",resolved=false,resolver;
+  const waiting=new Promise(resolve=>{resolver=resolve});
+  const finish=status=>{if(resolved)return;resolved=true;document.body.classList.remove("desktop-auth-locked");gate.classList.add("authorized");setTimeout(()=>gate.remove(),220);resolver(status)};
+  const showStatus=status=>{
+    if(status?.authorized){finish(status);return}
+    const account=status?.login?`当前账号 ${status.login}：`:"";setAuthGateMessage(gate,`${account}${status?.message||"尚未登录"}`,status?.signedIn?"warning":"info");
+    login.classList.toggle("hidden",Boolean(status?.signedIn));retry.classList.toggle("hidden",!status?.signedIn);switchAccount.classList.toggle("hidden",!status?.signedIn)
+  };
+  const check=async()=>{
+    login.disabled=true;retry.disabled=true;setAuthGateMessage(gate,"正在验证 GitHub 账号与私有仓库权限……");
+    try{showStatus(await invoke("github_auth_status"))}catch(error){setAuthGateMessage(gate,`暂时无法完成权限检查：${String(error)}`,"error");retry.classList.remove("hidden")}
+    finally{login.disabled=false;retry.disabled=false}
+  };
+  const startLogin=async()=>{
+    login.disabled=true;retry.classList.add("hidden");switchAccount.classList.add("hidden");codePanel.classList.add("hidden");setAuthGateMessage(gate,"正在向 GitHub 申请一次性登录验证码……");
+    try{
+      const flow=await invoke("github_begin_device_flow");currentCode=flow.userCode;verificationUri=flow.verificationUri;userCode.textContent=currentCode;codePanel.classList.remove("hidden");setAuthGateMessage(gate,"请在浏览器中登录 GitHub，并输入一次性验证码。");
+      try{await invoke("open_github_device_page",{url:verificationUri})}catch{}
+      showStatus(await invoke("github_complete_device_flow"))
+    }catch(error){setAuthGateMessage(gate,String(error),"error");login.disabled=false;login.textContent="重新开始 GitHub 登录";login.classList.remove("hidden")}
+  };
+  login.addEventListener("click",startLogin);retry.addEventListener("click",check);switchAccount.addEventListener("click",async()=>{try{await invoke("github_logout")}finally{codePanel.classList.add("hidden");login.classList.remove("hidden");retry.classList.add("hidden");switchAccount.classList.add("hidden");setAuthGateMessage(gate,"本机 GitHub 登录已退出，可以使用其他授权账号重新登录。");}});
+  const open=()=>invoke("open_github_device_page",{url:verificationUri}).catch(error=>setAuthGateMessage(gate,String(error),"error"));openBrowser.addEventListener("click",open);userCode.addEventListener("click",async()=>{if(await copyAuthCode(currentCode))setAuthGateMessage(gate,"验证码已复制，请在 GitHub 页面粘贴。")} );copyCode.addEventListener("click",async()=>{if(await copyAuthCode(currentCode))setAuthGateMessage(gate,"验证码已复制，请在 GitHub 页面粘贴。")} );
+  await check();
+  return waiting;
+}
 
 function renderReleaseNotes(value){
   const lines=String(value||"本次更新未填写说明。").replace(/\r\n?/g,"\n").split("\n");
@@ -187,6 +265,11 @@ function setupNativeUi(){
   document.documentElement.classList.add("desktop-shell");
   const actions=document.querySelector(".top-actions");
   if(!actions)return;
+  const auth=window.SHJ_DESKTOP?.githubAuth;
+  if(auth?.login){
+    const account=document.createElement("button");account.className="btn secondary desktop-github-account";account.textContent=`GitHub · ${auth.login}`;account.title=`已验证 ${auth.repository}${auth.canWrite?" · 可读写":" · 只读"}；点击退出登录`;
+    account.addEventListener("click",async()=>{if(!confirm(`退出 GitHub 账号 ${auth.login}？退出后需要重新验证才能查看正式地图。`))return;try{await invoke("github_logout");location.reload()}catch(error){toast(`退出失败：${error}`,true)}});actions.prepend(account)
+  }
   const button=document.createElement("button");button.id="desktopBackupBtn";button.className="btn secondary desktop-native-btn";button.textContent="桌面备份";
   const updateButton=document.createElement("button");updateButton.id="desktopUpdateBtn";updateButton.className="btn secondary desktop-update-btn";updateButton.textContent="检查更新";
   actions.prepend(button);actions.prepend(updateButton);
@@ -251,9 +334,19 @@ async function loadMainScript(){
   }
 }
 async function start(){
+  updateStartupStatus("正在验证 GitHub 地图访问权限……");
+  const githubAuth=await ensureGitHubAccess();
+  let privateMapInfo=null;
   if(isTauri){
+    updateStartupStatus("正在从 SHmap-Data 私有仓库读取正式地图……");
+    privateMapInfo=await promiseWithTimeout(
+      invoke("load_private_map_bundle"),
+      PRIVATE_DATA_TIMEOUT_MS,
+      "私有地图数据读取超过20秒"
+    );
+    hydratePrivateMapBundle(privateMapInfo?.payload);
     const legacy=localStorage.getItem(STORAGE_KEY),seed=JSON.stringify(seedSnapshot());
-    updateStartupStatus("正在读取桌面数据库……");
+    updateStartupStatus(`已验证私有地图 ${privateMapInfo?.dataVersion||""}，正在读取桌面数据库……`);
     const task=invoke("bootstrap_workspace",{legacySnapshot:legacy,seedSnapshot:seed});
     bootstrapRecoveryTask=task;
     try{
@@ -264,7 +357,7 @@ async function start(){
       startupFallback=true;nativeStorageReady=false;
       const fallback=usableWorkspaceSnapshot(legacy)?legacy:seed;
       localStorage.setItem(STORAGE_KEY,fallback);
-      bootInfo={source:usableWorkspaceSnapshot(legacy)?"local-cache-fallback":"built-in-seed-fallback",snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
+      bootInfo={source:usableWorkspaceSnapshot(legacy)?"local-cache-fallback":"private-repo-seed-fallback",snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
       console.error("桌面数据库启动降级",error);
       updateStartupStatus("数据库响应较慢，正在使用本地缓存启动……");
       task.then(info=>{
@@ -277,7 +370,7 @@ async function start(){
       })
     }
   }
-  window.SHJ_DESKTOP={active:isTauri&&nativeStorageReady&&!startupFallback,recoveryMode:startupFallback,databaseRecovered:false,saveWorkspace:queueSave,flush:flushWorkspace,createBackup:async label=>{await flushWorkspace();return invoke("create_backup",{label:label||"手动备份"})},bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
+  window.SHJ_DESKTOP={active:isTauri&&nativeStorageReady&&!startupFallback,recoveryMode:startupFallback,databaseRecovered:false,githubAuth,privateMapInfo:privateMapInfo?{dataVersion:privateMapInfo.dataVersion,objectCount:privateMapInfo.objectCount,sha256:privateMapInfo.sha256}:null,saveWorkspace:queueSave,flush:flushWorkspace,createBackup:async label=>{await flushWorkspace();return invoke("create_backup",{label:label||"手动备份"})},bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
   await loadMainScript();
   setupNativeUi();
   if(startupFallback){
