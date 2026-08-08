@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    env,
     fs,
     path::{Path, PathBuf},
     process::Command,
@@ -164,115 +163,6 @@ fn open_connection(path: &Path) -> Result<Connection, String> {
     Ok(conn)
 }
 
-fn repo_root_from(path: &Path) -> Option<PathBuf> {
-    let mut cursor = if path.is_file() { path.parent()?.to_path_buf() } else { path.to_path_buf() };
-    loop {
-        if cursor.join(".git").exists() { return Some(cursor); }
-        if !cursor.pop() { break; }
-    }
-    None
-}
-
-fn find_repo_root(repo_path: Option<String>) -> Result<PathBuf, String> {
-    let mut candidates = Vec::<PathBuf>::new();
-    if let Some(value) = repo_path.filter(|value| !value.trim().is_empty()) {
-        candidates.push(PathBuf::from(value.trim()));
-    }
-    if let Ok(value) = env::var("SHMAP_REPO_DIR") {
-        if !value.trim().is_empty() { candidates.push(PathBuf::from(value)); }
-    }
-    if let Ok(value) = env::current_dir() { candidates.push(value); }
-    if let Ok(value) = env::current_exe() {
-        if let Some(parent) = value.parent() { candidates.push(parent.to_path_buf()); }
-    }
-    #[cfg(target_os = "windows")]
-    for drive in b'C'..=b'Z' {
-        candidates.push(PathBuf::from(format!("{}:\\SHmap\\SHmap", drive as char)));
-    }
-    for candidate in candidates {
-        if let Some(root) = repo_root_from(&candidate) {
-            return Ok(root.canonicalize().unwrap_or(root));
-        }
-    }
-    Err("PUBLISH_REPO_REQUIRED::未找到本地 SHmap Git 仓库。请在弹出的输入框中填写仓库根目录，例如 F:\\SHmap\\SHmap。".to_string())
-}
-
-fn git_works(executable: &Path) -> bool {
-    Command::new(executable)
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
-fn find_git_executable() -> Result<PathBuf, String> {
-    let command = PathBuf::from("git");
-    if git_works(&command) { return Ok(command); }
-
-    let mut candidates = Vec::<PathBuf>::new();
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(local) = env::var("LOCALAPPDATA") {
-            let desktop_root = PathBuf::from(local).join("GitHubDesktop");
-            if let Ok(entries) = fs::read_dir(desktop_root) {
-                let mut app_dirs = entries.flatten()
-                    .filter(|entry| entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false))
-                    .filter(|entry| entry.file_name().to_string_lossy().starts_with("app-"))
-                    .map(|entry| entry.path())
-                    .collect::<Vec<_>>();
-                app_dirs.sort_by(|a, b| fs::metadata(b).and_then(|meta| meta.modified()).ok().cmp(&fs::metadata(a).and_then(|meta| meta.modified()).ok()));
-                for app_dir in app_dirs {
-                    candidates.push(app_dir.join("resources").join("app").join("git").join("cmd").join("git.exe"));
-                    candidates.push(app_dir.join("resources").join("app").join("git").join("mingw64").join("bin").join("git.exe"));
-                }
-            }
-        }
-        for key in ["ProgramFiles", "ProgramFiles(x86)"] {
-            if let Ok(root) = env::var(key) {
-                candidates.push(PathBuf::from(root).join("Git").join("cmd").join("git.exe"));
-            }
-        }
-    }
-    for candidate in candidates {
-        if candidate.exists() && git_works(&candidate) { return Ok(candidate); }
-    }
-    Err("未找到 Git。请安装 Git，或先安装并登录 GitHub Desktop。".to_string())
-}
-
-fn run_git(git: &Path, repo: &Path, args: &[String]) -> Result<String, String> {
-    let output = Command::new(git)
-        .args(args)
-        .current_dir(repo)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GCM_INTERACTIVE", "never")
-        .output()
-        .map_err(|error| format!("无法启动 Git：{error}"))?;
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    if output.status.success() { return Ok(stdout); }
-    let command = args.join(" ");
-    let detail = if stderr.is_empty() { stdout } else { stderr };
-    Err(format!("Git 命令失败（git {command}）：{detail}"))
-}
-
-fn git_args(values: &[&str]) -> Vec<String> { values.iter().map(|value| (*value).to_string()).collect() }
-
-fn run_git_network(git: &Path, repo: &Path, operation: &[&str]) -> Result<String, String> {
-    let mut args = git_args(&["-c", "http.version=HTTP/1.1", "-c", "http.lowSpeedLimit=1", "-c", "http.lowSpeedTime=30"]);
-    args.extend(operation.iter().map(|value| (*value).to_string()));
-    let mut failures = Vec::new();
-    for attempt in 1..=2 {
-        match run_git(git, repo, &args) {
-            Ok(value) => return Ok(value),
-            Err(error) => {
-                failures.push(format!("第{attempt}次：{error}"));
-                if attempt < 2 { std::thread::sleep(Duration::from_millis(900 * attempt as u64)); }
-            }
-        }
-    }
-    Err(format!("GitHub 网络操作已重试3次仍失败：{}", failures.join("；")))
-}
-
 fn validate_patch_file(file_name: &str, content: &str) -> Result<Value, String> {
     let path = Path::new(file_name);
     if file_name.trim().is_empty()
@@ -322,113 +212,6 @@ fn validate_publish_assets(assets: &[PublishAssetInput]) -> Result<(), String> {
     Ok(())
 }
 
-fn parse_ahead_behind(value: &str) -> Result<(usize, usize), String> {
-    let parts = value.split_whitespace().collect::<Vec<_>>();
-    if parts.len() != 2 { return Err(format!("无法解析 Git 同步状态：{value}")); }
-    let behind = parts[0].parse::<usize>().map_err(|_| format!("无法解析落后提交数：{value}"))?;
-    let ahead = parts[1].parse::<usize>().map_err(|_| format!("无法解析领先提交数：{value}"))?;
-    Ok((behind, ahead))
-}
-
-fn publish_patch_blocking(
-    repo_path: Option<String>,
-    file_name: String,
-    content: String,
-    assets: Vec<PublishAssetInput>,
-    commit_message: String,
-) -> Result<PublishPatchResponse, String> {
-    let _payload = validate_patch_file(&file_name, &content)?;
-    let assets = decode_publish_assets(assets)?;
-    validate_publish_assets(&assets)?;
-    let repo = find_repo_root(repo_path)?;
-    let git = find_git_executable()?;
-
-    let remote = run_git(&git, &repo, &git_args(&["remote", "get-url", "origin"]))?;
-    let normalized_remote = remote.to_ascii_lowercase().replace('\\', "/");
-    if !normalized_remote.contains("github.com") || !normalized_remote.contains("a58293/shmap") {
-        return Err(format!("当前仓库 origin 不是 a58293/SHmap：{remote}"));
-    }
-    let branch = run_git(&git, &repo, &git_args(&["branch", "--show-current"]))?;
-    if branch.trim() != "main" {
-        return Err(format!("当前 Git 分支是 {branch}。请先在 GitHub Desktop 切换到 main。"));
-    }
-
-    let relative_path = format!("submissions/pending/{file_name}");
-    let asset_paths = assets.iter().map(|asset| format!("submissions/assets/{}", asset.file_name)).collect::<Vec<_>>();
-    let mut publish_paths = vec![relative_path.clone()];
-    publish_paths.extend(asset_paths.iter().cloned());
-    run_git_network(&git, &repo, &["fetch", "origin", "main"])?;
-    let counts = run_git(&git, &repo, &git_args(&["rev-list", "--left-right", "--count", "origin/main...HEAD"]))?;
-    let (mut behind, ahead) = parse_ahead_behind(&counts)?;
-    if behind > 0 && ahead == 0 {
-        run_git_network(&git, &repo, &["pull", "--ff-only", "origin", "main"])?;
-        behind = 0;
-    }
-    if behind > 0 && ahead > 0 {
-        return Err("本地 main 与 GitHub main 已产生分叉。请先在 GitHub Desktop 中处理同步冲突，再重试上传。".to_string());
-    }
-    if ahead > 0 {
-        let ahead_files = run_git(&git, &repo, &git_args(&["-c", "core.quotepath=false", "diff", "--name-only", "origin/main..HEAD"]))?;
-        let only_this_submission = ahead_files.lines().filter(|line| !line.trim().is_empty()).all(|line| publish_paths.contains(&line.trim().replace('\\', "/")));
-        if !only_this_submission {
-            return Err("本地存在尚未推送的其他代码提交。请先在 GitHub Desktop 点击 Push origin，再重新完成本轮编辑。".to_string());
-        }
-    }
-
-    let destination = repo.join("submissions").join("pending").join(&file_name);
-    let parent = destination.parent().ok_or_else(|| "无法建立更改包目录".to_string())?;
-    fs::create_dir_all(parent).map_err(|error| format!("无法创建 submissions/pending：{error}"))?;
-    let temporary = destination.with_extension("shjpatch.tmp");
-    fs::write(&temporary, content.as_bytes()).map_err(|error| format!("无法写入临时更改包：{error}"))?;
-    if destination.exists() { fs::remove_file(&destination).map_err(|error| format!("无法替换旧更改包：{error}"))?; }
-    fs::rename(&temporary, &destination).map_err(|error| format!("无法保存更改包：{error}"))?;
-
-    let asset_dir = repo.join("submissions").join("assets");
-    fs::create_dir_all(&asset_dir).map_err(|error| format!("无法创建 submissions/assets：{error}"))?;
-    for asset in &assets {
-        let asset_destination = asset_dir.join(&asset.file_name);
-        if asset_destination.exists() {
-            let existing = fs::read(&asset_destination).map_err(|error| format!("无法读取已有图片资源：{error}"))?;
-            if existing != asset.bytes { return Err(format!("同名图片资源内容不一致：{}", asset.file_name)); }
-            continue;
-        }
-        let asset_temporary = asset_destination.with_extension(format!("{}.tmp", asset_destination.extension().and_then(|value| value.to_str()).unwrap_or("image")));
-        fs::write(&asset_temporary, &asset.bytes).map_err(|error| format!("无法写入临时图片资源：{error}"))?;
-        fs::rename(&asset_temporary, &asset_destination).map_err(|error| format!("无法保存图片资源：{error}"))?;
-    }
-
-    let mut status_args = vec!["status".into(), "--porcelain".into(), "--".into()];
-    status_args.extend(publish_paths.iter().cloned());
-    let status = run_git(&git, &repo, &status_args)?;
-    if !status.trim().is_empty() {
-        let mut add_args = vec!["add".into(), "--".into()];
-        add_args.extend(publish_paths.iter().cloned());
-        run_git(&git, &repo, &add_args)?;
-        let message = commit_message.replace('\r', " ").replace('\n', " ").trim().chars().take(180).collect::<String>();
-        let message = if message.is_empty() { format!("data: 发布 {file_name}") } else { message };
-        let mut commit_args = vec![
-            "-c".into(), "user.name=SHmap Desktop".into(),
-            "-c".into(), "user.email=shmap-desktop@users.noreply.github.com".into(),
-            "commit".into(), "--only".into(), "--no-verify".into(), "-m".into(), message,
-            "--".into(),
-        ];
-        commit_args.extend(publish_paths.iter().cloned());
-        run_git(&git, &repo, &commit_args)?;
-    }
-
-    let commit = run_git(&git, &repo, &git_args(&["rev-parse", "--short=12", "HEAD"]))?;
-    run_git_network(&git, &repo, &["push", "origin", "HEAD:main"])
-        .map_err(|error| format!("{error}。更改包已保留在本地提交中；恢复网络或 GitHub 登录后可直接点击“重试上传”。"))?;
-
-    Ok(PublishPatchResponse {
-        repo_path: repo.to_string_lossy().into_owned(),
-        remote_path: relative_path,
-        commit,
-        pushed_at: now_text(),
-        asset_count: assets.len(),
-    })
-}
-
 #[tauri::command]
 async fn publish_patch_to_github(
     github_state: tauri::State<'_, github_auth::GitHubAuthState>,
@@ -439,8 +222,37 @@ async fn publish_patch_to_github(
     commit_message: String,
 ) -> Result<PublishPatchResponse, String> {
     github_auth::require_authorized_session(&github_state)?;
-    let _ = (repo_path, file_name, content, assets, commit_message);
-    Err("安全保护：旧版更改包会写入 a58293/SHmap 公共仓库，私有数据迁移期间已暂停自动上传。下一阶段将改为写入 SHmap-Data。".to_string())
+    let _payload = validate_patch_file(&file_name, &content)?;
+    let assets = decode_publish_assets(assets)?;
+    validate_publish_assets(&assets)?;
+
+    // Stage3: repo_path 仅为兼容旧前端调用保留，不再读取本地 Git 仓库。
+    // 更改包与图片全部使用当前登录用户的 GitHub 凭据写入私有 SHmap-Data。
+    let _ = repo_path;
+    let publish_assets = assets
+        .into_iter()
+        .map(|asset| github_auth::PrivatePublishAsset {
+            file_name: asset.file_name,
+            bytes: asset.bytes,
+        })
+        .collect::<Vec<_>>();
+
+    let result = github_auth::publish_private_submission(
+        &github_state,
+        &file_name,
+        content.as_bytes(),
+        publish_assets,
+        &commit_message,
+    )
+    .await?;
+
+    Ok(PublishPatchResponse {
+        repo_path: result.repository,
+        remote_path: result.remote_path,
+        commit: result.commit,
+        pushed_at: now_text(),
+        asset_count: result.asset_count,
+    })
 }
 
 #[tauri::command]

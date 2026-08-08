@@ -1,10 +1,12 @@
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use chrono::Utc;
 use keyring::Entry;
 use reqwest::{header, Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, process::Command, sync::Mutex, time::Duration};
+use url::Url;
 use tokio::time::sleep;
 
 const CLIENT_ID: &str = "Iv23livt94lUqNbtdR3t";
@@ -125,6 +127,20 @@ pub struct PrivateMapBundleResponse {
     sha256: String,
 }
 
+#[derive(Clone, Debug)]
+pub struct PrivatePublishAsset {
+    pub file_name: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PrivatePublishResponse {
+    pub repository: String,
+    pub remote_path: String,
+    pub commit: String,
+    pub asset_count: usize,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubAuthStatus {
@@ -194,6 +210,23 @@ pub(crate) fn require_authorized_session(state: &GitHubAuthState) -> Result<(), 
     };
     if session.login.trim().is_empty() || session.verified_at <= 0 {
         return Err("GitHub 授权会话无效，请重新登录".to_string());
+    }
+    Ok(())
+}
+
+pub(crate) fn require_writable_session(state: &GitHubAuthState) -> Result<(), String> {
+    let session = state
+        .authorized_session
+        .lock()
+        .map_err(|_| "GitHub 授权会话锁异常".to_string())?;
+    let Some(session) = session.as_ref() else {
+        return Err("尚未通过 GitHub 私有地图权限验证，请重新登录".to_string());
+    };
+    if session.login.trim().is_empty() || session.verified_at <= 0 {
+        return Err("GitHub 授权会话无效，请重新登录".to_string());
+    }
+    if !session.can_write {
+        return Err("当前 GitHub 账号或 GitHub App 没有 SHmap-Data 写入权限。请给该账号仓库写权限，并将 GitHub App 的 Contents 权限设为 Read and write 后重新登录。".to_string());
     }
     Ok(())
 }
@@ -613,6 +646,233 @@ async fn fetch_private_repo_raw(
         .text()
         .await
         .map_err(|error| format!("读取私有地图文件 {path} 内容失败：{error}"))
+}
+
+fn private_contents_url(path: &str) -> Result<Url, String> {
+    if path.is_empty() || path.starts_with('/') || path.contains('\\') || path.split('/').any(|part| part.is_empty() || matches!(part, "." | "..")) {
+        return Err("SHmap-Data 文件路径无效".to_string());
+    }
+    let mut url = Url::parse(&format!(
+        "{API_BASE}/repos/{REPOSITORY_OWNER}/{REPOSITORY_NAME}/contents/"
+    ))
+    .map_err(|error| format!("无法建立 GitHub API 地址：{error}"))?;
+    {
+        let mut segments = url
+            .path_segments_mut()
+            .map_err(|_| "无法建立 GitHub Contents API 路径".to_string())?;
+        segments.pop_if_empty();
+        for part in path.split('/') {
+            segments.push(part);
+        }
+    }
+    Ok(url)
+}
+
+async fn fetch_private_repo_bytes_if_exists(
+    state: &GitHubAuthState,
+    token: &StoredToken,
+    path: &str,
+) -> Result<Option<Vec<u8>>, String> {
+    let url = private_contents_url(path)?;
+    let response = state
+        .client
+        .get(url)
+        .header(header::ACCEPT, "application/vnd.github.raw+json")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token.access_token))
+        .header(header::USER_AGENT, USER_AGENT)
+        .header("X-GitHub-Api-Version", API_VERSION)
+        .send()
+        .await
+        .map_err(|error| format!("无法连接 GitHub：{error}"))?;
+
+    if response.status() == StatusCode::UNAUTHORIZED {
+        clear_authorized_session(state);
+        let _ = delete_token();
+        return Err("GitHub 登录已经失效，请重新登录".to_string());
+    }
+    if response.status() == StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    if response.status() == StatusCode::FORBIDDEN {
+        let remaining = response
+            .headers()
+            .get("x-ratelimit-remaining")
+            .and_then(|value| value.to_str().ok());
+        if remaining == Some("0") {
+            let reset = response
+                .headers()
+                .get("x-ratelimit-reset")
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("未知时间");
+            return Err(format!("GitHub API 请求额度暂时耗尽，恢复时间戳：{reset}"));
+        }
+        return Err("当前 GitHub App 没有读取 SHmap-Data Contents 的权限".to_string());
+    }
+    if !response.status().is_success() {
+        return Err(format!(
+            "读取 SHmap-Data/{path} 失败（HTTP {}）",
+            response.status().as_u16()
+        ));
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|error| format!("读取 SHmap-Data/{path} 内容失败：{error}"))?;
+    Ok(Some(bytes.to_vec()))
+}
+
+fn clean_commit_message(value: &str, fallback: &str) -> String {
+    let cleaned = value
+        .replace('\r', " ")
+        .replace('\n', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let limited = cleaned.chars().take(180).collect::<String>();
+    if limited.is_empty() { fallback.to_string() } else { limited }
+}
+
+async fn create_private_repo_file(
+    state: &GitHubAuthState,
+    token: &StoredToken,
+    path: &str,
+    bytes: &[u8],
+    commit_message: &str,
+) -> Result<Option<String>, String> {
+    if let Some(existing) = fetch_private_repo_bytes_if_exists(state, token, path).await? {
+        if existing == bytes {
+            return Ok(None);
+        }
+        return Err(format!(
+            "SHmap-Data/{path} 已存在同名但内容不同的文件。为避免覆盖他人的提交，本次上传已停止。"
+        ));
+    }
+
+    let url = private_contents_url(path)?;
+    let response = state
+        .client
+        .put(url)
+        .header(header::ACCEPT, "application/vnd.github+json")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token.access_token))
+        .header(header::USER_AGENT, USER_AGENT)
+        .header("X-GitHub-Api-Version", API_VERSION)
+        .json(&json!({
+            "message": commit_message,
+            "content": BASE64_STANDARD.encode(bytes),
+            "branch": "main"
+        }))
+        .send()
+        .await
+        .map_err(|error| format!("写入 SHmap-Data/{path} 失败：{error}"))?;
+
+    if response.status() == StatusCode::UNAUTHORIZED {
+        clear_authorized_session(state);
+        let _ = delete_token();
+        return Err("GitHub 登录已经失效，请重新登录".to_string());
+    }
+    if response.status() == StatusCode::FORBIDDEN {
+        let remaining = response
+            .headers()
+            .get("x-ratelimit-remaining")
+            .and_then(|value| value.to_str().ok());
+        if remaining == Some("0") {
+            let reset = response
+                .headers()
+                .get("x-ratelimit-reset")
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("未知时间");
+            return Err(format!("GitHub API 请求额度暂时耗尽，恢复时间戳：{reset}"));
+        }
+        return Err("没有 SHmap-Data 写入权限。请确认协作者权限，并将 GitHub App 的 Contents 权限设为 Read and write 后重新登录。".to_string());
+    }
+    if response.status() == StatusCode::CONFLICT || response.status() == StatusCode::UNPROCESSABLE_ENTITY {
+        return Err(format!(
+            "SHmap-Data/{path} 在上传期间发生并发冲突。请重新检查更改包列表后再重试。"
+        ));
+    }
+    if !response.status().is_success() {
+        let status = response.status().as_u16();
+        let detail = response.text().await.unwrap_or_default();
+        let detail = detail.chars().take(300).collect::<String>();
+        return Err(format!("写入 SHmap-Data/{path} 失败（HTTP {status}）：{detail}"));
+    }
+    let value = response
+        .json::<Value>()
+        .await
+        .map_err(|error| format!("无法解析 SHmap-Data 写入响应：{error}"))?;
+    let commit = value
+        .get("commit")
+        .and_then(|value| value.get("sha"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .chars()
+        .take(12)
+        .collect::<String>();
+    Ok(if commit.is_empty() { None } else { Some(commit) })
+}
+
+async fn current_main_commit_short(
+    state: &GitHubAuthState,
+    token: &StoredToken,
+) -> Result<String, String> {
+    let response = authenticated_get(
+        state,
+        token,
+        &format!("/repos/{REPOSITORY_OWNER}/{REPOSITORY_NAME}/commits/main"),
+    )
+    .await?;
+    if !response.status().is_success() {
+        return Ok("已存在".to_string());
+    }
+    let value = response.json::<Value>().await.unwrap_or(Value::Null);
+    let commit = value
+        .get("sha")
+        .and_then(Value::as_str)
+        .unwrap_or("已存在")
+        .chars()
+        .take(12)
+        .collect::<String>();
+    Ok(commit)
+}
+
+pub async fn publish_private_submission(
+    state: &GitHubAuthState,
+    file_name: &str,
+    patch_bytes: &[u8],
+    assets: Vec<PrivatePublishAsset>,
+    commit_message: &str,
+) -> Result<PrivatePublishResponse, String> {
+    require_writable_session(state)?;
+    let token = active_authorized_token(state).await?;
+    let patch_path = format!("submissions/pending/{file_name}");
+    let mut last_commit = None::<String>;
+
+    // 图片先上传，pending 更改包最后上传。这样 pending 中出现的包一定已经具备所需资源。
+    for asset in &assets {
+        let path = format!("submissions/assets/{}", asset.file_name);
+        let message = format!("data: add asset {}", asset.file_name.chars().take(24).collect::<String>());
+        if let Some(commit) = create_private_repo_file(state, &token, &path, &asset.bytes, &message).await? {
+            last_commit = Some(commit);
+        }
+    }
+
+    let fallback = format!("data: 发布 {file_name}");
+    let message = clean_commit_message(commit_message, &fallback);
+    if let Some(commit) = create_private_repo_file(state, &token, &patch_path, patch_bytes, &message).await? {
+        last_commit = Some(commit);
+    }
+
+    let commit = match last_commit {
+        Some(value) => value,
+        None => current_main_commit_short(state, &token).await?,
+    };
+
+    Ok(PrivatePublishResponse {
+        repository: format!("github:{REPOSITORY_OWNER}/{REPOSITORY_NAME}"),
+        remote_path: patch_path,
+        commit,
+        asset_count: assets.len(),
+    })
 }
 
 pub async fn load_private_map_bundle(
