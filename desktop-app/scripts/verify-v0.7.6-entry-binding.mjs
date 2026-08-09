@@ -8,7 +8,7 @@ const versionPath = path.join(root, 'VERSION.json');
 const app = fs.readFileSync(appPath, 'utf8');
 const version = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
 
-assert.equal(version.object_count, 617, '公开版本元数据应保持617条历史资料记录');
+assert.equal(version.object_count, 624, '公开版本元数据应保持624条历史资料记录');
 assert.ok(!fs.existsSync(path.join(root,'public','app','data.js')), '正式地图已私有化，public/app/data.js 不得恢复');
 
 for (const token of [

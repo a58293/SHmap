@@ -49,11 +49,12 @@ if(!rust.includes(`edition: "${edition}"`)){
 }
 
 const versionMeta=JSON.parse(fs.readFileSync(path.join(root,"VERSION.json"),"utf8"));
+if(versionMeta.data_version!=="v272-r0001"){console.error(`正式数据版本未切换到V272：${versionMeta.data_version}`);failed=true;}
 if(versionMeta.semver!==pkg.version||versionMeta.app_version!==edition){
   console.error(`VERSION.json未同步：${versionMeta.app_version} / ${versionMeta.semver}`);
   failed=true;
 }
-if(versionMeta.object_count!==617||versionMeta.water_path_segments!==79||versionMeta.water_arrow_cells!==118){
+if(versionMeta.object_count!==624||versionMeta.water_path_segments!==82||versionMeta.water_arrow_cells!==121){
   console.error(`公开版本元数据异常：对象${versionMeta.object_count}，水系${versionMeta.water_path_segments}，箭头格${versionMeta.water_arrow_cells}`);
   failed=true;
 }

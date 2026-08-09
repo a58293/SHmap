@@ -42,8 +42,8 @@ for (const path of ["public/app/styles.css", "dist/app/styles.css"]) {
 
 const version = JSON.parse(read("VERSION.json"));
 const html = read("index.html");
-assert.equal(version.water_path_segments, 79, "公开版本元数据中的水系路径数量应为79");
-assert.equal(version.water_arrow_cells, 118, "公开版本元数据中的水系箭头格应为118");
+assert.equal(version.water_path_segments, 82, "公开版本元数据中的水系路径数量应为79");
+assert.equal(version.water_arrow_cells, 121, "公开版本元数据中的水系箭头格应为118");
 assert.ok(!fs.existsSync(new URL("../public/app/data.js", import.meta.url)), "正式水系正文已随地图私有化，public/app/data.js 不得恢复");
 assert.ok(!/app\/data\.js/i.test(html), "index.html 不得重新引用 data.js");
 

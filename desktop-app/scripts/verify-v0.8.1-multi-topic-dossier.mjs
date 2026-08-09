@@ -49,7 +49,7 @@ assert.ok(css.includes(".identity-object-drawer section.identity-drawer-detailed
  * 2. 明确断言 data.js 不得恢复；
  * 3. 明确断言 index.html 不得重新引用 data.js。
  */
-assert.equal(version.object_count, 617, "公开 VERSION 元数据中的对象总量应保持617");
+assert.equal(version.object_count, 624, "公开 VERSION 元数据中的对象总量应保持624");
 assert.ok(
   !fs.existsSync(new URL("../public/app/data.js", import.meta.url)),
   "正式地图已私有化，public/app/data.js 不得恢复"

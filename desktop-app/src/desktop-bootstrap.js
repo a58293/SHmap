@@ -29,6 +29,8 @@ function seedSnapshot(){
   };
 }
 
+function snapshotDataVersion(value){try{const parsed=typeof value==="string"?JSON.parse(value):value;return String(parsed?.dataVersion||"")}catch{return ""}}
+function preferredStartupFallback(legacy,seed){const seedVersion=snapshotDataVersion(seed);if(usableWorkspaceSnapshot(legacy)&&snapshotDataVersion(legacy)===seedVersion)return{payload:legacy,source:"local-cache-fallback"};return{payload:seed,source:"private-repo-seed-fallback"}}
 function hydratePrivateMapBundle(payload){
   const bundle=typeof payload==="string"?JSON.parse(payload):payload;
   if(bundle?.format!=="shmap-private-bootstrap-v1")throw new Error("私有地图数据格式不受支持");
@@ -355,9 +357,9 @@ async function start(){
       localStorage.setItem(STORAGE_KEY,bootInfo.snapshot);nativeStorageReady=true
     }catch(error){
       startupFallback=true;nativeStorageReady=false;
-      const fallback=usableWorkspaceSnapshot(legacy)?legacy:seed;
+      const selectedFallback=preferredStartupFallback(legacy,seed),fallback=selectedFallback.payload;
       localStorage.setItem(STORAGE_KEY,fallback);
-      bootInfo={source:usableWorkspaceSnapshot(legacy)?"local-cache-fallback":"private-repo-seed-fallback",snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
+      bootInfo={source:selectedFallback.source,snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
       console.error("桌面数据库启动降级",error);
       updateStartupStatus("数据库响应较慢，正在使用本地缓存启动……");
       task.then(info=>{

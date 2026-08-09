@@ -49,8 +49,8 @@ assert.ok(html.indexOf("/app/object-roles.js") < html.indexOf("/src/desktop-boot
 assert.ok(app.includes("window.SHJ_OBJECT_ROLE_MANIFEST?.apply?.(objects)"), "私有地图注入后必须应用对象角色清单");
 assert.ok(app.includes("objects.filter(isTileVisibleObject)"), "地块索引必须排除非独立记录");
 assert.ok(app.includes("renderRoleRecordDetails"), "集合和资料层必须有独立详情入口");
-assert.equal(version.object_count, 617);
-if (version.independent_map_objects != null) assert.equal(version.independent_map_objects, 591);
+assert.equal(version.object_count, 624);
+if (version.independent_map_objects != null) assert.equal(version.independent_map_objects, 598);
 if (version.non_tile_records != null) assert.equal(version.non_tile_records, 26);
 
-console.log("v0.8.0 对象角色分层校验通过：角色定义改为静态清单校验，正式617条地图正文不再从公开 data.js 读取。");
+console.log("v0.8.0 对象角色分层校验通过：角色定义改为静态清单校验，正式624条地图正文不再从公开 data.js 读取。");

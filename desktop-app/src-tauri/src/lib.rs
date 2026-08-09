@@ -337,6 +337,47 @@ fn should_auto_backup(conn: &Connection, payload_hash: &str) -> Result<bool, Str
     Ok(Utc::now().signed_duration_since(parsed).num_minutes() >= AUTO_BACKUP_MINUTES)
 }
 
+// V272_DATA_MIGRATION_START
+const V272_LOCAL_OBJECT_FIELDS: [&str; 10] = [
+    "dossier", "childHierarchy", "waterHierarchy", "images", "imageUrl",
+    "imageSource", "imageCopyright", "updatedAt", "createdAt", "notesLocal"
+];
+fn workspace_data_version(payload: &Value) -> String {
+    payload.get("dataVersion").and_then(Value::as_str).unwrap_or("").to_string()
+}
+fn preserve_local_object_fields(seed_object: &mut Value, current_object: &Value) {
+    let (Some(seed), Some(current)) = (seed_object.as_object_mut(), current_object.as_object()) else { return; };
+    for key in V272_LOCAL_OBJECT_FIELDS {
+        if let Some(value) = current.get(key) { seed.insert(key.to_string(), value.clone()); }
+    }
+}
+fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Value, String> {
+    let seed_objects = seed.get("objects").and_then(Value::as_array).ok_or_else(|| "V272正式母表缺少objects".to_string())?;
+    let current_objects = current.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
+    let mut merged = current.clone();
+    let target = merged.as_object_mut().ok_or_else(|| "当前工作区不是JSON对象".to_string())?;
+    let mut official = Vec::with_capacity(seed_objects.len());
+    for source in seed_objects {
+        let mut next = source.clone();
+        if let Some(id) = source.get("id").and_then(Value::as_str) {
+            if let Some(local) = current_objects.iter().find(|item| item.get("id").and_then(Value::as_str)==Some(id)) {
+                preserve_local_object_fields(&mut next, local);
+            }
+        }
+        official.push(next);
+    }
+    target.insert("objects".to_string(), Value::Array(official));
+    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v272-r0001".to_string())));
+    let valid_ids = target.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
+    let selected_valid = target.get("selectedId").and_then(Value::as_str).map(|id| valid_ids.iter().any(|item| item.get("id").and_then(Value::as_str)==Some(id))).unwrap_or(false);
+    if !selected_valid {
+        let first = valid_ids.first().and_then(|item| item.get("id")).cloned().unwrap_or(Value::Null);
+        target.insert("selectedId".to_string(), first);
+    }
+    Ok(merged)
+}
+// V272_DATA_MIGRATION_END
+
 #[tauri::command]
 fn bootstrap_workspace(
     state: tauri::State<'_, AppState>,
@@ -347,12 +388,27 @@ fn bootstrap_workspace(
     github_auth::require_authorized_session(&github_state)?;
     let _guard = state.operation_lock.lock().map_err(|_| "数据库锁异常".to_string())?;
     let conn = open_connection(&state.database_path)?;
+    let seed_parsed = parse_payload(&seed_snapshot)?;
+    let seed_version = workspace_data_version(&seed_parsed);
     if let Some(payload) = current_payload(&conn)? {
         let parsed = parse_payload(&payload)?;
-        return Ok(BootstrapResponse{snapshot:payload,source:"database".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&parsed)})
+        let current_version = workspace_data_version(&parsed);
+        if !seed_version.is_empty() && current_version != seed_version {
+            let merged = merge_official_seed_with_current(&seed_parsed, &parsed)?;
+            let merged_payload = serde_json::to_string(&merged).map_err(|e| format!("V272迁移序列化失败：{e}"))?;
+            let label = format!("正式地图升级前备份 {} → {}", if current_version.is_empty(){"未知版本"}else{&current_version}, seed_version);
+            let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+            insert_backup(&tx, &state.backup_dir, &label, "pre_data_upgrade", &payload, &parsed)?;
+            write_current(&tx, &merged_payload, &merged, &now_text())?;
+            insert_backup(&tx, &state.backup_dir, "V272正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
+            tx.commit().map_err(|e| e.to_string())?;
+            return Ok(BootstrapResponse{snapshot:merged_payload,source:"database-upgraded-v272".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&merged)});
+        }
+        return Ok(BootstrapResponse{snapshot:payload,source:"database".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&parsed)});
     }
-    let (payload, source) = match legacy_snapshot.filter(|s| !s.trim().is_empty()) {
-        Some(v) if parse_payload(&v).is_ok() => (v, "legacy-cache"),
+    let legacy = legacy_snapshot.filter(|s| !s.trim().is_empty()).and_then(|value| parse_payload(&value).ok().map(|parsed|(value,parsed)));
+    let (payload, source) = match legacy {
+        Some((value, parsed)) if workspace_data_version(&parsed)==seed_version => (value, "legacy-cache"),
         _ => (seed_snapshot, "private-repo-seed"),
     };
     let parsed = parse_payload(&payload)?;

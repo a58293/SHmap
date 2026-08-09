@@ -19,7 +19,7 @@ const checks=[
   ["经篇页右键返回",app.includes('els.scriptureWorkspace.addEventListener("contextmenu"')&&app.includes("event.stopImmediatePropagation();appGoBack()")],
   ["内容页样式",css.includes("v0.7.4 · 十八经内容页")&&css.includes(".scripture-workspace")&&css.includes(".scripture-object-grid")],
   ["分类内容位于地图分布之前",app.includes("return categories+eventSection+overview+quoteSection")],
-  ["基础对象元数据仍为617",version.object_count===617],
+  ["基础对象元数据仍为624",version.object_count===624],
   ["正式地图不再打包",!fs.existsSync(new URL("../public/app/data.js",import.meta.url))&&!/app\/data\.js/i.test(html)],
   ["十八经列表完整",chapters.length===18&&chapters.every(ch=>app.includes(`"${ch}"`))]
 ];
