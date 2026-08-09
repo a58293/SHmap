@@ -18,6 +18,8 @@ const MAIN_SCRIPT_TIMEOUT_MS = 8000;
 const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
+const DESKTOP_EDITION = "v010";
+const DESKTOP_VERSION = "1.0.6";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -59,6 +61,13 @@ function queueSave(payload){
 }
 function formatTime(value){try{return new Intl.DateTimeFormat("zh-CN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value||""}}
 function escapeHtml(v){return String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+function syncDesktopVersionChrome(){
+  document.title=`山海经原典地图研究台 · 桌面版 ${DESKTOP_EDITION} · ${DESKTOP_VERSION}`;
+  const brandVersion=document.querySelector(".brand-copy h1 small");
+  if(brandVersion)brandVersion.textContent=`DESKTOP ${DESKTOP_EDITION} · ${DESKTOP_VERSION}`;
+  document.documentElement.dataset.desktopVersion=DESKTOP_VERSION;
+}
 
 function authGateTemplate(){
   return `<div class="desktop-auth-backdrop"></div>
@@ -346,6 +355,7 @@ async function loadMainScript(){
   }
 }
 async function start(){
+  syncDesktopVersionChrome();
   updateStartupStatus("正在验证 GitHub 地图访问权限……");
   const githubAuth=await ensureGitHubAccess();
   let privateMapInfo=null;

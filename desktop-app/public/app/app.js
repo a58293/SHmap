@@ -5485,7 +5485,7 @@
     updateTileImageMapUi()
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"1.0.5",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge-autosave",tileImageMap:"switchable-image-or-terrain-card",mapDetailImages:"object-primary-then-tile-primary-in-precision-preview-cards",batchPatch:"content-only-preview-with-multi-select-resolution",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"1.0.6",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge-autosave",tileImageMap:"switchable-image-or-terrain-card",mapDetailImages:"object-primary-then-tile-primary-in-precision-preview-cards",batchPatch:"content-only-preview-with-multi-select-resolution",bootGuard:true};
   setupV027State();
   init();
   bindTileImageManager();
