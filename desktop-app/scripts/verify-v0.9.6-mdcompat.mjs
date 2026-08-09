@@ -132,7 +132,7 @@ const checks = [
   ["苍梧之渊水系特征", byName.get("水系|苍梧之渊")?.核心特征 === "深渊水体伴丘存"],
   ["帝舜关系字段", byName.get("人群神祇|帝舜")?.与本地关系 === "原文直载（葬）"],
   ["舜葬遗迹证据字段", byName.get("事件遗迹|舜葬遗迹")?.证据 === "出自《大荒南经》"],
-  ["基础数据保持", version.object_count === 617 && version.water_path_segments === 79 && version.water_arrow_cells === 118],
+  ["V272正式数据元信息", version.data_version === "v272-r0001" && version.object_count === 624 && version.water_path_segments === 82 && version.water_arrow_cells === 121],
   ["关系线与画笔保留", app.includes("drawV029RelationOverlay") && app.includes("drawBrushTraceCanvas")],
 ];
 

@@ -5,6 +5,9 @@
   const INITIAL = window.SHJ_INITIAL_DATA || {metadata:{}, objects:[]};
   const WATER_PATHS = window.SHJ_WATER_PATHS || [];
   const HIERARCHY_SEED = window.SHJ_WORLD_HIERARCHY || {schemaVersion:"world-region-place-1.0",world:{id:"world-shanhaijing",name:"山海经世界",type:"world",origin:{name:"都广之野",x:0,y:0},childRegionIds:[]},regions:[]};
+  const BOARD_LAYOUT = window.SHJ_BOARD_LAYOUT || {schemaVersion:"",occupiedCells:[],backgroundRuns:[],worldLabels:[],annotations:[]};
+  const V272_BOARD_ANNOTATIONS_BY_CELL = new Map();
+  for(const annotation of BOARD_LAYOUT.annotations||[]){const key=`${Number(annotation.gx)||0},${Number(annotation.gy)||0}`;if(!V272_BOARD_ANNOTATIONS_BY_CELL.has(key))V272_BOARD_ANNOTATIONS_BY_CELL.set(key,[]);V272_BOARD_ANNOTATIONS_BY_CELL.get(key).push(annotation)}
   const STORAGE_KEY = "shj_infinite_tile_demo_v018_v031";
   const LEGACY_STORAGE_KEYS = ["shj_infinite_tile_demo_v017_v031","shj_infinite_tile_demo_v016_v031","shj_infinite_tile_demo_v015_v031","shj_infinite_tile_demo_v014_v031","shj_infinite_tile_demo_v013_v031","shj_infinite_tile_demo_v012_v031","shj_infinite_tile_demo_v011_v031","shj_infinite_tile_demo_v010_v031","shj_infinite_tile_demo_v009_v031","shj_infinite_tile_demo_v008_v031","shj_infinite_tile_demo_v007_v031","shj_infinite_tile_demo_v006_v031","shj_infinite_tile_demo_v005_v031"];
 
@@ -262,13 +265,15 @@
   function migrateWorkspaceObjects(savedState){
     const master=structuredClone(INITIAL.objects||[]);
     if(!savedState?.objects?.length)return master;
-    if(savedState.dataVersion===INITIAL.metadata?.dataVersion)return savedState.objects;
-    const changedIds=new Set((savedState.changes||[]).map(change=>change?.entityId).filter(id=>id&&!String(id).startsWith("CELL-")));
     const savedById=new Map(savedState.objects.map(object=>[object.id,object]));
-    const deletedIds=new Set((savedState.trash||[]).map(item=>item?.object?.id||item?.snapshot?.id||item?.id).filter(Boolean));
-    const merged=master.filter(object=>!deletedIds.has(object.id)).map(object=>changedIds.has(object.id)&&savedById.has(object.id)?{...object,...savedById.get(object.id),id:object.id,rowRef:object.rowRef}:{...object});
+    const localKeys=["dossier","childHierarchy","waterHierarchy","images","imageUrl","imageSource","imageCopyright","updatedAt","createdAt","notesLocal"];
+    const merged=master.map(object=>{
+      const local=savedById.get(object.id),next={...object};
+      if(local)for(const key of localKeys)if(Object.prototype.hasOwnProperty.call(local,key))next[key]=structuredClone(local[key]);
+      return next
+    });
     const masterIds=new Set(master.map(object=>object.id));
-    savedState.objects.filter(object=>object?.rowRef==="NEW"||!masterIds.has(object.id)).forEach(object=>{if(!deletedIds.has(object.id))merged.push(object)});
+    savedState.objects.filter(object=>object?.rowRef==="NEW"||!masterIds.has(object.id)).forEach(object=>merged.push(object));
     return merged
   }
   const applyObjectRoles=objects=>window.SHJ_OBJECT_ROLE_MANIFEST?.apply?.(objects)||(objects||[]);
@@ -284,7 +289,7 @@
     githubPendingView: "new",
     githubPendingCache: {},
     githubCurrent: null,
-    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v125-r0001",
+    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v272-r0003",
     camera: saved?.camera || {x:0,y:0,zoom:.92},
     selectedId: saved?.selectedId || (INITIAL.objects?.[0]?.id || null),
     selectedCell: saved?.selectedCell || null,
@@ -354,7 +359,8 @@
     rangeEditor:{objectId:null,draft:null,original:null,tool:"select",snap:10,zoom:1,camera:{x:0,y:0},history:[],pointer:null,polygonDrawing:false}
   };
   function objectMapRole(object){return object?.mapRole||"entity"}
-  function isTileVisibleObject(object){return !!object&&objectMapRole(object)==="entity"&&object.tileVisible!==false}
+  function hasOfficialBoardPlacement(object){return !!object?.boardPlacement?.officialFormalObject&&Number.isFinite(Number(object?.boardPlacement?.gx))&&Number.isFinite(Number(object?.boardPlacement?.gy))}
+  function isTileVisibleObject(object){if(!object)return false;if(hasOfficialBoardPlacement(object))return true;return objectMapRole(object)==="entity"&&object.tileVisible!==false}
   const WATER_LINEAR_RE=/(?:^|[／/])(?:主干河流|河流|水系|江流|溪流|涧流|沟渠|双河路径)(?:$|[／/])|(?:河|江|水|溪|涧|渠)$/;
   const WATER_AREA_RE=/(?:^|[／/])(?:海域|水域|湖泊|湖泽|沼泽|深渊|大泽|海|泽|湖|渊|池|沼)(?:$|[／/])|(?:海|泽|湖|渊|池|沼)$/;
   const WATER_POINT_RE=/(?:^|[／/])(?:泉|井|水穴)(?:$|[／/])|(?:泉|井|水穴)$/;
@@ -380,15 +386,15 @@
     return {displayMode:"tile",waterKind:"none",confirmed:false,reason:"非水体对象"};
   }
   function objectDisplayMode(object){return object?.displayMode||waterDisplayDecision(object).displayMode}
-  function hideConvertedWaterTile(object){return !state.waterConversionAudit&&["water-line","water-area"].includes(objectDisplayMode(object))&&waterDisplayDecision(object).confirmed}
+  function hideConvertedWaterTile(object){if(hasOfficialBoardPlacement(object))return false;return !state.waterConversionAudit&&["water-line","water-area"].includes(objectDisplayMode(object))&&waterDisplayDecision(object).confirmed}
   function tileRenderObjects(objects){return state.waterConversionAudit?objects:objects.filter(object=>!hideConvertedWaterTile(object))}
   function tileVisibleObjects(){return state.objects.filter(isTileVisibleObject)}
-  function isDefaultIndexObject(object){return ["entity","collection"].includes(objectMapRole(object))}
-  function isGlobalAreaVisibleObject(object){return ["entity","collection"].includes(objectMapRole(object))}
-  function isGlobalLineVisibleObject(object){return ["entity","collection","path"].includes(objectMapRole(object))}
-  function objectContributesToGlobalTerrain(object){return isTileVisibleObject(object)||objectMapRole(object)==="collection"}
+  function isDefaultIndexObject(object){return hasOfficialBoardPlacement(object)||["entity","collection"].includes(objectMapRole(object))}
+  function isGlobalAreaVisibleObject(object){if(hasOfficialBoardPlacement(object)&&object.boardPlacement.metric===false)return false;return ["entity","collection"].includes(objectMapRole(object))}
+  function isGlobalLineVisibleObject(object){if(hasOfficialBoardPlacement(object)&&object.boardPlacement.metric===false)return false;return ["entity","collection","path"].includes(objectMapRole(object))}
+  function objectContributesToGlobalTerrain(object){if(hasOfficialBoardPlacement(object)&&object.boardPlacement.metric===false&&object?.area)return false;return isTileVisibleObject(object)||objectMapRole(object)==="collection"}
   function objectRoleLabel(object){const role=objectMapRole(object),fallback={entity:"独立地图对象",collection:"集合档案",subregion:"内部子区域",path:"路径记录",detail:"内部资料",context:"上下文标签"};return object?.roleLabel||fallback[role]||"资料记录"}
-  function objectRoleBadgeHTML(object){return isTileVisibleObject(object)?"":`<span class="object-role-badge ${esc(objectMapRole(object))}">${esc(objectRoleLabel(object))}</span>`}
+  function objectRoleBadgeHTML(object){return objectMapRole(object)==="entity"?"":`<span class="object-role-badge ${esc(objectMapRole(object))}">${esc(objectRoleLabel(object))}</span>`}
   function roleSelectorMatches(object,selector){if(window.SHJ_OBJECT_ROLE_MANIFEST?.selectorMatches)return window.SHJ_OBJECT_ROLE_MANIFEST.selectorMatches(object,selector);return normalizeText(object?.name)===normalizeText(selector?.name)&&(!selector?.chapter||normalizeText(object?.chapter).includes(normalizeText(selector.chapter)))}
   function roleSelectorObject(selector){if(!selector)return null;const snapshot=state.objects.filter(object=>object.rowRef===selector.rowRefSnapshot&&roleSelectorMatches(object,selector));if(snapshot.length===1)return snapshot[0];const semantic=state.objects.filter(object=>roleSelectorMatches(object,selector));return semantic.length===1?semantic[0]:null}
   function roleSelectorObjects(selectors){return (selectors||[]).map(roleSelectorObject).filter(Boolean)}
@@ -406,7 +412,9 @@
   function coordText(x,y){return `X ${signed(x)}里 · Y ${signed(y)}里`}
   function cellIndex(v){return Math.floor(v/CELL_LI + .5)} // 主格中心位于整百里，边界统一归入东/北侧
   function cellKey(gx,gy){return `${gx},${gy}`}
-  function objectCell(o){return {gx:cellIndex(Number(o.x)||0),gy:cellIndex(Number(o.y)||0)}}
+  function objectBoardPlacement(o){const board=o?.boardPlacement;if(!board||!Number.isFinite(Number(board.gx))||!Number.isFinite(Number(board.gy)))return null;return board}
+  function objectCanvasPoint(o){const board=objectBoardPlacement(o);if(board)return {x:Number(board.canvasX??Number(board.gx)*CELL_LI)||0,y:Number(board.canvasY??Number(board.gy)*CELL_LI)||0};return {x:Number(o?.x)||0,y:Number(o?.y)||0}}
+  function objectCell(o){const board=objectBoardPlacement(o);if(board)return {gx:Number(board.gx),gy:Number(board.gy)};return {gx:cellIndex(Number(o?.x)||0),gy:cellIndex(Number(o?.y)||0)}}
   function cellCenter(g){return g*CELL_LI}
   function cellBounds(gx,gy){const cx=cellCenter(gx),cy=cellCenter(gy);return {west:cx-50,east:cx+50,south:cy-50,north:cy+50,cx,cy}}
   function scale(){return BASE_CELL_PX*state.camera.zoom/CELL_LI}
@@ -443,32 +451,28 @@
   function v052RegionIdFromName(name){return `region-local-${v052Hash(normalizeText(name))}`}
   function v052MacroKey(x,y,unassigned=false){if(unassigned)return "unassigned";if(Math.hypot(x,y)<=750)return "center";const deg=Math.atan2(y,x)*180/Math.PI;if(deg>=-22.5&&deg<22.5)return "east";if(deg>=22.5&&deg<67.5)return "northeast";if(deg>=67.5&&deg<112.5)return "north";if(deg>=112.5&&deg<157.5)return "northwest";if(deg>=157.5||deg<-157.5)return "west";if(deg>=-157.5&&deg<-112.5)return "southwest";if(deg>=-112.5&&deg<-67.5)return "south";return "southeast"}
   function v052ObjectBounds(o){
+    if(hasOfficialBoardPlacement(o)&&o?.boardPlacement?.metric===false){const p=objectCanvasPoint(o);return {minX:p.x,maxX:p.x,minY:p.y,maxY:p.y}}
     if(o?.area){const a=o.area;if(a.shape==="circle"){const cx=Number(a.cx??o.x)||0,cy=Number(a.cy??o.y)||0,r=Math.max(0,Number(a.radius)||0);return {minX:cx-r,maxX:cx+r,minY:cy-r,maxY:cy+r}}if(a.shape==="polygon"&&a.points?.length){const xs=a.points.map(p=>Number(p[0])||0),ys=a.points.map(p=>Number(p[1])||0);return {minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)}}const b=rangeBounds(a);return {minX:b.west,maxX:b.east,minY:b.south,maxY:b.north}}
-    if(o?.path?.length){const xs=o.path.map(p=>Number(p[0])||0),ys=o.path.map(p=>Number(p[1])||0);return {minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)}}
-    const x=Number(o?.x)||0,y=Number(o?.y)||0;return {minX:x,maxX:x,minY:y,maxY:y};
+    if(o?.path?.length&&!(hasOfficialBoardPlacement(o)&&o?.boardPlacement?.metric===false)){const xs=o.path.map(p=>Number(p[0])||0),ys=o.path.map(p=>Number(p[1])||0);return {minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)}}
+    const p=objectCanvasPoint(o);return {minX:p.x,maxX:p.x,minY:p.y,maxY:p.y};
   }
   function v052ExtendBounds(target,b){target.minX=Math.min(target.minX,b.minX);target.maxX=Math.max(target.maxX,b.maxX);target.minY=Math.min(target.minY,b.minY);target.maxY=Math.max(target.maxY,b.maxY);return target}
   function v052FiniteBounds(b){return b&&[b.minX,b.maxX,b.minY,b.maxY].every(Number.isFinite)}
   function v052Hierarchy(){
     const p=state.perf;if(p.hierarchyRevision===state.objectRevision&&p.hierarchy)return p.hierarchy;
-    const hierarchyObjects=tileVisibleObjects();
-    const seedRegions=Array.isArray(HIERARCHY_SEED.regions)?HIERARCHY_SEED.regions:[],seedById=new Map(seedRegions.map(r=>[r.id,r])),seedNameToId=new Map();
-    seedRegions.filter(r=>r.level===2).forEach(r=>{[r.name,...(r.rawNames||[])].filter(Boolean).forEach(name=>seedNameToId.set(normalizeText(v052CleanRegionName(name)),r.id))});
-    const macroDefs=new Map(V052_MACRO_REGIONS.map(m=>[m.id,{...m,type:"region",level:1,parentRegionId:HIERARCHY_SEED.world?.id||"world-shanhaijing",classification:"coordinate-macro",status:m.key==="unassigned"?"review":"draft",description:"用于世界总览和内部导航的暂定地图大区，不替代原典经篇分类。",environmentProfile:null,boundary:[],childRegionIds:[],memberObjectIds:[],bounds:{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity},center:{x:0,y:0}}]));
-    seedRegions.filter(r=>r.level===1).forEach(r=>macroDefs.set(r.id,{...macroDefs.get(r.id),...structuredClone(r),childRegionIds:[],memberObjectIds:[],bounds:{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity}}));
-    const detail=new Map(),unassignedId=HIERARCHY_SEED.unassignedRegionId||"region-unassigned";
-    seedRegions.filter(r=>r.level===2).forEach(r=>detail.set(r.id,{...structuredClone(r),memberObjectIds:[],childRegionIds:[],bounds:{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity},sumX:0,sumY:0,weight:0,chapters:new Map(),rawNames:new Set(r.rawNames||[])}));
-    hierarchyObjects.forEach(o=>{
-      const names=v052RegionNames(o.region),seedIds=Array.isArray(o.regionIds)?o.regionIds.filter(id=>seedById.get(id)?.level===2):[],ids=seedIds.length?seedIds:names.map(name=>seedNameToId.get(normalizeText(name))||v052RegionIdFromName(name));
-      const resolvedIds=ids.length?ids:[unassignedId];o.regionIds=[...new Set(resolvedIds)];o.primaryRegionId=o.regionIds.includes(o.primaryRegionId)?o.primaryRegionId:o.regionIds[0];
-      o.regionIds.forEach((id,index)=>{const seed=seedById.get(id),name=seed?.name||names[index]||(id===unassignedId?"未归入具体区域":"未命名区域");if(!detail.has(id))detail.set(id,{id,name,type:"region",level:2,parentRegionId:seed?.parentRegionId||"",classification:"source-region",status:id===unassignedId?"review":"draft",source:"所属区域／山系",description:"由现有“所属区域／山系”字段自动整理，可在后续版本中人工调整名称、父级和边界。",environmentProfile:null,boundary:[],rawNames:new Set(),memberObjectIds:[],childRegionIds:[],bounds:{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity},sumX:0,sumY:0,weight:0,chapters:new Map()});const g=detail.get(id),b=v052ObjectBounds(o),w=o.area?3:o.geometryType==="line"?1.5:1;g.memberObjectIds.push(o.id);g.rawNames.add(o.region||name);g.sumX+=(Number(o.x)||0)*w;g.sumY+=(Number(o.y)||0)*w;g.weight+=w;v052ExtendBounds(g.bounds,b);if(o.chapter)g.chapters.set(o.chapter,(g.chapters.get(o.chapter)||0)+1)})
+    const hierarchyObjects=tileVisibleObjects(),objectById=new Map(hierarchyObjects.map(o=>[o.id,o]));
+    const seedRegions=Array.isArray(HIERARCHY_SEED.regions)?HIERARCHY_SEED.regions:[];
+    const regions=seedRegions.map(seed=>{
+      const memberObjectIds=(seed.memberObjectIds||[]).filter(id=>objectById.has(id)),members=memberObjectIds.map(id=>objectById.get(id));
+      const points=members.map(objectCanvasPoint),bounds=points.length?{minX:Math.min(...points.map(x=>x.x)),maxX:Math.max(...points.map(x=>x.x)),minY:Math.min(...points.map(x=>x.y)),maxY:Math.max(...points.map(x=>x.y))}:structuredClone(seed.bounds||{minX:0,maxX:0,minY:0,maxY:0});
+      const center=points.length?{x:points.reduce((s,x)=>s+x.x,0)/points.length,y:points.reduce((s,x)=>s+x.y,0)/points.length}:structuredClone(seed.center||{x:0,y:0});
+      return {...structuredClone(seed),memberObjectIds,objectCount:memberObjectIds.length,bounds,center,centerX:center.x,centerY:center.y}
     });
-    const detailRegions=[...detail.values()].filter(r=>r.memberObjectIds.length).map(r=>{const center={x:r.sumX/(r.weight||1),y:r.sumY/(r.weight||1)},macroKey=v052MacroKey(center.x,center.y,r.id===unassignedId),defaultParent=V052_MACRO_REGIONS.find(m=>m.key===macroKey)?.id||"region-macro-center",parentRegionId=macroDefs.has(r.parentRegionId)?r.parentRegionId:defaultParent;return {...r,parentRegionId,center,rawNames:[...r.rawNames],memberObjectIds:[...new Set(r.memberObjectIds)],chapterSummary:[...r.chapters.entries()].sort((a,b)=>b[1]-a[1]).map(([chapter,count])=>({chapter,count})),bounds:v052FiniteBounds(r.bounds)?r.bounds:{minX:center.x,maxX:center.x,minY:center.y,maxY:center.y},sumX:undefined,sumY:undefined,weight:undefined,chapters:undefined}}).sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));
-    const detailById=new Map(detailRegions.map(r=>[r.id,r]));
-    for(const r of detailRegions){if(!macroDefs.has(r.parentRegionId)){const def=V052_MACRO_REGIONS.find(m=>m.id===r.parentRegionId)||V052_MACRO_REGIONS[0];macroDefs.set(def.id,{...def,type:"region",level:1,parentRegionId:HIERARCHY_SEED.world?.id||"world-shanhaijing",classification:"coordinate-macro",status:"draft",description:"用于世界总览和内部导航的暂定地图大区。",environmentProfile:null,boundary:[],childRegionIds:[],memberObjectIds:[],bounds:{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity},center:{x:0,y:0}})}const macro=macroDefs.get(r.parentRegionId);macro.childRegionIds.push(r.id);r.memberObjectIds.forEach(id=>macro.memberObjectIds.push(id));v052ExtendBounds(macro.bounds,r.bounds)}
-    const macroRegions=[...macroDefs.values()].filter(r=>r.childRegionIds.length).map(r=>{r.memberObjectIds=[...new Set(r.memberObjectIds)];const members=r.memberObjectIds.map(id=>state.objects.find(o=>o.id===id)).filter(Boolean),center=members.length?{x:members.reduce((s,o)=>s+(Number(o.x)||0),0)/members.length,y:members.reduce((s,o)=>s+(Number(o.y)||0),0)/members.length}:{x:0,y:0};return {...r,center,bounds:v052FiniteBounds(r.bounds)?r.bounds:{minX:0,maxX:0,minY:0,maxY:0},childRegionIds:r.childRegionIds.filter(id=>detailById.has(id)).sort((a,b)=>detailById.get(a).name.localeCompare(detailById.get(b).name,"zh-CN")),order:Number(r.order??V052_MACRO_REGIONS.find(m=>m.id===r.id)?.order??99)}}).sort((a,b)=>a.order-b.order);
-    const bounds=ensureObjectIndexes().bounds||{minX:0,maxX:0,minY:0,maxY:0},world={...(HIERARCHY_SEED.world||{}),id:HIERARCHY_SEED.world?.id||"world-shanhaijing",name:HIERARCHY_SEED.world?.name||"山海经世界",type:"world",origin:HIERARCHY_SEED.world?.origin||{name:"都广之野",x:0,y:0},unit:"里",mainGridLi:CELL_LI,innerGridLi:10,childRegionIds:macroRegions.map(r=>r.id),bounds,objectCount:hierarchyObjects.length,status:"active",environmentProfile:null};
-    const regions=[...macroRegions,...detailRegions],regionById=new Map(regions.map(r=>[r.id,r])),hierarchy={schemaVersion:HIERARCHY_SEED.schemaVersion||"world-region-place-1.0",world,regions,unassignedRegionId:unassignedId,stats:{macroRegionCount:macroRegions.length,regionCount:detailRegions.length,assignedObjectCount:hierarchyObjects.filter(o=>o.primaryRegionId!==unassignedId).length,unassignedObjectCount:hierarchyObjects.filter(o=>o.primaryRegionId===unassignedId).length,historicalRecordCount:state.objects.length}};
+    const regionById=new Map(regions.map(r=>[r.id,r])),worldBounds=ensureObjectIndexes().bounds||{minX:0,maxX:0,minY:0,maxY:0};
+    const world={...(structuredClone(HIERARCHY_SEED.world||{})),id:HIERARCHY_SEED.world?.id||"world-shanhaijing",name:HIERARCHY_SEED.world?.name||"山海经世界",type:"world",origin:HIERARCHY_SEED.world?.origin||{name:"都广之野",x:0,y:0},unit:"里",mainGridLi:CELL_LI,innerGridLi:10,childRegionIds:(HIERARCHY_SEED.world?.childRegionIds||[]).filter(id=>regionById.has(id)),bounds:worldBounds,objectCount:hierarchyObjects.length,status:"frozen-v272"};
+    const macroRegions=regions.filter(r=>r.level===1),detailRegions=regions.filter(r=>r.level===2),unassignedId=HIERARCHY_SEED.unassignedRegionId||"region-unassigned";
+    const assigned=new Set(regions.filter(r=>r.level===2&&r.id!==unassignedId).flatMap(r=>r.memberObjectIds||[]));
+    const hierarchy={schemaVersion:HIERARCHY_SEED.schemaVersion||"world-region-place-1.0",world,regions,unassignedRegionId:unassignedId,stats:{macroRegionCount:macroRegions.length,regionCount:detailRegions.length,assignedObjectCount:assigned.size,unassignedObjectCount:hierarchyObjects.length-assigned.size,historicalRecordCount:state.objects.length},V272_SEEDED_HIERARCHY:true};
     p.hierarchyRevision=state.objectRevision;p.hierarchy=hierarchy;p.regionById=regionById;p.regionFocusKey="";p.regionFocus=null;return hierarchy;
   }
   function v052RegionById(id){v052Hierarchy();return state.perf.regionById.get(id)||null}
@@ -488,7 +492,8 @@
   function v052ClearRegionFocus({silent=false}={}){const had=!!state.selectedRegionId;state.selectedRegionId=null;state.selectedHierarchyNode="";state.perf.regionFocusKey="";state.perf.regionFocus=null;renderSidebar();renderDetails();scheduleRender();persist();if(had&&!silent)toast("已退出区域聚焦","地图恢复完整显示")}
   function v052SetIndexMode(mode){state.indexMode=mode==="regions"?"regions":"objects";if(state.indexMode==="objects"&&state.selectedHierarchyNode==="world")state.selectedHierarchyNode="";renderSidebar();renderDetails();scheduleRender();persist()}
   function v052ParentRegion(region){return region?.parentRegionId?v052RegionById(region.parentRegionId):null}
-  function v052RegionBoundsText(region){const b=region?.bounds;if(!v052FiniteBounds(b))return "范围待整理";return `X ${signed(Math.round(b.minX))}～${signed(Math.round(b.maxX))}里 · Y ${signed(Math.round(b.minY))}～${signed(Math.round(b.maxY))}里`}
+  function v052RegionBoundsText(region){const b=region?.bounds;if(!v052FiniteBounds(b))return "范围待整理";if(/nonmetric/i.test(String(region?.boundaryEvidence||""))||/^L[23]\b/.test(String(region?.name||"")))return `单画布拓扑范围 · X格 ${signed(Math.round(b.minX/CELL_LI))}～${signed(Math.round(b.maxX/CELL_LI))} · Y格 ${signed(Math.round(b.minY/CELL_LI))}～${signed(Math.round(b.maxY/CELL_LI))}（不得换算里数）`;return `X ${signed(Math.round(b.minX))}～${signed(Math.round(b.maxX))}里 · Y ${signed(Math.round(b.minY))}～${signed(Math.round(b.maxY))}里`}
+
   function v052RegionStatusText(region){return region?.status==="review"?"待归类":region?.status==="confirmed"?"已确认":"初步整理"}
   function v052RenderRegionSidebar(){
     const h=v052Hierarchy(),q=state.filters.q.trim(),detailRegions=h.regions.filter(r=>r.level===2),visibleDetails=detailRegions.map(region=>({region,...v052RegionFilterResult(region)})).filter(x=>x.visible),visibleIds=new Set(visibleDetails.map(x=>x.region.id)),macros=h.regions.filter(r=>r.level===1).map(region=>{const childIds=(region.childRegionIds||[]).filter(id=>visibleIds.has(id)),self=v052RegionFilterResult(region);return {region,childIds,visible:childIds.length||self.visible}}).filter(x=>x.visible);
@@ -708,7 +713,7 @@
   function buildCellMap(objects=state.objects){if(objects===state.objects)return ensureObjectIndexes().cellMap;const m=new Map();objects.filter(isTileVisibleObject).forEach(o=>{const {gx,gy}=objectCell(o),k=cellKey(gx,gy);if(!m.has(k))m.set(k,[]);m.get(k).push(o)});m.forEach((items,key)=>m.set(key,sortObjects(items)));return m}
 
   function init(){
-    cleanupExpiredTrash(false);ensureObjectIndexes();populateFilters();bindEvents();
+    cleanupExpiredTrash(false);ensureObjectIndexes();populateFilters();bindEvents();ensureV272BoardStyles();
     [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEnvironment,"environment"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,key])=>{if(el)el.checked=!!state.layers[key]});
     renderSidebar();renderDetails();resizeCanvas();scheduleRender();updateHeader();renderExamplePanel();
     if(dataUpgradeFrom)setTimeout(()=>toast("地图数据已升级",`${dataUpgradeFrom} → ${state.dataVersion} · ${independentObjectCount()}个独立对象 / ${state.objects.length}条资料记录 · ${state.waterPaths.length}段线型水系`),420);
@@ -741,7 +746,7 @@
     els.objectSortBar?.classList.remove("hidden");els.indexResultTitle.textContent="对象索引";els.objectIndexModeBtn?.classList.add("active");els.objectIndexModeBtn?.setAttribute("aria-selected","true");els.regionIndexModeBtn?.classList.remove("active");els.regionIndexModeBtn?.setAttribute("aria-selected","false");
     const q=state.filters.q.trim(),ctx=getSearchContext(),items=q?ctx.filteredObjects:sortObjectIndex(getFiltered());els.resultCount.textContent=items.length;syncObjectSortControls();
     const cells=ensureObjectIndexes().cellMap,co=[...cells.values()].filter(x=>x.length>1).length;
-    els.mapStats.innerHTML=`<div class="stat-item"><strong>${independentObjectCount()}</strong><span>独立对象</span></div><div class="stat-item"><strong>${state.objects.length}</strong><span>资料记录</span></div><div class="stat-item"><strong>${cells.size}</strong><span>内容地块</span></div><div class="stat-item"><strong>${co}</strong><span>多对象地块</span></div>`;
+    els.mapStats.innerHTML=`<div class="stat-item"><strong>${independentObjectCount()}</strong><span>正式地图对象</span></div><div class="stat-item"><strong>${state.objects.length}</strong><span>资料记录</span></div><div class="stat-item"><strong>${cells.size}</strong><span>内容地块</span></div><div class="stat-item"><strong>${co}</strong><span>多对象地块</span></div>`;
     els.leftPanel.classList.toggle("search-mode",!!q);els.searchSubviewHead.classList.toggle("hidden",!q);els.searchHighlightSummary.classList.toggle("hidden",!q);
     if(q){
       const groups=new Map();ctx.contentMatches.forEach(hit=>{if(!groups.has(hit.key))groups.set(hit.key,{gx:hit.gx,gy:hit.gy,hits:[]});groups.get(hit.key).hits.push(hit)});
@@ -827,6 +832,7 @@
   function terrainRadiusLi(category){return ({mountain:22,hill:18,forest:25,plain:30,water:14,wetland:22,desert:28,ice:28,settlement:16}[category]||0)}
   function isBaseTerrainCategory(category){return ["mountain","hill","forest","plain","water","wetland","desert","ice","settlement"].includes(category)}
   function objectAnchor(o){
+    const board=objectBoardPlacement(o);if(board)return objectCanvasPoint(o);
     if(o?.geometryType==="line"&&o.path?.length){const pts=o.path,idx=Math.floor((pts.length-1)/2);if(pts.length%2)return {x:Number(pts[idx][0])||0,y:Number(pts[idx][1])||0};return {x:(Number(pts[idx][0])+Number(pts[idx+1][0]))/2||0,y:(Number(pts[idx][1])+Number(pts[idx+1][1]))/2||0}}
     if(o?.area){const a=o.area;if(a.shape==="circle")return {x:Number(a.cx??o.x)||0,y:Number(a.cy??o.y)||0};if(a.shape==="polygon"&&a.points?.length){const n=a.points.length;return {x:a.points.reduce((s,p)=>s+(Number(p[0])||0),0)/n,y:a.points.reduce((s,p)=>s+(Number(p[1])||0),0)/n}}const b=rangeBounds(a);return {x:(b.west+b.east)/2,y:(b.south+b.north)/2}}
     return {x:Number(o?.x)||0,y:Number(o?.y)||0};
@@ -836,7 +842,7 @@
     for(const o of areas){if(!pointInSpatial(o,x,y))continue;const cat=baseTerrainCategory(o),ev=o.area?.evidence,score=(ev==="hard"||ev==="original"?5:ev==="candidate"?3:2);if(cat!=="unknown"&&score>bestAreaScore){bestArea={cat,o};bestAreaScore=score}}
     if(bestArea)return bestArea.cat;
     let best="unknown",bestScore=Infinity;
-    for(const o of points){const cat=baseTerrainCategory(o);if(cat==="unknown")continue;const radius=terrainRadiusLi(cat);if(!radius)continue;const d=Math.hypot(x-(Number(o.x)||0),y-(Number(o.y)||0));if(d<=radius&&d/radius<bestScore){best=cat;bestScore=d/radius}}
+    for(const o of points){const cat=baseTerrainCategory(o);if(cat==="unknown")continue;const radius=terrainRadiusLi(cat);if(!radius)continue;const p=objectCanvasPoint(o),d=Math.hypot(x-p.x,y-p.y);if(d<=radius&&d/radius<bestScore){best=cat;bestScore=d/radius}}
     if(best!=="unknown")return best;
     const key=cellKey(cellIndex(x),cellIndex(y)),profile=profiles[key],pc=baseTerrainCategoryFromProfile(profile);return pc!=="unknown"?pc:"unknown";
   }
@@ -857,8 +863,8 @@
   }
   function drawPrecisionTerrainContours(ctx,points,s){
     ctx.save();
-    points.forEach(o=>{const cat=baseTerrainCategory(o);if(!["mountain","hill","forest","wetland","desert","ice","settlement"].includes(cat))return;const p=worldToScreen(Number(o.x)||0,Number(o.y)||0),r=Math.min(230,terrainRadiusLi(cat)*s),pal=TERRAIN_PALETTE[cat];if(r<8)return;ctx.strokeStyle=pal.line;ctx.globalAlpha=(cat==="mountain"||cat==="hill") ? .28 : .16;ctx.lineWidth=1.2;
-      if(cat==="mountain"||cat==="hill"){for(let i=1;i<=3;i++){ctx.beginPath();ctx.ellipse(p.x,p.y,r*i/3,r*i/5,(Number(o.x)+Number(o.y))%7/18,0,Math.PI*2);ctx.stroke()}}
+    points.forEach(o=>{const cat=baseTerrainCategory(o);if(!["mountain","hill","forest","wetland","desert","ice","settlement"].includes(cat))return;const anchor=objectCanvasPoint(o),p=worldToScreen(anchor.x,anchor.y),r=Math.min(230,terrainRadiusLi(cat)*s),pal=TERRAIN_PALETTE[cat];if(r<8)return;ctx.strokeStyle=pal.line;ctx.globalAlpha=(cat==="mountain"||cat==="hill") ? .28 : .16;ctx.lineWidth=1.2;
+      if(cat==="mountain"||cat==="hill"){for(let i=1;i<=3;i++){ctx.beginPath();ctx.ellipse(p.x,p.y,r*i/3,r*i/5,(anchor.x+anchor.y)%7/18,0,Math.PI*2);ctx.stroke()}}
       else if(cat==="forest"){for(let i=0;i<5;i++){const a=i*1.256,rr=r*(.25+.09*(i%2));ctx.fillStyle=pal.color;ctx.globalAlpha=.10;ctx.beginPath();ctx.arc(p.x+Math.cos(a)*r*.38,p.y+Math.sin(a)*r*.28,rr,0,Math.PI*2);ctx.fill()}}
       else if(cat==="settlement"){ctx.globalAlpha=.16;ctx.fillStyle=pal.color;ctx.fillRect(p.x-r*.42,p.y-r*.30,r*.84,r*.60)}
     });ctx.restore();
@@ -872,7 +878,7 @@
   function drawPrecisionHydrologyOverlays(ctx,v,s,waterAreas,waterPoints){
     const water=TERRAIN_PALETTE.water;
     waterAreas.forEach(o=>{const b=rangeBounds(o.area);if(b.east<v.left||b.west>v.right||b.north<v.bottom||b.south>v.top)return;const candidate=isCandidateGeometry(o);ctx.save();if(!traceSpatialPath(ctx,o)){ctx.restore();return}ctx.fillStyle=hexToRgba(water.color,candidate?.18:.42);ctx.strokeStyle=hexToRgba(water.line,candidate?.62:.94);ctx.lineWidth=candidate?1.7:2.6;ctx.setLineDash(candidate?[8,7]:[]);ctx.fill();ctx.stroke();ctx.restore()});
-    waterPoints.forEach(o=>{const x=Number(o.x)||0,y=Number(o.y)||0;if(x<v.left-20||x>v.right+20||y<v.bottom-20||y>v.top+20)return;const p=worldToScreen(x,y),kind=hydrologyKind(o),candidate=isCandidateGeometry(o),size=Math.max(12,Math.min(34,8+state.camera.zoom*3.2));ctx.save();ctx.globalAlpha=candidate?.58:.92;ctx.strokeStyle=hexToRgba(water.line,candidate?.66:.92);ctx.fillStyle=hexToRgba(water.color,candidate?.18:.46);ctx.lineWidth=candidate?1.4:2;ctx.setLineDash(candidate?[6,5]:[]);
+    waterPoints.forEach(o=>{const anchor=objectCanvasPoint(o),x=anchor.x,y=anchor.y;if(x<v.left-20||x>v.right+20||y<v.bottom-20||y>v.top+20)return;const p=worldToScreen(x,y),kind=hydrologyKind(o),candidate=isCandidateGeometry(o),size=Math.max(12,Math.min(34,8+state.camera.zoom*3.2));ctx.save();ctx.globalAlpha=candidate?.58:.92;ctx.strokeStyle=hexToRgba(water.line,candidate?.66:.92);ctx.fillStyle=hexToRgba(water.color,candidate?.18:.46);ctx.lineWidth=candidate?1.4:2;ctx.setLineDash(candidate?[6,5]:[]);
       if(kind==="source"){const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,size);g.addColorStop(0,"rgba(235,250,255,.95)");g.addColorStop(.28,hexToRgba(water.color,.76));g.addColorStop(1,hexToRgba(water.color,0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,size,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,size*.22),0,Math.PI*2);ctx.fillStyle=water.line;ctx.fill()}
       else if(kind==="waterbody"){ctx.beginPath();ctx.ellipse(p.x,p.y,size*1.15,size*.65,-.12,0,Math.PI*2);ctx.fill();ctx.stroke()}
       else if(kind==="waterfall"){ctx.beginPath();ctx.moveTo(p.x-size*.7,p.y-size*.65);ctx.bezierCurveTo(p.x-size*.15,p.y-size*.15,p.x+size*.12,p.y+size*.15,p.x+size*.55,p.y+size*.72);ctx.strokeStyle=water.line;ctx.lineWidth=Math.max(4,size*.26);ctx.stroke()}
@@ -880,6 +886,30 @@
       ctx.restore()});
   }
   function hexToRgba(hex,alpha){const h=String(hex||"#777").replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`}
+
+  function v272BoardLayoutAvailable(){return String(BOARD_LAYOUT?.schemaVersion||"").startsWith("v272-board-layout")&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
+  function v272BoardCellAnnotations(key){return V272_BOARD_ANNOTATIONS_BY_CELL.get(String(key))||[]}
+  function v272BoardPalette(kind){return kind==="sea"?{fill:"rgba(210,232,243,.82)",line:"rgba(80,135,157,.16)",text:"#3d7184"}:kind==="outer"?{fill:"rgba(241,232,210,.72)",line:"rgba(139,112,72,.10)",text:"#775f3d"}:{fill:"rgba(255,255,255,.78)",line:"rgba(102,98,84,.07)",text:"#4f554f"}}
+  function drawV272BoardBackdrop(ctx,v,s){
+    if(!v272BoardLayoutAvailable())return;
+    ctx.save();
+    for(const run of BOARD_LAYOUT.backgroundRuns||[]){const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;if(east<v.left||west>v.right||north<v.bottom||south>v.top)continue;const nw=worldToScreen(west,north),se=worldToScreen(east,south),pal=v272BoardPalette(run.kind);ctx.fillStyle=pal.fill;ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y);if(state.camera.zoom>=.42){ctx.strokeStyle=pal.line;ctx.lineWidth=.7;ctx.strokeRect(nw.x+.35,nw.y+.35,se.x-nw.x-.7,se.y-nw.y-.7)}}
+    ctx.restore();
+  }
+  function drawV272BoardWorldLabels(ctx,v,s){
+    if(!v272BoardLayoutAvailable())return;const cellPx=CELL_LI*s;if(cellPx<4)return;
+    ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+    for(const label of BOARD_LAYOUT.worldLabels||[]){const x=Number(label.canvasX)||0,y=Number(label.canvasY)||0;if(x<v.left-180||x>v.right+180||y<v.bottom-180||y>v.top+180)continue;const p=worldToScreen(x,y),sea=label.kind==="sea",font=Math.max(10,Math.min(22,8+cellPx*.15));ctx.font=`800 ${font}px ${getComputedStyle(document.body).fontFamily}`;const text=String(label.name||"").replace(/^L[23]\s*/,"");const width=Math.max(70,ctx.measureText(text).width+18),height=font+12;waterRoundRect(ctx,p.x-width/2,p.y-height/2,width,height,Math.min(10,height/2));ctx.fillStyle=sea?"rgba(235,247,251,.90)":"rgba(250,246,235,.88)";ctx.fill();ctx.strokeStyle=sea?"rgba(69,128,151,.34)":"rgba(131,102,59,.25)";ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=sea?"#3f7589":"#725d3d";ctx.fillText(text,p.x,p.y+.5)}
+    ctx.restore();
+  }
+  function drawV272BoardAnnotations(ctx,v,s,{labelsOnly=false}={}){
+    if(!v272BoardLayoutAvailable())return;const cellPx=CELL_LI*s;if(cellPx<15)return;
+    ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+    for(const annotation of BOARD_LAYOUT.annotations||[]){if(annotation.hasFormalObject)continue;const x=Number(annotation.canvasX)||0,y=Number(annotation.canvasY)||0;if(x<v.left-80||x>v.right+80||y<v.bottom-80||y>v.top+80)continue;if(labelsOnly&&annotation.kind!=="flowing-sand")continue;const p=worldToScreen(x,y),arrows=(annotation.arrows||[]).join(" "),label=String(annotation.label||"").trim(),fill=annotation.fillColor||"";if(cellPx>=38){const bg=annotation.kind==="water-flow"?"rgba(221,235,247,.58)":annotation.kind==="flowing-sand"?"rgba(247,231,198,.58)":"rgba(241,232,210,.45)";ctx.fillStyle=bg;ctx.fillRect(p.x-cellPx*.48,p.y-cellPx*.48,cellPx*.96,cellPx*.96)}const glyphSize=Math.max(11,Math.min(22,7+cellPx*.20));ctx.font=`900 ${glyphSize}px ui-sans-serif,system-ui,sans-serif`;ctx.fillStyle=annotation.kind==="water-flow"?"#2b7894":annotation.kind==="flowing-sand"?"#8a6530":"#6c5b42";ctx.fillText(arrows||"·",p.x,p.y+(label&&cellPx>=55?glyphSize*.24:0));if(label&&cellPx>=55){const font=Math.max(8,Math.min(12,cellPx*.105));ctx.font=`700 ${font}px ${getComputedStyle(document.body).fontFamily}`;ctx.fillStyle=annotation.kind==="water-flow"?"#315f70":annotation.kind==="flowing-sand"?"#735424":"#665743";ctx.fillText(label,p.x,p.y-glyphSize*.62)}}
+    ctx.restore();
+  }
+  function v272TileAnnotationHTML(key){const rows=v272BoardCellAnnotations(key).filter(item=>item.hasFormalObject);if(!rows.length)return "";return `<div class="v272-board-flow-badges">${rows.slice(0,2).map(item=>`<span class="v272-board-flow-badge ${esc(item.kind||"relation-arrow")}"><b>${esc((item.arrows||[]).join(" ")||"·")}</b><em>${esc(item.label||"")}</em></span>`).join("")}</div>`}
+  function ensureV272BoardStyles(){if(document.getElementById("v272-board-runtime-style"))return;const style=document.createElement("style");style.id="v272-board-runtime-style";style.textContent=`.v272-board-flow-badges{position:absolute;right:5px;bottom:5px;z-index:8;display:flex;flex-direction:column;gap:3px;pointer-events:none;max-width:78%}.v272-board-flow-badge{display:flex;align-items:center;gap:4px;padding:2px 5px;border-radius:7px;background:rgba(250,247,238,.88);box-shadow:0 1px 4px rgba(58,49,35,.12);font-style:normal;color:#665743}.v272-board-flow-badge.water-flow{background:rgba(232,246,251,.92);color:#276c84}.v272-board-flow-badge.flowing-sand{background:rgba(250,237,209,.94);color:#7a5928}.v272-board-flow-badge b{font-size:calc(10px * var(--tile-ui,1));line-height:1}.v272-board-flow-badge em{font-size:calc(7px * var(--tile-ui,1));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:normal}.tile.compact .v272-board-flow-badge em,.tile.micro .v272-board-flow-badge em{display:none}.tile.micro .v272-board-flow-badges{right:2px;bottom:2px}.tile.micro .v272-board-flow-badge{padding:1px 2px;border-radius:4px}`;document.head.appendChild(style)}
   function drawPrecisionGrid(ctx,v,s){
     const minor=10,minorPx=minor*s,startX=Math.floor(v.left/minor)*minor,endX=v.right+minor,startY=Math.floor(v.bottom/minor)*minor,endY=v.top+minor;
     ctx.save();ctx.lineWidth=1;for(let x=startX;x<=endX;x+=minor){const p=worldToScreen(x,0),major=Math.abs((((x-50)%100)+100)%100)<.001;ctx.strokeStyle=major?"rgba(52,59,56,.44)":"rgba(60,67,64,.16)";ctx.lineWidth=major?1.5:1;ctx.beginPath();ctx.moveTo(Math.round(p.x)+.5,0);ctx.lineTo(Math.round(p.x)+.5,v.height);ctx.stroke()}
@@ -1328,10 +1358,12 @@
     return t*t*(3-2*t)
   }
   function v070OverviewArtOpacity(){
+    if(v272BoardLayoutAvailable())return 0;
     if(!state.layers.environment)return 0;
     return 1-v070Smoothstep(V070_OVERVIEW_ART.fullUntil,V070_OVERVIEW_ART.goneAt,state.camera.zoom)
   }
   function v070TileCardOpacity(){
+    if(v272BoardLayoutAvailable())return 1;
     return v070Smoothstep(V070_OVERVIEW_ART.tilesBegin,V070_OVERVIEW_ART.tilesFull,state.camera.zoom)
   }
   function v070SyncMapTransition(){
@@ -1497,28 +1529,29 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, r.width, r.height);
     state.perf.waterHitAreas = [];
-    // v0.7.0：最大地图使用由当前617个对象、地貌描述和79段水系离线生成的固定山水底图。
-    // 放大时底图逐步退去，100里地块卡牌同步显现；不再实时绘制重复小山，也不显示大区范围圈。
-    if (!state.precisionMode) drawV070OverviewArt(ctx);
+    // V272正式地图：世界底层直接来自《坐标棋盘图》，旧617对象固定山水底图不再作为正式地理依据。
+    if(v272BoardLayoutAvailable())drawV272BoardBackdrop(ctx,v,s);else if(!state.precisionMode)drawV070OverviewArt(ctx);
     if (state.precisionMode) {
       drawPrecisionTerrain(ctx, v, s);
       drawPrecisionGrid(ctx, v, s);
       drawV044LocationWatermark(ctx, r);
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, true); drawPrecisionLines(ctx, v, s); }
+      drawV272BoardAnnotations(ctx,v,s);
     } else if (state.regionOverviewMode) {
       drawRegionOverviewBackdrops(ctx,v,s);
       if(state.overviewMode==="domain"&&state.layers.areas)drawAreas(ctx,v,s);
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, false); drawLines(ctx, v, s); }
+      drawV272BoardAnnotations(ctx,v,s,{labelsOnly:true});
     } else {
       const tilePhase=v070TileCardOpacity();
       ctx.save();ctx.globalAlpha=Math.max(.12,tilePhase);
       if (state.layers.areas && state.camera.zoom >= .50) drawAreas(ctx, v, s);
       drawGrid(ctx, v, s, cellPx);ctx.restore();
       if (state.layers.rivers) { drawWaterPaths(ctx, v, s, false); drawLines(ctx, v, s); }
+      drawV272BoardAnnotations(ctx,v,s);
     }
+    drawV272BoardWorldLabels(ctx,v,s);
     if (!state.regionOverviewMode) drawBrushSelection(ctx, v);
-    // 轻量相机帧只负责底图与对象位置。区域遮罩、搜索强调和测量层会遍历可视格，
-    // 在区域跳转动画中逐帧执行会造成明显卡顿；完整帧再补绘即可。
     if (!light) {
       drawContextDimming(ctx, v);
       drawSearchHighlights(ctx, v, s);
@@ -1595,7 +1628,11 @@
   function waterPathInView(path,v){const b=path?.bounds;if(!b)return true;return !(b.maxX<v.left-100||b.minX>v.right+100||b.maxY<v.bottom-100||b.minY>v.top+100)}
   function visibleWaterPaths(v){
     const hydrology=state.viewPreset==="hydrology",zoom=state.camera.zoom;
-    return (state.waterPaths||[]).filter(path=>waterPathInView(path,v)).filter(path=>hydrology||zoom>=.38||path.isMain||path.points?.length>=4)
+    return (state.waterPaths||[]).filter(path=>waterPathInView(path,v)).filter(path=>{
+      const objects=(path.objectIds||[]).map(indexedObject).filter(Boolean),touchesNonMetric=objects.some(object=>hasOfficialBoardPlacement(object)&&object.boardPlacement.metric===false);
+      if(touchesNonMetric&&path.boardAuthoritative!==true)return false;
+      return hydrology||zoom>=.38||path.isMain||path.points?.length>=4
+    })
   }
   function traceWaterCurve(ctx,pts){
     if(!pts.length)return;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);if(pts.length===2){ctx.lineTo(pts[1].x,pts[1].y);return}
@@ -1820,14 +1857,14 @@
   function tileCoordCode(gx,gy){const f=n=>`${n>=0?"+":"-"}${String(Math.abs(n)).padStart(3,"0")}`;return `X${f(gx)}_Y${f(gy)}`}
   function tileHTML(gx,gy,k,all,visible,left,top,size,semantic,isChanged,searchClass="",search=null){
     const q=state.filters.q.trim(),brushSelected=!!state.brushKeys?.has(k),flipped=state.flippedCell===k&&semantic!=="micro",selected=all.some(o=>o.id===state.selectedId),main=(visible[0]||all.find(o=>o.id===state.selectedId)||all.find(o=>o.geometryType==="area")||all[0]),changeBadge=isChanged&&state.layers.changes?`<span class="tile-change-badge">更改</span>`:"",pulse=state.searchPulseCell===k?"search-pulse":"",uiScale=Math.min(1.85,Math.max(.82,size/BASE_CELL_PX)),style=`left:${left}px;top:${top}px;width:${size}px;height:${size}px;--tile-ui:${uiScale}`;
-    const coord=tileCoordCode(gx,gy),tileImage=state.tileImageMapMode?syncedImageUrl(state.tileProfiles?.[k]?.imageUrl):"",tileImageHTML=tileImage?`<img class="tile-map-image" src="${esc(tileImage)}" alt="${esc((main?.name||"地块")+"主体图片")}" loading="lazy" decoding="async" draggable="false">`:"",imageClass=tileImage?"has-map-image":"";
+    const coord=tileCoordCode(gx,gy),tileImage=state.tileImageMapMode?syncedImageUrl(state.tileProfiles?.[k]?.imageUrl):"",tileImageHTML=tileImage?`<img class="tile-map-image" src="${esc(tileImage)}" alt="${esc((main?.name||"地块")+"主体图片")}" loading="lazy" decoding="async" draggable="false">`:"",imageClass=tileImage?"has-map-image":"",boardFlowHTML=v272TileAnnotationHTML(k);
     if(!all.length){return `<div class="tile empty ${brushSelected?'brush-selected':''} ${flipped?'flipped':''} ${semantic} ${searchClass} ${pulse}" data-cell="${k}" data-gx="${gx}" data-gy="${gy}" style="${style}"><div class="tile-card"><div class="tile-face tile-front"><div class="tile-content empty-layout icon-only"><div class="empty-plus">${searchClass==='search-match'?'⌕':'＋'}</div></div></div><div class="tile-face tile-back"><div class="tile-empty-back"><strong>此格尚无对象</strong><p>${coordText(cellCenter(gx),cellCenter(gy))}为主格中心</p><button data-action="add">＋ 新增第一个对象</button></div></div></div></div>`}
     const ordered=state.filters.q?[...all].sort((a,b)=>searchRank(a,q)-searchRank(b,q)):all;
     const list=ordered.map(o=>{const matched=state.filters.q&&searchRank(o,q)<5,focused=o.id===state.searchPulseObject;return `<button class="tile-object-btn ${o.id===state.selectedId?'selected':''} ${matched?'search-object-match':''} ${focused?'search-object-focus':''}" data-object-id="${esc(o.id)}"><i class="${esc(o.geometryType||'point')}"></i><span><strong>${matched?markSearchText(o.name,q):esc(o.name)}</strong><small>${esc(o.rowRef||'NEW')} · ${esc(o.type||'未分类')}</small></span></button>`}).join("");
     const showFrontName=semantic!=="micro"&&semantic!=="compact"&&size>=110;
     const frontMode=showFrontName?"icon-name":"icon-only";
     const frontNames=ordered.map(o=>o.name).filter(Boolean).join(' / ');const frontTitle=showFrontName?`<div class="tile-title-block"><h3>${q?markSearchText(frontNames||main?.name||"",q):esc(frontNames||main?.name||"未命名地块")}</h3></div>`:"";
-    return `<div class="tile ${imageClass} ${brushSelected?'brush-selected':''} ${flipped?'flipped':''} ${selected?'selected':''} ${isChanged?'changed':''} ${state.previewCell===k?'search-preview':''} ${semantic} ${searchClass} ${pulse}" data-cell="${k}" data-gx="${gx}" data-gy="${gy}" style="${style}"><div class="tile-card"><div class="tile-face tile-front">${tileImageHTML}${changeBadge}<div class="tile-content ${frontMode}"><div class="tile-icon-row"><i class="type-icon featured ${esc(main?.geometryType||'point')}">${geometryIcon(main||all[0])}</i></div>${frontTitle}</div></div><div class="tile-face tile-back"><div class="tile-back-head"><span>${coord}</span><strong>${all.length}项</strong></div><div class="tile-object-stack">${list}</div><div class="tile-actions"><button data-action="drill">10里格内</button><button class="add" data-action="add">＋新增</button><button class="delete" data-action="delete">⌫删除</button></div></div></div></div>`
+    return `<div class="tile ${imageClass} ${brushSelected?'brush-selected':''} ${flipped?'flipped':''} ${selected?'selected':''} ${isChanged?'changed':''} ${state.previewCell===k?'search-preview':''} ${semantic} ${searchClass} ${pulse}" data-cell="${k}" data-gx="${gx}" data-gy="${gy}" style="${style}"><div class="tile-card"><div class="tile-face tile-front">${tileImageHTML}${changeBadge}${boardFlowHTML}<div class="tile-content ${frontMode}"><div class="tile-icon-row"><i class="type-icon featured ${esc(main?.geometryType||'point')}">${geometryIcon(main||all[0])}</i></div>${frontTitle}</div></div><div class="tile-face tile-back"><div class="tile-back-head"><span>${coord}</span><strong>${all.length}项</strong></div><div class="tile-object-stack">${list}</div><div class="tile-actions"><button data-action="drill">10里格内</button><button class="add" data-action="add">＋新增</button><button class="delete" data-action="delete">⌫删除</button></div></div></div></div>`
   }
   function bindTileEvents(){
     els.tileLayer.querySelectorAll(".tile:not([data-events-bound='1'])").forEach(tile=>{
@@ -1853,7 +1890,7 @@
   function moveTooltip(x,y){if(state.hoverLensSuppressed||state.pan.active||state.cameraAnimation){hideTooltip();return}const r=els.tooltip.getBoundingClientRect(),pad=12;let left=x+14,top=y+14;if(left+r.width>innerWidth-pad)left=x-r.width-14;if(top+r.height>innerHeight-pad)top=y-r.height-14;els.tooltip.style.left=Math.max(pad,left)+"px";els.tooltip.style.top=Math.max(pad,top)+"px"}
   function hideTooltip(){els.tooltip.classList.add("hidden")}
   function selectObject(id){const o=indexedObject(id);if(!o)return;const c=objectCell(o),key=cellKey(c.gx,c.gy);clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;state.selectedId=id;state.selectedCell=key;renderDetails();renderSidebar();scheduleRender();persist()}
-  function jumpToObject(id,flip=false,smooth=false){const o=state.objects.find(x=>x.id===id);if(!o)return;const targetCell=objectCell(o),key=cellKey(targetCell.gx,targetCell.gy);clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;v050RememberLocation("跳转前位置");const pulseCell=key;pulseSearchTarget(pulseCell,id);state.selectedId=id;state.selectedCell=key;renderDetails();renderSidebar();const targetZoom=Math.max(state.camera.zoom,.86),finish=()=>{if(flip)state.flippedCell=key;scheduleRender();persist();v050RememberLocation(o.name,true)};if(smooth)animateCameraTo(Number(o.x)||0,Number(o.y)||0,targetZoom,finish);else{state.camera.x=Number(o.x)||0;state.camera.y=Number(o.y)||0;state.camera.zoom=targetZoom;finish()}}
+  function jumpToObject(id,flip=false,smooth=false){const o=state.objects.find(x=>x.id===id);if(!o)return;const targetCell=objectCell(o),key=cellKey(targetCell.gx,targetCell.gy),target=objectCanvasPoint(o);clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;v050RememberLocation("跳转前位置");const pulseCell=key;pulseSearchTarget(pulseCell,id);state.selectedId=id;state.selectedCell=key;renderDetails();renderSidebar();const targetZoom=Math.max(state.camera.zoom,.86),finish=()=>{if(flip)state.flippedCell=key;scheduleRender();persist();v050RememberLocation(o.name,true)};if(smooth)animateCameraTo(target.x,target.y,targetZoom,finish);else{state.camera.x=target.x;state.camera.y=target.y;state.camera.zoom=targetZoom;finish()}}
   function jumpToCell(key,flip=false){clickOutsideSpatialFocus(key);state.indexMode="objects";state.selectedHierarchyNode="";state.selectedWaterPathId=null;v050RememberLocation("跳转前位置");pulseSearchTarget(key);const [gx,gy]=String(key).split(",").map(Number);state.selectedCell=key;const items=objectsInCellKey(key);if(items[0])state.selectedId=items[0].id;renderDetails();renderSidebar();animateCameraTo(cellCenter(gx),cellCenter(gy),Math.max(state.camera.zoom,.82),()=>{if(flip)state.flippedCell=key;scheduleRender();persist();v050RememberLocation(items[0]?.name||`地块 ${key}`,true)})}
   function animateCameraTo(x,y,zoom,duration=680,done=null){
     if(typeof duration==="function"){done=duration;duration=680}

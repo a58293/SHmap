@@ -28,15 +28,12 @@ function seedSnapshot(){
     selectedCell:null,tileProfiles:{},trash:[],trashRetentionDays:0,nextIdCounter:0,dossierMode:"brief",brushKeys:[],brushStrokes:[],viewPreset:"all",compareKeys:[]
   };
 }
-
-function snapshotDataVersion(value){try{const parsed=typeof value==="string"?JSON.parse(value):value;return String(parsed?.dataVersion||"")}catch{return ""}}
-function preferredStartupFallback(legacy,seed){const seedVersion=snapshotDataVersion(seed);if(usableWorkspaceSnapshot(legacy)&&snapshotDataVersion(legacy)===seedVersion)return{payload:legacy,source:"local-cache-fallback"};return{payload:seed,source:"private-repo-seed-fallback"}}
 function hydratePrivateMapBundle(payload){
   const bundle=typeof payload==="string"?JSON.parse(payload):payload;
   if(bundle?.format!=="shmap-private-bootstrap-v1")throw new Error("私有地图数据格式不受支持");
   const globals=bundle?.globals;
   if(!globals||typeof globals!=="object")throw new Error("私有地图数据缺少 globals");
-  const required=["SHJ_INITIAL_DATA","SHJ_WATER_PATHS","SHJ_WORLD_HIERARCHY","SHJ_ORIGINAL_LIBRARY","SHJ_SPEC_SUMMARY"];
+  const required=["SHJ_INITIAL_DATA","SHJ_WATER_PATHS","SHJ_WORLD_HIERARCHY","SHJ_ORIGINAL_LIBRARY","SHJ_SPEC_SUMMARY","SHJ_BOARD_LAYOUT"];
   for(const name of required){
     if(!(name in globals))throw new Error(`私有地图数据缺少 ${name}`);
     window[name]=globals[name];
@@ -305,6 +302,19 @@ function usableWorkspaceSnapshot(payload){
   if(!payload||typeof payload!=="string")return false;
   try{const parsed=JSON.parse(payload);return Array.isArray(parsed?.objects)&&parsed.objects.length>0}catch{return false}
 }
+function snapshotDataVersion(value){
+  try{
+    const parsed=typeof value==="string"?JSON.parse(value):value;
+    return String(parsed?.dataVersion||"");
+  }catch{return ""}
+}
+function preferredStartupFallback(legacy,seed){
+  const seedVersion=snapshotDataVersion(seed);
+  if(usableWorkspaceSnapshot(legacy)&&snapshotDataVersion(legacy)===seedVersion){
+    return {payload:legacy,source:"local-cache-fallback"};
+  }
+  return {payload:seed,source:"private-repo-seed-fallback"};
+}
 function promiseWithTimeout(promise,ms,message){
   let timer;
   return Promise.race([
@@ -361,23 +371,38 @@ async function start(){
       localStorage.setItem(STORAGE_KEY,fallback);
       bootInfo={source:selectedFallback.source,snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
       console.error("桌面数据库启动降级",error);
-      updateStartupStatus("数据库响应较慢，正在使用本地缓存启动……");
+      updateStartupStatus("数据库响应较慢，正在使用与V272匹配的安全缓存启动……");
       task.then(info=>{
         bootstrapRecoveryTask=null;nativeStorageReady=true;
         if(window.SHJ_DESKTOP){window.SHJ_DESKTOP.databaseRecovered=true;window.SHJ_DESKTOP.bootInfo=info}
-        recoveryBanner("桌面数据库已经恢复连接。当前页面使用本地缓存，为避免覆盖差异，请重新启动程序后继续编辑。")
+        recoveryBanner("桌面数据库已经恢复连接。当前页面使用安全缓存，为避免覆盖差异，请重新启动程序后继续编辑。")
       }).catch(recoveryError=>{
         bootstrapRecoveryTask=null;console.error("桌面数据库后台恢复失败",recoveryError);
-        recoveryBanner("桌面数据库暂未恢复。当前地图来自本地缓存，请先不要编辑；关闭程序后重新启动。")
+        recoveryBanner("桌面数据库暂未恢复。当前地图来自V272私有种子或同版本缓存，请先不要编辑；关闭程序后重新启动。")
       })
     }
   }
-  window.SHJ_DESKTOP={active:isTauri&&nativeStorageReady&&!startupFallback,recoveryMode:startupFallback,databaseRecovered:false,githubAuth,privateMapInfo:privateMapInfo?{dataVersion:privateMapInfo.dataVersion,objectCount:privateMapInfo.objectCount,sha256:privateMapInfo.sha256}:null,saveWorkspace:queueSave,flush:flushWorkspace,createBackup:async label=>{await flushWorkspace();return invoke("create_backup",{label:label||"手动备份"})},bootInfo,publishPatch:args=>invoke("publish_patch_to_github",args)};
+  window.SHJ_DESKTOP={
+    active:isTauri&&nativeStorageReady&&!startupFallback,
+    recoveryMode:startupFallback,
+    databaseRecovered:false,
+    githubAuth,
+    privateMapInfo:privateMapInfo?{
+      dataVersion:privateMapInfo.dataVersion,
+      objectCount:privateMapInfo.objectCount,
+      sha256:privateMapInfo.sha256
+    }:null,
+    saveWorkspace:queueSave,
+    flush:flushWorkspace,
+    createBackup:async label=>{await flushWorkspace();return invoke("create_backup",{label:label||"手动备份"})},
+    bootInfo,
+    publishPatch:args=>invoke("publish_patch_to_github",args)
+  };
   await loadMainScript();
   setupNativeUi();
   if(startupFallback){
-    recoveryBanner("桌面数据库读取超时，已从本地缓存恢复地图。当前会话请先核对资料，不要进行编辑。")
-    const saveState=document.querySelector("#saveState");if(saveState)saveState.textContent="本地缓存恢复模式"
+    recoveryBanner("桌面数据库读取超时，已从V272私有种子或同版本安全缓存恢复地图。当前会话请先核对资料，不要进行编辑。")
+    const saveState=document.querySelector("#saveState");if(saveState)saveState.textContent="安全缓存恢复模式"
   }
   scheduleAutomaticUpdateCheck();
   if(!isTauri)toast("当前为浏览器预览模式；SQLite与原生备份未启用。",true);

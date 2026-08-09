@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "shmap-v272-clean-baseline-2",
+  "sourceWorkbook": "山海经原典地图_都广之野核心区_v272_单画布世界地图最终视觉验收冻结.xlsx",
+  "sourceWorkbookVersion": "V272",
+  "dataVersion": "v272-r0003",
+  "formalObjectCount": 624,
+  "rowRefStart": "R9",
+  "rowRefEnd": "R632",
+  "nextReservedRowRef": "R633",
+  "boardSheet": "坐标棋盘图",
+  "boardOriginCell": "BX44",
+  "boardOccupiedCellCount": 497,
+  "boardPlacementCount": 624,
+  "mainGridLi": 100,
+  "mountainChainBaselineLi": 97091,
+  "waterPathCount": 82,
+  "waterArrowCellCount": 121,
+  "worldLayers": {
+    "L1": 333,
+    "L2": 33,
+    "L3": 255,
+    "U": 3
+  },
+  "eastOuterCore": "STRONG-0",
+  "rules": [
+    "正式R号对象必须按坐标棋盘图逐R号实装",
+    "L1使用100里正式比例",
+    "L2/L3仅使用单画布排版位置，不得由格数反推真实里数",
+    "对象角色分层不得删除正式R号的位置锚点",
+    "水系线型表达不得删除正式R号的位置锚点",
+    "VIS-M与开放RNG模型不得升级为精确疆界",
+    "未知河流不得补箭头",
+    "坐标棋盘图中的非R号箭头格属于正式地图表达，不得忽略",
+    "四海／外围背景按坐标棋盘图单画布色带表达，色带不得升级为真实岸线或真实距离",
+    "外围非比例水系不得继续使用旧x/y路径冒充正式河道；未完成棋盘路径编译前只显示表格已锁箭头与位置"
+  ],
+  "boardLayoutSchema": "v272-board-layout-2",
+  "boardBackgroundRunCount": 368,
+  "boardWorldLabelCount": 8,
+  "boardAnnotationCount": 129
+}
