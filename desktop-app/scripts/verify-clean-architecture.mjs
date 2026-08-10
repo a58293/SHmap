@@ -30,7 +30,22 @@ for(const marker of ["run_git_network","GitHubDesktop","GCM_INTERACTIVE","http.l
 }
 
 const pkg=JSON.parse(read("package.json"));
-assert.equal(pkg.scripts.verify,"npm run build && npm run verify:architecture && npm run verify:v272-data && npm run verify:critical && npm run verify:release");
+const verifyChain=String(pkg.scripts.verify||"").split("&&").map(item=>item.trim()).filter(Boolean);
+const requiredVerifyChain=[
+  "npm run build",
+  "npm run verify:architecture",
+  "npm run verify:v272-data",
+  "npm run verify:critical",
+  "npm run verify:overview-policy",
+  "npm run verify:import-audit",
+  "npm run verify:release"
+];
+for(const command of requiredVerifyChain){
+  assert.ok(verifyChain.includes(command),`verify 链缺少：${command}`);
+}
+for(let i=1;i<requiredVerifyChain.length;i++){
+  assert.ok(verifyChain.indexOf(requiredVerifyChain[i-1])<verifyChain.indexOf(requiredVerifyChain[i]),`verify 链顺序错误：${requiredVerifyChain[i-1]} -> ${requiredVerifyChain[i]}`);
+}
 assert.ok(!("verify:checks" in pkg.scripts),"旧历史 verify:checks 链必须移除");
 
 console.log("PASS clean architecture: Private data / GitHub auth / compact CI / no data.js.");
