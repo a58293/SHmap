@@ -1,15 +1,15 @@
 {
-  "version": "1.0.6",
-  "notes": "# 山海经原典地图研究台 v1.0.6\r\n\r\n## V272 最终地图基线\r\n\r\n- 正式地图以《山海经原典地图_都广之野核心区_v272_单画布世界地图最终视觉验收冻结.xlsx》作为唯一地理位置与世界结构依据。\r\n- 正式对象更新为 R9—R632，共 624 个；R633 继续保留为空号。\r\n- 624 个正式对象全部按 V272《坐标棋盘图》的棋盘位置实装，覆盖 497 个正式占用格。\r\n- L1 中央大陆继续采用 1格=100里；L2 四海与 L3 外围使用 V272 单画布拓扑位置，不再由旧 x/y 自动推格或反算真实里数。\r\n- 东海、南海、西海、北海第一圈及四向外围结构按 V272 棋盘背景层进入客户端。\r\n- 正式 R 号位置锚点不会再被 collection/path/detail/context 资料角色或线型水系显示吞掉。\r\n\r\n## 棋盘方向与流向\r\n\r\n- 接入 V272《坐标棋盘图》的非 R 号正式表达：背景色带、世界标签与方向格。\r\n- 当前编译包含 368 段棋盘背景色带、8 个世界标签、129 个带方向的棋盘注记。\r\n- “流沙 ← / ↓ / ↙”以及有证据支持的水流、局部方向关系会在客户端地图体现。\r\n- 未明确流向的河流继续不补箭头；L2/L3 未完成正式棋盘路径编译的长河道不会用旧 metric 路径冒充正式河道。\r\n\r\n## 私有地图与数据安全\r\n\r\n- 正式地图正文继续只存在 Private `a58293/SHmap-Data`。\r\n- 数据编译版本：`v272-r0003`。\r\n- 客户端不恢复 `public/app/data.js`。\r\n- GitHub 登录、私有仓库授权、SQLite 本地工作区、版本感知安全缓存和私有更改包流程继续保留。\r\n- 旧本地博物志、图片及图片来源等非正式地理补充资料继续保留；不得反向覆盖 V272 正式位置与结构。\r\n\r\n## 更新\r\n\r\n- 桌面程序版本从 `1.0.5` 升级为 `1.0.6`。\r\n- 更新器继续使用签名 Windows 更新包和多线路更新源。\r\n- 发布完成后，1.0.5 客户端会检测到 1.0.6，并可使用“下载并安装”升级。",
-  "pub_date": "2026-08-09T05:13:34.666Z",
+  "version": "1.1.2",
+  "notes": "# 山海经原典地图研究台 v1.1.2\r\n\r\n- 地块域从约14%倍率起显示 V272 二级详细地域，世界大区仅在更低倍率作锚点。\r\n- 详细地域卡片缩小，减少遮挡。\r\n- 小地图总览标题改为紧凑徽标，减少缩略图遮挡。\r\n- Markdown 批量导入新增文件级“被阻止名单”。\r\n- 同一源文件存在阻断错误时整份隔离，避免部分条目写入。\r\n- 支持复制被阻止文件名、详细报告、导出报告、复制被阻止原文件、仅重试阻止项。\r\n- 新增“复制文件导入”：先复制原件到指定文件夹，再执行导入校验。\r\n- 正式地图数据仍为 V272 / v272-r0003；本轮不更换背景图。",
+  "pub_date": "2026-08-10T05:44:28.307Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkJXeFZQNU14dnBteVBzT0NKbEg0bkNYOUZtZm1CSDNGMitkQzBycWJWVmg3TWMxRDNIQjNERTB0Q2hVSWxDRUZvSXQraGt6YzNsNjNBV2ZFZnJPTVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2MjUyNDExCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzEuMC42X3g2NC1zZXR1cC5leGUKMVBLTVc5SDZFVWZQWEJCc1BFcW9POWtCVnNhbWpkTUQ1WTJZMVM4T2NEUDkvd3Yrb0lFV3MycFZrSGEvYUNjN2ErZDVjRytHbW0wMkduRWNQUjFSQXc9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/507143648"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWk9UTVpyYUZySUFBWnV4Y2hmUjVlWGlmSVd6eHRiWTJPc3VsZnVNTlBKaXBlY0pWWFBQUCtRbFQ5N0tEVk9INVhuNmdRU2hyZFEycHloR3hqS2tqR0FJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2MzQwNjY1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzEuMS4yX3g2NC1zZXR1cC5leGUKa1lQalZpOS9tR1ZPa1FxT1Y2ZFJrRGoremxHR21TNnduMERPMnJaWlpOZ3Z3enBqcytwOUk0dUhpa3hYd1hka1d4K0diUlljSzc2RFdHQ1NjOXAzQVE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/508347986"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWkJXeFZQNU14dnBteVBzT0NKbEg0bkNYOUZtZm1CSDNGMitkQzBycWJWVmg3TWMxRDNIQjNERTB0Q2hVSWxDRUZvSXQraGt6YzNsNjNBV2ZFZnJPTVFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2MjUyNDExCWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzEuMC42X3g2NC1zZXR1cC5leGUKMVBLTVc5SDZFVWZQWEJCc1BFcW9POWtCVnNhbWpkTUQ1WTJZMVM4T2NEUDkvd3Yrb0lFV3MycFZrSGEvYUNjN2ErZDVjRytHbW0wMkduRWNQUjFSQXc9PQo=",
-      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/507143648"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTblU0a0JDRS9hWk9UTVpyYUZySUFBWnV4Y2hmUjVlWGlmSVd6eHRiWTJPc3VsZnVNTlBKaXBlY0pWWFBQUCtRbFQ5N0tEVk9INVhuNmdRU2hyZFEycHloR3hqS2tqR0FJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2MzQwNjY1CWZpbGU65bGx5rW357uP5Y6f5YW45Zyw5Zu+56CU56m25Y+wXzEuMS4yX3g2NC1zZXR1cC5leGUKa1lQalZpOS9tR1ZPa1FxT1Y2ZFJrRGoremxHR21TNnduMERPMnJaWlpOZ3Z3enBqcytwOUk0dUhpa3hYd1hka1d4K0diUlljSzc2RFdHQ1NjOXAzQVE9PQo=",
+      "url": "https://api.github.com/repos/a58293/SHmap/releases/assets/508347986"
     }
   }
 }
