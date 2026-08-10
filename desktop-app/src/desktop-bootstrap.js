@@ -19,7 +19,7 @@ const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
 const DESKTOP_EDITION = "v011";
-const DESKTOP_VERSION = "1.1.2";
+const DESKTOP_VERSION = "1.1.3";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
