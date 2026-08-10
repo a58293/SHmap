@@ -1,0 +1,14 @@
+SHmap v1.1.1 · V272 Clean Merge 正式总包
+
+覆盖本包 desktop-app/ 到 F:\SHmap\SHmap\desktop-app\。
+Private SHmap-Data 不需要更新，继续使用 v272-r0003。
+
+覆盖后：
+cd F:\SHmap\SHmap\desktop-app
+node --check public\app\app.js
+node --check src\desktop-bootstrap.js
+npm run verify
+
+通过后 Commit / Push，发布标签 desktop-v1.1.1。
+不要再执行任何旧 Stage / repair / apply 热修脚本。
+后续客户端以 1.1.1 Clean Merge 为唯一基线。

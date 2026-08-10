@@ -346,6 +346,8 @@
     importAnalysis:null,
     importSelectedIndex:0,
     importFiles:[],
+    importSourceFiles:[],
+    importBlockedFiles:[],
     importMode:"single",
     importPolicy:"supplement",
     exampleTab:"correct",
@@ -386,7 +388,13 @@
     return {displayMode:"tile",waterKind:"none",confirmed:false,reason:"非水体对象"};
   }
   function objectDisplayMode(object){return object?.displayMode||waterDisplayDecision(object).displayMode}
-  function hideConvertedWaterTile(object){if(hasOfficialBoardPlacement(object))return false;return !state.waterConversionAudit&&["water-line","water-area"].includes(objectDisplayMode(object))&&waterDisplayDecision(object).confirmed}
+  function hideConvertedWaterTile(object){
+    const decision=waterDisplayDecision(object);
+    if(state.waterConversionAudit)return false;
+    if(decision.displayMode==="water-line"&&decision.confirmed)return true;
+    if(hasOfficialBoardPlacement(object))return false;
+    return ["water-line","water-area"].includes(objectDisplayMode(object))&&decision.confirmed
+  }
   function tileRenderObjects(objects){return state.waterConversionAudit?objects:objects.filter(object=>!hideConvertedWaterTile(object))}
   function tileVisibleObjects(){return state.objects.filter(isTileVisibleObject)}
   function isDefaultIndexObject(object){return hasOfficialBoardPlacement(object)||["entity","collection"].includes(objectMapRole(object))}
@@ -713,7 +721,7 @@
   function buildCellMap(objects=state.objects){if(objects===state.objects)return ensureObjectIndexes().cellMap;const m=new Map();objects.filter(isTileVisibleObject).forEach(o=>{const {gx,gy}=objectCell(o),k=cellKey(gx,gy);if(!m.has(k))m.set(k,[]);m.get(k).push(o)});m.forEach((items,key)=>m.set(key,sortObjects(items)));return m}
 
   function init(){
-    cleanupExpiredTrash(false);ensureObjectIndexes();populateFilters();bindEvents();ensureV272BoardStyles();
+    cleanupExpiredTrash(false);ensureObjectIndexes();populateFilters();bindEvents();ensureV272BoardStyles();ensureV110UnifiedMenuStyles();
     [[els.layerAreas,"areas"],[els.layerTerrain,"terrain"],[els.layerRivers,"rivers"],[els.layerEnvironment,"environment"],[els.layerEmpty,"empty"],[els.layerChanges,"changes"]].forEach(([el,key])=>{if(el)el.checked=!!state.layers[key]});
     renderSidebar();renderDetails();resizeCanvas();scheduleRender();updateHeader();renderExamplePanel();
     if(dataUpgradeFrom)setTimeout(()=>toast("地图数据已升级",`${dataUpgradeFrom} → ${state.dataVersion} · ${independentObjectCount()}个独立对象 / ${state.objects.length}条资料记录 · ${state.waterPaths.length}段线型水系`),420);
@@ -890,10 +898,60 @@
   function v272BoardLayoutAvailable(){return String(BOARD_LAYOUT?.schemaVersion||"").startsWith("v272-board-layout")&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
   function v272BoardCellAnnotations(key){return V272_BOARD_ANNOTATIONS_BY_CELL.get(String(key))||[]}
   function v272BoardPalette(kind){return kind==="sea"?{fill:"rgba(210,232,243,.82)",line:"rgba(80,135,157,.16)",text:"#3d7184"}:kind==="outer"?{fill:"rgba(241,232,210,.72)",line:"rgba(139,112,72,.10)",text:"#775f3d"}:{fill:"rgba(255,255,255,.78)",line:"rgba(102,98,84,.07)",text:"#4f554f"}}
+  function v272BoardMassPalette(kind){
+    return kind==="sea"
+      ?{top:"rgba(214,236,245,.54)",bottom:"rgba(198,224,238,.22)",line:"rgba(86,139,160,.24)",pad:.72}
+      :kind==="outer"
+      ?{top:"rgba(243,234,213,.40)",bottom:"rgba(233,221,193,.18)",line:"rgba(139,112,72,.18)",pad:.56}
+      :{top:"rgba(255,252,245,.48)",bottom:"rgba(246,240,228,.18)",line:"rgba(118,108,90,.14)",pad:.40};
+  }
   function drawV272BoardBackdrop(ctx,v,s){
     if(!v272BoardLayoutAvailable())return;
+    const cellPx=CELL_LI*s,zoom=state.camera.zoom||1,artAlpha=v110V272OverviewArtOpacity();
     ctx.save();
-    for(const run of BOARD_LAYOUT.backgroundRuns||[]){const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;if(east<v.left||west>v.right||north<v.bottom||south>v.top)continue;const nw=worldToScreen(west,north),se=worldToScreen(east,south),pal=v272BoardPalette(run.kind);ctx.fillStyle=pal.fill;ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y);if(state.camera.zoom>=.42){ctx.strokeStyle=pal.line;ctx.lineWidth=.7;ctx.strokeRect(nw.x+.35,nw.y+.35,se.x-nw.x-.7,se.y-nw.y-.7)}}
+    if(cellPx>=3){
+      const megaAlpha=artAlpha>.02?(state.precisionMode?.06:state.regionOverviewMode?.12:.09):(state.precisionMode?.12:state.regionOverviewMode?.34:.26);
+      for(const run of BOARD_LAYOUT.backgroundRuns||[]){
+        const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;
+        const pal=v272BoardMassPalette(run.kind),pad=CELL_LI*pal.pad;
+        if(east+pad<v.left||west-pad>v.right||north+pad<v.bottom||south-pad>v.top)continue;
+        const nw=worldToScreen(west-pad,north+pad),se=worldToScreen(east+pad,south-pad);
+        const x=nw.x,y=nw.y,w=se.x-nw.x,h=se.y-nw.y;
+        if(w<3||h<3)continue;
+        const radius=Math.max(12,Math.min(36,Math.min(Math.abs(w),Math.abs(h))*.22));
+        const grad=ctx.createLinearGradient(x,y,x,y+h);
+        grad.addColorStop(0,pal.top);
+        grad.addColorStop(1,pal.bottom);
+        ctx.globalAlpha=megaAlpha;
+        waterRoundRect(ctx,x,y,w,h,radius);
+        ctx.fillStyle=grad;
+        ctx.fill();
+        if(zoom>=.22){
+          ctx.strokeStyle=pal.line;
+          ctx.lineWidth=Math.max(.9,Math.min(1.8,cellPx*.0105));
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+    ctx.save();
+    for(const run of BOARD_LAYOUT.backgroundRuns||[]){
+      const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;
+      if(east<v.left||west>v.right||north<v.bottom||south>v.top)continue;
+      const nw=worldToScreen(west,north),se=worldToScreen(east,south),pal=v272BoardPalette(run.kind);
+      const artActive=artAlpha>.02;
+      ctx.fillStyle=artActive
+        ?(run.kind==="sea"?"rgba(172,211,226,.075)":run.kind==="outer"?"rgba(222,207,178,.055)":"rgba(255,255,255,.025)")
+        :pal.fill;
+      ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y);
+      if(state.camera.zoom>=.34){
+        ctx.strokeStyle=artActive
+          ?(run.kind==="sea"?"rgba(69,128,151,.10)":run.kind==="outer"?"rgba(131,102,59,.08)":"rgba(102,98,84,.045)")
+          :pal.line;
+        ctx.lineWidth=artActive?.45:.7;
+        ctx.strokeRect(nw.x+.35,nw.y+.35,se.x-nw.x-.7,se.y-nw.y-.7);
+      }
+    }
     ctx.restore();
   }
   function drawV272BoardWorldLabels(ctx,v,s){
@@ -902,14 +960,83 @@
     for(const label of BOARD_LAYOUT.worldLabels||[]){const x=Number(label.canvasX)||0,y=Number(label.canvasY)||0;if(x<v.left-180||x>v.right+180||y<v.bottom-180||y>v.top+180)continue;const p=worldToScreen(x,y),sea=label.kind==="sea",font=Math.max(10,Math.min(22,8+cellPx*.15));ctx.font=`800 ${font}px ${getComputedStyle(document.body).fontFamily}`;const text=String(label.name||"").replace(/^L[23]\s*/,"");const width=Math.max(70,ctx.measureText(text).width+18),height=font+12;waterRoundRect(ctx,p.x-width/2,p.y-height/2,width,height,Math.min(10,height/2));ctx.fillStyle=sea?"rgba(235,247,251,.90)":"rgba(250,246,235,.88)";ctx.fill();ctx.strokeStyle=sea?"rgba(69,128,151,.34)":"rgba(131,102,59,.25)";ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=sea?"#3f7589":"#725d3d";ctx.fillText(text,p.x,p.y+.5)}
     ctx.restore();
   }
+  function v272ArrowScreenVector(glyph){
+    return glyph==="→"?{x:1,y:0}:glyph==="←"?{x:-1,y:0}:glyph==="↑"?{x:0,y:-1}:glyph==="↓"?{x:0,y:1}:glyph==="↗"?{x:.707,y:-.707}:glyph==="↖"?{x:-.707,y:-.707}:glyph==="↘"?{x:.707,y:.707}:glyph==="↙"?{x:-.707,y:.707}:null
+  }
+  function drawV272BoardFlowStroke(ctx,p,glyph,cellPx,offset=0,alpha=1){
+    const vec=v272ArrowScreenVector(glyph);if(!vec)return;
+    const normal={x:-vec.y,y:vec.x},length=Math.max(18,Math.min(cellPx*.78,86)),half=length*.5;
+    const cx=p.x+normal.x*offset,cy=p.y+normal.y*offset;
+    const ax=cx-vec.x*half,ay=cy-vec.y*half,bx=cx+vec.x*half,by=cy+vec.y*half;
+    ctx.save();ctx.globalAlpha=alpha;ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.setLineDash([Math.max(5,cellPx*.105),Math.max(4,cellPx*.075)]);
+    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.strokeStyle="rgba(242,250,252,.96)";ctx.lineWidth=Math.max(4.2,cellPx*.055);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.strokeStyle="#4b93a8";ctx.lineWidth=Math.max(1.9,cellPx*.025);ctx.stroke();ctx.setLineDash([]);
+    const head=Math.max(6,Math.min(12,cellPx*.11)),angle=Math.atan2(vec.y,vec.x);
+    ctx.translate(bx,by);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(-head,-head*.58);ctx.lineTo(0,0);ctx.lineTo(-head,head*.58);
+    ctx.strokeStyle="#2d7891";ctx.lineWidth=Math.max(1.7,cellPx*.022);ctx.stroke();ctx.restore()
+  }
   function drawV272BoardAnnotations(ctx,v,s,{labelsOnly=false}={}){
     if(!v272BoardLayoutAvailable())return;const cellPx=CELL_LI*s;if(cellPx<15)return;
     ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-    for(const annotation of BOARD_LAYOUT.annotations||[]){if(annotation.hasFormalObject)continue;const x=Number(annotation.canvasX)||0,y=Number(annotation.canvasY)||0;if(x<v.left-80||x>v.right+80||y<v.bottom-80||y>v.top+80)continue;if(labelsOnly&&annotation.kind!=="flowing-sand")continue;const p=worldToScreen(x,y),arrows=(annotation.arrows||[]).join(" "),label=String(annotation.label||"").trim(),fill=annotation.fillColor||"";if(cellPx>=38){const bg=annotation.kind==="water-flow"?"rgba(221,235,247,.58)":annotation.kind==="flowing-sand"?"rgba(247,231,198,.58)":"rgba(241,232,210,.45)";ctx.fillStyle=bg;ctx.fillRect(p.x-cellPx*.48,p.y-cellPx*.48,cellPx*.96,cellPx*.96)}const glyphSize=Math.max(11,Math.min(22,7+cellPx*.20));ctx.font=`900 ${glyphSize}px ui-sans-serif,system-ui,sans-serif`;ctx.fillStyle=annotation.kind==="water-flow"?"#2b7894":annotation.kind==="flowing-sand"?"#8a6530":"#6c5b42";ctx.fillText(arrows||"·",p.x,p.y+(label&&cellPx>=55?glyphSize*.24:0));if(label&&cellPx>=55){const font=Math.max(8,Math.min(12,cellPx*.105));ctx.font=`700 ${font}px ${getComputedStyle(document.body).fontFamily}`;ctx.fillStyle=annotation.kind==="water-flow"?"#315f70":annotation.kind==="flowing-sand"?"#735424":"#665743";ctx.fillText(label,p.x,p.y-glyphSize*.62)}}
+    for(const annotation of BOARD_LAYOUT.annotations||[]){
+      if(annotation.hasFormalObject)continue;
+      const x=Number(annotation.canvasX)||0,y=Number(annotation.canvasY)||0;
+      if(x<v.left-80||x>v.right+80||y<v.bottom-80||y>v.top+80)continue;
+      if(labelsOnly&&!["flowing-sand","water-flow"].includes(annotation.kind))continue;
+      const p=worldToScreen(x,y),arrowList=[...new Set((annotation.arrows||[]).filter(Boolean))].slice(0,3),arrows=arrowList.join(" "),label=String(annotation.label||"").trim();
+      if(annotation.kind==="water-flow"){
+        if(cellPx>=32){ctx.fillStyle="rgba(221,235,247,.28)";ctx.fillRect(p.x-cellPx*.48,p.y-cellPx*.48,cellPx*.96,cellPx*.96)}
+        const gap=Math.max(5,Math.min(13,cellPx*.14)),count=Math.max(1,arrowList.length);
+        (arrowList.length?arrowList:["→"]).forEach((glyph,index)=>drawV272BoardFlowStroke(ctx,p,glyph,cellPx,(index-(count-1)/2)*gap,labelsOnly?.72:1));
+        if(label&&cellPx>=48){const font=Math.max(8,Math.min(12,cellPx*.102));ctx.font=`700 ${font}px ${getComputedStyle(document.body).fontFamily}`;ctx.fillStyle="#315f70";ctx.fillText(label,p.x,p.y-cellPx*.31)}
+        continue;
+      }
+      if(cellPx>=38){const bg=annotation.kind==="flowing-sand"?"rgba(247,231,198,.58)":"rgba(241,232,210,.45)";ctx.fillStyle=bg;ctx.fillRect(p.x-cellPx*.48,p.y-cellPx*.48,cellPx*.96,cellPx*.96)}
+      const glyphSize=Math.max(11,Math.min(22,7+cellPx*.20));ctx.font=`900 ${glyphSize}px ui-sans-serif,system-ui,sans-serif`;ctx.fillStyle=annotation.kind==="flowing-sand"?"#8a6530":"#6c5b42";ctx.fillText(arrows||"·",p.x,p.y+(label&&cellPx>=55?glyphSize*.24:0));
+      if(label&&cellPx>=55){const font=Math.max(8,Math.min(12,cellPx*.105));ctx.font=`700 ${font}px ${getComputedStyle(document.body).fontFamily}`;ctx.fillStyle=annotation.kind==="flowing-sand"?"#735424":"#665743";ctx.fillText(label,p.x,p.y-glyphSize*.62)}
+    }
     ctx.restore();
   }
   function v272TileAnnotationHTML(key){const rows=v272BoardCellAnnotations(key).filter(item=>item.hasFormalObject);if(!rows.length)return "";return `<div class="v272-board-flow-badges">${rows.slice(0,2).map(item=>`<span class="v272-board-flow-badge ${esc(item.kind||"relation-arrow")}"><b>${esc((item.arrows||[]).join(" ")||"·")}</b><em>${esc(item.label||"")}</em></span>`).join("")}</div>`}
   function ensureV272BoardStyles(){if(document.getElementById("v272-board-runtime-style"))return;const style=document.createElement("style");style.id="v272-board-runtime-style";style.textContent=`.v272-board-flow-badges{position:absolute;right:5px;bottom:5px;z-index:8;display:flex;flex-direction:column;gap:3px;pointer-events:none;max-width:78%}.v272-board-flow-badge{display:flex;align-items:center;gap:4px;padding:2px 5px;border-radius:7px;background:rgba(250,247,238,.88);box-shadow:0 1px 4px rgba(58,49,35,.12);font-style:normal;color:#665743}.v272-board-flow-badge.water-flow{background:rgba(232,246,251,.92);color:#276c84}.v272-board-flow-badge.flowing-sand{background:rgba(250,237,209,.94);color:#7a5928}.v272-board-flow-badge b{font-size:calc(10px * var(--tile-ui,1));line-height:1}.v272-board-flow-badge em{font-size:calc(7px * var(--tile-ui,1));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:normal}.tile.compact .v272-board-flow-badge em,.tile.micro .v272-board-flow-badge em{display:none}.tile.micro .v272-board-flow-badges{right:2px;bottom:2px}.tile.micro .v272-board-flow-badge{padding:1px 2px;border-radius:4px}`;document.head.appendChild(style)}
+  function ensureV110UnifiedMenuStyles(){
+    if(document.getElementById("v110-unified-menu-style"))return;
+    const style=document.createElement("style");style.id="v110-unified-menu-style";style.textContent=`
+      .v098-map-tools-menu,.v098-top-data-menu,.v050-top-system{position:relative;display:flex;align-items:stretch;margin:0}
+      .v098-map-tools-menu>summary,.v098-top-data-menu>summary,.v050-top-system>summary{
+        list-style:none;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px;
+        min-height:54px;padding:9px 18px;border-radius:14px;border:1px solid rgba(141,119,80,.26);
+        background:linear-gradient(180deg,rgba(248,242,230,.98) 0%,rgba(239,231,214,.98) 100%);
+        color:#314742;box-shadow:0 1px 0 rgba(255,255,255,.75) inset,0 1px 4px rgba(92,76,48,.08);
+        cursor:pointer;user-select:none;white-space:nowrap;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .12s ease;
+      }
+      .v098-map-tools-menu>summary::-webkit-details-marker,.v098-top-data-menu>summary::-webkit-details-marker,.v050-top-system>summary::-webkit-details-marker{display:none}
+      .v098-map-tools-menu>summary::after,.v098-top-data-menu>summary::after,.v050-top-system>summary::after{
+        content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;color:#7a715f;pointer-events:none
+      }
+      .v098-map-tools-menu[open]>summary::after,.v098-top-data-menu[open]>summary::after,.v050-top-system[open]>summary::after{transform:translateY(-50%) rotate(180deg)}
+      .v098-map-tools-menu>summary:hover,.v098-top-data-menu>summary:hover,.v050-top-system>summary:hover{
+        background:linear-gradient(180deg,rgba(251,246,237,1) 0%,rgba(242,235,221,1) 100%);border-color:rgba(102,133,119,.35);box-shadow:0 0 0 1px rgba(96,136,122,.08),0 3px 10px rgba(92,76,48,.08)
+      }
+      .v098-map-tools-menu>summary>span,.v098-top-data-menu>summary,.v050-top-system>summary{font-size:15px;font-weight:700;letter-spacing:.01em}
+      .v098-map-tools-menu>summary small,.v098-top-data-menu>summary small,.v050-top-system>summary small{font-size:11px;line-height:1.15;color:#7f7768;font-weight:600;letter-spacing:.02em}
+      .v098-map-tools-menu{min-width:166px}
+      .v098-top-data-menu,.v050-top-system{min-width:112px}
+      .v098-top-data-menu>summary,.v050-top-system>summary{padding-right:28px;align-items:center;text-align:center}
+      .v098-top-data-menu>summary{justify-content:center}
+      .v050-top-system>summary{justify-content:center}
+      .v098-top-data-menu>summary{font-size:14px}.v050-top-system>summary{font-size:14px}
+      .v098-map-tools-menu>summary{padding-right:30px}
+      .v098-map-tools-panel,.v098-top-data-menu>div,.v050-top-system>div{
+        margin-top:8px;border-radius:16px;border:1px solid rgba(135,117,82,.22);background:rgba(251,248,240,.98);
+        box-shadow:0 18px 36px rgba(56,48,35,.15),0 1px 0 rgba(255,255,255,.88) inset;backdrop-filter:blur(10px)
+      }
+      .v098-top-data-menu>div,.v050-top-system>div{padding:12px}
+      .map-toolbar .v098-map-tools-menu,.top-actions .v098-top-data-menu,.top-actions .v050-top-system{align-self:center}
+      .v110-world-art-active .tile-map-image{opacity:0!important;visibility:hidden!important}
+    `;document.head.appendChild(style)
+  }
   function drawPrecisionGrid(ctx,v,s){
     const minor=10,minorPx=minor*s,startX=Math.floor(v.left/minor)*minor,endX=v.right+minor,startY=Math.floor(v.bottom/minor)*minor,endY=v.top+minor;
     ctx.save();ctx.lineWidth=1;for(let x=startX;x<=endX;x+=minor){const p=worldToScreen(x,0),major=Math.abs((((x-50)%100)+100)%100)<.001;ctx.strokeStyle=major?"rgba(52,59,56,.44)":"rgba(60,67,64,.16)";ctx.lineWidth=major?1.5:1;ctx.beginPath();ctx.moveTo(Math.round(p.x)+.5,0);ctx.lineTo(Math.round(p.x)+.5,v.height);ctx.stroke()}
@@ -1053,34 +1180,122 @@
     const text=String(value||"");
     return CHAPTERS_18.filter(chapter=>text.includes(chapter))
   }
-  function v071CivilizationTokens(object){
-    const out=[];
-    if(/国|族|部落|氏|民|人群|城|邑|都|邦/.test(`${object?.type||""}${object?.name||""}`))out.push(cleanRegionOverviewName(object.name));
-    const c=objectCell(object),profile=state.tileProfiles?.[cellKey(c.gx,c.gy)]||{};
-    for(const value of [profile.country,profile.faith,profile.ruler])String(value||"").split(/[／/、，,；;\n]+/).map(v=>cleanRegionOverviewName(v)).filter(v=>v&&v!=="未命名区域").forEach(v=>out.push(v));
-    return [...new Set(out)].slice(0,4)
+  function v112IsExplicitPeopleObject(object){
+    const type=String(object?.type||"").trim();
+    if(/^(国家|国(?:$|[／/])|政治实体)/.test(type))return false;
+    return /族群|异民|人物群|人群|巨人|小人|族群活动区/.test(type)
   }
+  function v112CleanPopulationToken(value,object){
+    let token=String(value||"").replace(/[（(][^）)]*[）)]/g,"").trim();
+    token=cleanRegionOverviewName(token);
+    if(!token||token.length>10)return "";
+    if(/未载|未明|待考|不详|正文|关系|谱系|是否|可能|国家|居民|个人|之物|食|使|姓/.test(token))return "";
+    if(token.includes("国"))return "";
+    const objectName=cleanRegionOverviewName(object?.name||"");
+    if(objectName&&token.startsWith(objectName)&&/(之民|国民)$/.test(token))return "";
+    return /(民|人|氏)$/.test(token)||/^(东胡|匈奴|瓯|闽|黑人)$/.test(token)?token:""
+  }
+  function v112PopulationNames(object){
+    const names=[];
+    if(v112IsExplicitPeopleObject(object)){
+      const direct=cleanRegionOverviewName(object?.name||"");
+      if(direct)names.push(direct)
+    }
+    String(object?.residents||"").split(/[；;、，,／/]+/).forEach(raw=>{const name=v112CleanPopulationToken(raw,object);if(name)names.push(name)});
+    return [...new Set(names)].filter(Boolean)
+  }
+  function v112IsCivilizationNode(object){
+    const type=String(object?.type||"").trim();
+    if(/^(国家|国(?:$|[／/])|政治实体)/.test(type))return false;
+    return /城邑|乡邑|聚落|海中聚落|(?:^|[／/])(?:市|城|邑)(?:$|[／/])/.test(type)
+  }
+  function v112CivilizationEntries(object){
+    const entries=v112PopulationNames(object).map(name=>({kind:"people",name}));
+    if(v112IsCivilizationNode(object)){
+      const name=cleanRegionOverviewName(object?.name||"");
+      if(name)entries.push({kind:"settlement",name})
+    }
+    const seen=new Set();return entries.filter(entry=>{const key=`${entry.kind}:${entry.name}`;if(seen.has(key))return false;seen.add(key);return true})
+  }
+  function v111CivilizationKind(object){return v112CivilizationEntries(object)[0]?.kind||""}
+  function v111CivilizationKindLabel(kind){return kind==="people"?"族群／人群":kind==="settlement"?"聚落／文明节点":"文明／族群"}
+  function v111ObjectMacroRegionId(object){
+    const detail=object?.primaryRegionId?v052RegionById(object.primaryRegionId):null;
+    return detail?.level===1?detail.id:(detail?.parentRegionId||object?.macroRegionId||"region-layer-unresolved")
+  }
+  function v111MacroShortName(region){
+    return cleanRegionOverviewName(String(region?.name||"未定区域").replace(/^L[123]\s*/,"").replace(/^第一圈/,"").replace(/（STRONG-0）/,""))
+  }
+  function v112DomainRegionName(region){
+    const raw=v111MacroShortName(region);
+    const mapped={
+      "中央大陆／海内陆核":"中央大陆／海内陆核",
+      "东海":"东海","南海":"南海","西海":"西海","北海":"北海",
+      "东方外围／大荒":"东方外围","南方外围／大荒":"南方外围","西方外围／大荒":"西方外围","北方外围／大荒":"北方外围",
+      "第一圈未定海域／海中节点":"未定海域／海中节点"
+    };
+    return mapped[raw]||raw
+  }
+  function v112DomainRegionAnchor(region){
+    const name=v112DomainRegionName(region);
+    if(region?.id==="region-layer-l1-central")return {x:0,y:0};
+    const labels=(BOARD_LAYOUT&&BOARD_LAYOUT.worldLabels)||[];
+    const label=labels.find(item=>name.includes(item.name)||String(region?.name||"").includes(item.name));
+    if(label)return {x:Number(label.canvasX)||0,y:Number(label.canvasY)||0};
+    const center=region?.center||{};return {x:Number(center.x??region?.centerX)||0,y:Number(center.y??region?.centerY)||0}
+  }
+  function v071CivilizationTokens(object){return v112CivilizationEntries(object).map(entry=>entry.name)}
   function regionOverviewGroups(){
     const mode=state.overviewMode||"region",cacheKey=[state.objectRevision,state.profileRevision,mode,state.filters.q,state.filters.chapter,state.filters.type,state.selectedRegionId||""].join("|");
     if(state.perf.regionCache.has(cacheKey))return state.perf.regionCache.get(cacheKey);
     const filtered=getSearchContext().filteredObjects,filteredSet=new Set(filtered.map(o=>o.id)),filterActive=!!(state.filters.q||state.filters.chapter||state.filters.type),groups=[];
     if(mode==="region"){
-      const h=v052Hierarchy();
-      for(const region of h.regions.filter(r=>r.level===2)){
-        const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(o=>filteredSet.has(o.id)):rawItems;
+      const h=v052Hierarchy(),overviewZoom=state.camera.zoom||1,macros=h.regions.filter(region=>region.level===1);
+      for(const region of macros){
+        const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(object=>filteredSet.has(object.id)):rawItems;
         if(!items.length)continue;
-        const bounds=v071OverviewBoundsFromItems(items,58)||region.bounds;
-        const name=cleanRegionOverviewName(region.name);
-        if(!name||/^(中央|东部|东北|北部|西北|西部|西南|南部|东南)地图区$/.test(name))continue;
-        const group=v071OverviewGroup(region.id,name,items,bounds,{regionId:region.id,selected:region.id===state.selectedRegionId,boost:/都广|昆仑|北海|大荒/.test(name)?5:0,meta:`${items.length}个对象`});
+        const bounds=v071OverviewBoundsFromItems(items,72)||region.bounds,name=v111MacroShortName(region);
+        const group=v071OverviewGroup(`macro:${region.id}`,name,items,bounds,{regionId:region.id,macroRegion:true,parentMacroId:region.id,selected:region.id===state.selectedRegionId,boost:80,meta:`世界大区 · ${items.length}个对象`});
         if(group)groups.push(group)
       }
+      if(overviewZoom>=.26||filterActive||state.selectedRegionId){
+        for(const region of h.regions.filter(r=>r.level===2)){
+          const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(object=>filteredSet.has(object.id)):rawItems;
+          if(!items.length)continue;
+          const bounds=v071OverviewBoundsFromItems(items,44)||region.bounds,name=cleanRegionOverviewName(region.name);
+          if(!name||/^(中央|东部|东北|北部|西北|西部|西南|南部|东南)地图区$/.test(name))continue;
+          const parentMacroId=region.parentRegionId||"region-layer-unresolved";
+          const group=v071OverviewGroup(region.id,name,items,bounds,{regionId:region.id,parentMacroId,selected:region.id===state.selectedRegionId,boost:/都广|昆仑|北海|大荒/.test(name)?4:0,meta:`${v111MacroShortName(v052RegionById(parentMacroId))} · ${items.length}个对象`});
+          if(group)groups.push(group)
+        }
+      }
     }else if(mode==="domain"){
-      for(const object of ensureObjectIndexes().areas.filter(o=>o.area&&(o.geometryType==="area"||o.geometryType==="field"))){
-        if(filterActive&&!filteredSet.has(object.id))continue;
-        const bounds=v052ObjectBounds(object),items=state.objects.filter(candidate=>{const a=objectAnchor(candidate);return pointInSpatial(object,a.x,a.y)});
-        const group=v071OverviewGroup(`domain:${object.id}`,cleanRegionOverviewName(object.name),items.length?items:[object],bounds,{domainObjectId:object.id,selected:object.id===state.selectedId,boost:object.geometryType==="field"?4:2,meta:`${object.geometryType==="field"?"作用域":"面积域"} · ${Math.max(1,items.length)}个对象`});
-        if(group)groups.push(group)
+      const h=v052Hierarchy(),overviewZoom=state.camera.zoom||1,showDetails=overviewZoom>=.14||filterActive||state.selectedRegionId,showMacroLabels=overviewZoom<.14&&!filterActive&&!state.selectedRegionId;
+      const macros=h.regions.filter(region=>region.level===1&&region.id!=="region-layer-unresolved");
+      for(const region of macros){
+        const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(object=>filteredSet.has(object.id)):rawItems;
+        if(!items.length)continue;
+        const bounds=v071OverviewBoundsFromItems(items,58)||region.bounds,anchor=v112DomainRegionAnchor(region),name=v112DomainRegionName(region);
+        const group=v071OverviewGroup(`domain-region:${region.id}`,name,items,bounds,{regionId:region.id,domainRegionId:region.id,macroRegion:true,parentMacroId:region.id,selected:region.id===state.selectedRegionId,boost:70,meta:`世界地域 · ${items.length}个对象`});
+        if(group&&showMacroLabels){group.x=anchor.x;group.y=anchor.y;groups.push(group)}
+      }
+      if(showDetails){
+        for(const region of h.regions.filter(region=>region.level===2)){
+          const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(object=>filteredSet.has(object.id)):rawItems;
+          if(!items.length)continue;
+          const name=cleanRegionOverviewName(region.name);if(!name||name==="未命名区域")continue;
+          const bounds=v071OverviewBoundsFromItems(items,30)||region.bounds,parentMacroId=region.parentRegionId||"region-layer-unresolved";
+          const group=v071OverviewGroup(`domain-region:${region.id}`,name,items,bounds,{regionId:region.id,domainRegionId:region.id,parentMacroId,selected:region.id===state.selectedRegionId,boost:/都广|昆仑|大荒|海内|海外/.test(name)?3:0,meta:`详细地域 · ${items.length}个对象`});
+          if(group)groups.push(group)
+        }
+      }
+      if(overviewZoom>=.52||state.selectedId){
+        for(const object of ensureObjectIndexes().areas.filter(o=>o.area&&(o.geometryType==="area"||o.geometryType==="field"))){
+          if(filterActive&&!filteredSet.has(object.id))continue;
+          const bounds=v052ObjectBounds(object),items=state.objects.filter(candidate=>{const a=objectAnchor(candidate);return pointInSpatial(object,a.x,a.y)}),parentMacroId=v111ObjectMacroRegionId(object);
+          const group=v071OverviewGroup(`domain-object:${object.id}`,cleanRegionOverviewName(object.name),items.length?items:[object],bounds,{domainObjectId:object.id,parentMacroId,selected:object.id===state.selectedId,boost:object.geometryType==="field"?6:4,meta:`${object.geometryType==="field"?"作用域":"面积证据"} · ${Math.max(1,items.length)}个对象`});
+          if(group)groups.push(group)
+        }
       }
     }else if(mode==="chapter"){
       for(const chapter of CHAPTERS_18){
@@ -1100,18 +1315,48 @@
         const group=v071OverviewGroup(`water:${name}`,name,fallback,bounds,{waterName:name,waterPaths:paths,boost:paths.some(p=>p.isMain)?5:0,meta:`${paths.length}段水系`});if(group)groups.push(group)
       }
     }else if(mode==="civilization"){
-      const byName=new Map();
-      for(const object of filtered)for(const name of v071CivilizationTokens(object)){if(!byName.has(name))byName.set(name,[]);byName.get(name).push(object)}
-      for(const [name,raw] of byName){const items=[...new Map(raw.map(o=>[o.id,o])).values()];if(!items.length)continue;const bounds=v071OverviewBoundsFromItems(items,72),group=v071OverviewGroup(`civilization:${name}`,name,items,bounds,{civilizationKey:name,boost:items.length>8?5:0,meta:`${items.length}个相关对象`});if(group)groups.push(group)}
+      const entries=[];
+      for(const object of filtered){for(const entry of v112CivilizationEntries(object))entries.push({...entry,object})}
+      const byKey=new Map();
+      for(const entry of entries){
+        const key=`${entry.kind}:${entry.name}`;
+        if(!byKey.has(key))byKey.set(key,{name:entry.name,kind:entry.kind,items:[]});
+        byKey.get(key).items.push(entry.object)
+      }
+      for(const {name,kind,items:raw} of byKey.values()){
+        const items=[...new Map(raw.map(object=>[object.id,object])).values()];if(!items.length)continue;
+        const bounds=v071OverviewBoundsFromItems(items,34),parentMacroId=v111ObjectMacroRegionId(items[0]);
+        const group=v071OverviewGroup(`civilization:${kind}:${name}`,name,items,bounds,{civilizationKey:name,civilizationKind:kind,parentMacroId,boost:kind==="people"?6:3,meta:`${v111CivilizationKindLabel(kind)} · ${items.length}个记录`});
+        if(group)groups.push(group)
+      }
     }
+
     if(mode==="region"||mode==="chapter"||mode==="civilization"){
       const split=[];
-      for(const group of groups){const clusters=v071ConnectedCellClusters(group.items||[]);if(clusters.length<=1){split.push(group);continue}clusters.forEach((cluster,index)=>{const keys=new Set(cluster.map(cell=>cell.key)),items=(group.items||[]).filter(object=>{const c=objectCell(object);return keys.has(cellKey(c.gx,c.gy))});if(!items.length)return;const bounds=v071OverviewBoundsFromItems(items,26)||{minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY};split.push({...group,key:`${group.key}:cluster:${index+1}`,items,count:items.length,x:(bounds.minX+bounds.maxX)/2,y:(bounds.minY+bounds.maxY)/2,minX:bounds.minX,maxX:bounds.maxX,minY:bounds.minY,maxY:bounds.maxY,priority:items.length+(group.selected?1000:0)+(group.boost||0),meta:`${items.length}个相关对象 · 分布 ${index+1}/${clusters.length}`})})}
+      for(const group of groups){if(group.macroRegion||String(group.key||"").startsWith("civilization-macro:")){split.push(group);continue}const clusters=v071ConnectedCellClusters(group.items||[]);if(clusters.length<=1){split.push(group);continue}clusters.forEach((cluster,index)=>{const keys=new Set(cluster.map(cell=>cell.key)),items=(group.items||[]).filter(object=>{const c=objectCell(object);return keys.has(cellKey(c.gx,c.gy))});if(!items.length)return;const bounds=v071OverviewBoundsFromItems(items,26)||{minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY};split.push({...group,key:`${group.key}:cluster:${index+1}`,items,count:items.length,x:(bounds.minX+bounds.maxX)/2,y:(bounds.minY+bounds.maxY)/2,minX:bounds.minX,maxX:bounds.maxX,minY:bounds.minY,maxY:bounds.maxY,priority:items.length+(group.selected?1000:0)+(group.boost||0),meta:`${items.length}个相关对象 · 分布 ${index+1}/${clusters.length}`})})}
       groups.splice(0,groups.length,...split)
     }
     groups.sort((a,b)=>b.priority-a.priority||a.name.localeCompare(b.name,"zh-CN"));
-    const maxLabels=mode==="region"?28:mode==="chapter"?24:mode==="domain"?22:24,accepted=[];
-    for(const group of groups){const tooClose=accepted.some(other=>Math.hypot(other.x-group.x,other.y-group.y)<95&&(other.name.includes(group.name)||group.name.includes(other.name)));if(!tooClose||group.selected)accepted.push(group);if(accepted.length>=maxLabels)break}
+    const maxLabels=mode==="region"?40:mode==="chapter"?24:mode==="domain"?42:mode==="civilization"?40:24,accepted=[];
+    const acceptGroup=group=>{const tooClose=accepted.some(other=>Math.hypot(other.x-group.x,other.y-group.y)<95&&(other.name.includes(group.name)||group.name.includes(other.name)));if(!tooClose||group.selected||group.macroRegion)accepted.push(group)};
+    if(mode==="region"){
+      groups.filter(group=>group.macroRegion).forEach(acceptGroup);
+      if((state.camera.zoom||1)>=.26||filterActive||state.selectedRegionId){
+        const buckets=new Map();for(const group of groups.filter(group=>!group.macroRegion)){const key=group.parentMacroId||"unresolved";if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(group)}
+        let round=0,progress=true;while(progress&&accepted.length<maxLabels&&round<6){progress=false;for(const bucket of buckets.values()){const candidate=bucket[round];if(!candidate)continue;progress=true;acceptGroup(candidate);if(accepted.length>=maxLabels)break}round++}
+      }
+    }else if(mode==="domain"){
+      groups.filter(group=>group.macroRegion).forEach(acceptGroup);
+      if((state.camera.zoom||1)>=.30||filterActive||state.selectedRegionId){
+        const buckets=new Map();for(const group of groups.filter(group=>!group.macroRegion)){const key=group.parentMacroId||"unresolved";if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(group)}
+        let round=0,progress=true;while(progress&&accepted.length<maxLabels&&round<8){progress=false;for(const bucket of buckets.values()){const candidate=bucket[round];if(!candidate)continue;progress=true;acceptGroup(candidate);if(accepted.length>=maxLabels)break}round++}
+      }
+    }else if(mode==="civilization"){
+      const buckets=new Map();for(const group of groups){const key=group.parentMacroId||v111ObjectMacroRegionId(group.items?.[0]);if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(group)}
+      let round=0,progress=true;while(progress&&accepted.length<maxLabels&&round<10){progress=false;for(const bucket of buckets.values()){const candidate=bucket[round];if(!candidate)continue;progress=true;acceptGroup(candidate);if(accepted.length>=maxLabels)break}round++}
+    }else{
+      for(const group of groups){acceptGroup(group);if(accepted.length>=maxLabels)break}
+    }
     state.perf.regionCache.set(cacheKey,accepted);return accepted
   }
   function updateHoverLensSuppression(){
@@ -1143,8 +1388,8 @@
         : "拖动地图 · 滚轮缩放 · 右键返回 · 放大至420%进入彩色精细地图";
     }
   } function regionOverviewLabelPlacement(groups){
-    const r=els.viewport.getBoundingClientRect(),placed=[],offsets=[[0,0],[0,-34],[0,34],[-54,0],[54,0],[-46,-32],[46,-32],[-46,32],[46,32],[0,-68],[0,68]];
-    return groups.map(g=>{const p=worldToScreen(g.x,g.y),w=Math.min(260,Math.max(112,54+g.name.length*18)),h=g.priority>=7?62:52;let best={x:p.x,y:p.y,hidden:false};let found=false;
+    const r=els.viewport.getBoundingClientRect(),placed=[],offsets=[[0,0],[0,-30],[0,30],[-48,0],[48,0],[-42,-28],[42,-28],[-42,28],[42,28],[0,-58],[0,58]];
+    return groups.map(g=>{const p=worldToScreen(g.x,g.y),compact=state.overviewMode==="domain"&&!g.macroRegion,w=compact?Math.min(190,Math.max(92,42+g.name.length*14)):Math.min(260,Math.max(112,54+g.name.length*18)),h=compact?44:(g.priority>=7?62:52);let best={x:p.x,y:p.y,hidden:false};let found=false;
       for(const [ox,oy] of offsets){const x=p.x+ox,y=p.y+oy,rect={l:x-w/2,r:x+w/2,t:y-h/2,b:y+h/2};if(rect.r<8||rect.l>r.width-8||rect.b<8||rect.t>r.height-8)continue;const hit=placed.some(q=>!(rect.r+8<q.l||rect.l-8>q.r||rect.b+8<q.t||rect.t-8>q.b));if(!hit){best={x,y,hidden:false};placed.push(rect);found=true;break}}
       if(!found)best.hidden=true;return {...g,...best,width:w}
     }).filter(g=>!g.hidden)}
@@ -1178,7 +1423,7 @@
       const v=visibleWorld(),groups=regionOverviewGroups().filter(group=>group.maxX>=v.left-150&&group.minX<=v.right+150&&group.maxY>=v.bottom-150&&group.minY<=v.top+150),placed=regionOverviewLabelPlacement(groups);
       if(!state.perf.regionOverviewLayerActive){els.tileLayer.replaceChildren();state.perf.regionOverviewNodes=new Map();state.perf.regionOverviewLayerActive=true}
       const visible=new Map(placed.map(group=>[group.key,group]));state.perf.regionOverviewVisibleGroups=visible;
-      for(const group of placed){const button=ensureRegionOverviewNode(group.key),height=group.priority>=7?62:52;button.classList.toggle("major",group.priority>=7);button.classList.toggle("selected",!!group.selected);button.dataset.overviewMode=state.overviewMode||"region";const tx=Math.round(group.x-group.width/2),ty=Math.round(group.y-height/2),transform=`translate3d(${tx}px,${ty}px,0)`,width=`${Math.round(group.width)}px`;if(button.style.left!=="0px")button.style.left="0px";if(button.style.top!=="0px")button.style.top="0px";if(button.style.transform!==transform)button.style.transform=transform;if(button.style.width!==width)button.style.width=width;if(button._v053NameNode.textContent!==group.name)button._v053NameNode.textContent=group.name;const categories=regionOverviewCategoryText(group.items||[]),metaText=group.meta||`${group.count}项${categories?` · ${categories}`:""}`;if(button._v053MetaNode.textContent!==metaText)button._v053MetaNode.textContent=metaText;if(button.parentNode!==els.tileLayer)els.tileLayer.appendChild(button)}
+      for(const group of placed){const button=ensureRegionOverviewNode(group.key),detailDomain=state.overviewMode==="domain"&&!group.macroRegion,height=detailDomain?44:(group.priority>=7?62:52);button.classList.toggle("domain-detail",detailDomain);button.classList.toggle("major",group.priority>=7);button.classList.toggle("selected",!!group.selected);button.dataset.overviewMode=state.overviewMode||"region";const tx=Math.round(group.x-group.width/2),ty=Math.round(group.y-height/2),transform=`translate3d(${tx}px,${ty}px,0)`,width=`${Math.round(group.width)}px`;if(button.style.left!=="0px")button.style.left="0px";if(button.style.top!=="0px")button.style.top="0px";if(button.style.transform!==transform)button.style.transform=transform;if(button.style.width!==width)button.style.width=width;if(button._v053NameNode.textContent!==group.name)button._v053NameNode.textContent=group.name;const categories=regionOverviewCategoryText(group.items||[]),metaText=group.meta||`${group.count}项${categories?` · ${categories}`:""}`;if(button._v053MetaNode.textContent!==metaText)button._v053MetaNode.textContent=metaText;if(button.parentNode!==els.tileLayer)els.tileLayer.appendChild(button)}
       for(const [key,node] of state.perf.regionOverviewNodes){if(visible.has(key))continue;node.remove();state.perf.regionOverviewNodes.delete(key)}
     }
   const V053_REGION_RANGE_PALETTE = [
@@ -1321,6 +1566,7 @@
   }
   function v071GeometryBounds(points){return points.reduce((acc,point)=>({minX:Math.min(acc.minX,point.x),maxX:Math.max(acc.maxX,point.x),minY:Math.min(acc.minY,point.y),maxY:Math.max(acc.maxY,point.y)}),{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity})}
   function v071GroupGeometry(group){
+    if(state.overviewMode==="civilization"||group.domainRegionId)return[];
     if(group.domainObjectId){const object=indexedObject(group.domainObjectId);if(!object?.area)return[];const points=[],a=object.area;if(a.shape==="circle"){const cx=Number(a.cx??object.x)||0,cy=Number(a.cy??object.y)||0,r=Math.max(30,Number(a.radius)||60);for(let i=0;i<32;i++){const t=i/32*Math.PI*2;points.push({x:cx+Math.cos(t)*r,y:cy+Math.sin(t)*r})}}else if(a.shape==="polygon"&&a.points?.length>=3)for(const point of a.points)points.push({x:Number(point[0])||0,y:Number(point[1])||0});else{const b=v052ObjectBounds(object);points.push({x:b.minX,y:b.minY},{x:b.minX,y:b.maxY},{x:b.maxX,y:b.maxY},{x:b.maxX,y:b.minY})}return[{points,bounds:v071GeometryBounds(points),hard:/hard|original|原文/i.test(String(a.evidence||"")),source:"domain"}]}
     // 水系总览直接使用真实河道，不再把分散节点强制圈成闭合区域。
     if(group.waterPaths)return[];
@@ -1333,10 +1579,13 @@
     return geometries
   }
   function v071OverviewColor(group,index){
-    if(state.overviewMode==="domain")return group.domainObjectId&&indexedObject(group.domainObjectId)?.geometryType==="field"?"#a45d50":"#9b7a3f";
+    if(state.overviewMode==="domain"){
+      if(group.domainObjectId)return indexedObject(group.domainObjectId)?.geometryType==="field"?"#a45d50":"#9b7a3f";
+      const region=group.domainRegionId?v052RegionById(group.domainRegionId):null;return v053RegionRangeColor(region||{id:group.key,level:2})
+    }
     if(state.overviewMode==="chapter")return ["#567b72","#71815d","#7b6d8b","#7b7658","#5e7c8b"][Math.floor(index/4)%5];
     if(state.overviewMode==="hydrology")return "#3f8795";
-    if(state.overviewMode==="civilization")return "#8a6d43";
+    if(state.overviewMode==="civilization")return group.civilizationKind==="people"?"#5f7568":group.civilizationKind==="settlement"?"#75677f":"#69746d";
     const region=group.regionId?v052RegionById(group.regionId):null;return v053RegionRangeColor(region||{id:group.key,level:2})
   }
   function drawRegionOverviewBackdrops(ctx,v,s){
@@ -1352,6 +1601,68 @@
     tilesBegin:.38,
     tilesFull:.55
   };
+  const V110_V272_WORLD_ART={
+    url:"/assets/map/v272_world_backdrop_v112_final.png",
+    fullUntil:.30,
+    fadeBegin:.52,
+    goneAt:1.18
+  };
+  function v110V272WorldBounds(){
+    if(state.perf.v110V272WorldBounds)return state.perf.v110V272WorldBounds;
+    const runs=(BOARD_LAYOUT&&BOARD_LAYOUT.backgroundRuns)||[];
+    if(!runs.length)return {minX:-7450,maxX:2950,minY:-1750,maxY:3750};
+    let minGx=Infinity,maxGx=-Infinity,minGy=Infinity,maxGy=-Infinity;
+    runs.forEach(run=>{minGx=Math.min(minGx,Number(run.startGx));maxGx=Math.max(maxGx,Number(run.endGx));minGy=Math.min(minGy,Number(run.gy));maxGy=Math.max(maxGy,Number(run.gy))});
+    const padX=CELL_LI*1.6,padY=CELL_LI*1.25;
+    const bounds={minX:minGx*CELL_LI-CELL_LI/2-padX,maxX:maxGx*CELL_LI+CELL_LI/2+padX,minY:minGy*CELL_LI-CELL_LI/2-padY,maxY:maxGy*CELL_LI+CELL_LI/2+padY};
+    state.perf.v110V272WorldBounds=bounds;return bounds
+  }
+  function v110V272OverviewArtOpacity(){
+    if(!v272BoardLayoutAvailable()||!state.layers.environment)return 0;
+    if(state.precisionMode)return 0;
+    const zoom=state.camera.zoom||1;
+    if(zoom<=V110_V272_WORLD_ART.fullUntil)return .94;
+    if(zoom<=V110_V272_WORLD_ART.fadeBegin)return .94;
+    return .94*(1-v070Smoothstep(V110_V272_WORLD_ART.fadeBegin,V110_V272_WORLD_ART.goneAt,zoom))
+  }
+  function v110TileMapImagesVisible(){
+    if(!state.tileImageMapMode)return false;
+    if(state.precisionMode)return true;
+    if(!v272BoardLayoutAvailable())return true;
+    return v110V272OverviewArtOpacity()<.08
+  }
+  function v110V272OverviewImage(){
+    if(state.perf.v110V272OverviewImage)return state.perf.v110V272OverviewImage;
+    const image=new Image();
+    image.decoding="async";
+    image.onload=()=>{state.perf.v110V272OverviewReady=true;scheduleRender()};
+    image.onerror=()=>{state.perf.v110V272OverviewFailed=true};
+    image.src=V110_V272_WORLD_ART.url;
+    state.perf.v110V272OverviewImage=image;
+    return image
+  }
+  function drawV110V272OverviewArt(ctx){
+    const opacity=v110V272OverviewArtOpacity();
+    els.viewport?.classList.toggle("v110-world-art-active",opacity>.02);
+    if(opacity<=.001)return;
+    const image=v110V272OverviewImage();if(!image.complete||!image.naturalWidth)return;
+    const rect=els.viewport.getBoundingClientRect(),b=v110V272WorldBounds(),nw=worldToScreen(b.minX,b.maxY),se=worldToScreen(b.maxX,b.minY),w=se.x-nw.x,h=se.y-nw.y;
+    if(w<=0||h<=0)return;
+    const layer=v070OverviewBuffer(rect.width,rect.height),lctx=layer.getContext("2d"),feather=v070OverviewFeatherPx(w,h);
+    lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,layer.width,layer.height);lctx.imageSmoothingEnabled=true;lctx.imageSmoothingQuality="high";
+    lctx.drawImage(image,nw.x,nw.y,w,h);
+    const fx=Math.min(.42,Math.max(.045,feather/Math.max(1,w))),fy=Math.min(.42,Math.max(.06,feather/Math.max(1,h)));
+    lctx.globalCompositeOperation="destination-in";
+    let mask=lctx.createLinearGradient(nw.x,0,se.x,0);
+    mask.addColorStop(0,"rgba(0,0,0,0)");mask.addColorStop(fx,"rgba(0,0,0,1)");mask.addColorStop(1-fx,"rgba(0,0,0,1)");mask.addColorStop(1,"rgba(0,0,0,0)");
+    lctx.fillStyle=mask;lctx.fillRect(nw.x,nw.y,w,h);
+    mask=lctx.createLinearGradient(0,nw.y,0,se.y);
+    mask.addColorStop(0,"rgba(0,0,0,0)");mask.addColorStop(fy,"rgba(0,0,0,1)");mask.addColorStop(1-fy,"rgba(0,0,0,1)");mask.addColorStop(1,"rgba(0,0,0,0)");
+    lctx.fillStyle=mask;lctx.fillRect(nw.x,nw.y,w,h);
+    lctx.globalCompositeOperation="source-over";
+    ctx.save();ctx.globalAlpha=opacity;ctx.drawImage(layer,0,0,rect.width,rect.height);ctx.restore();
+    v070DrawBoundaryMist(ctx,nw,se,opacity*.52,feather*.9);
+  }
   function v070Smoothstep(edge0,edge1,value){
     if(edge0===edge1)return value>=edge1?1:0;
     const t=Math.max(0,Math.min(1,(value-edge0)/(edge1-edge0)));
@@ -1529,8 +1840,8 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, r.width, r.height);
     state.perf.waterHitAreas = [];
-    // V272正式地图：世界底层直接来自《坐标棋盘图》，旧617对象固定山水底图不再作为正式地理依据。
-    if(v272BoardLayoutAvailable())drawV272BoardBackdrop(ctx,v,s);else if(!state.precisionMode)drawV070OverviewArt(ctx);
+    // V272正式地图：美术背景永远位于最底层；棋盘结构只作轻量校准层；地块图片在背景活跃时不参与总览渲染。
+    if(v272BoardLayoutAvailable()){drawV110V272OverviewArt(ctx);drawV272BoardBackdrop(ctx,v,s)}else{els.viewport?.classList.remove("v110-world-art-active");if(!state.precisionMode)drawV070OverviewArt(ctx)}
     if (state.precisionMode) {
       drawPrecisionTerrain(ctx, v, s);
       drawPrecisionGrid(ctx, v, s);
@@ -1646,8 +1957,8 @@
       if (!path || path.hasDirection === false) return "none";
       const evidence = String(path.directionEvidence || "").toLowerCase();
       const level = String(path.evidenceLevel || "G2").slice(0, 2).toUpperCase();
-      if (/project|layout|示意|排版/.test(evidence) || level === "G3") return "none";
       if (path.hasTextualFlowDirection === true || /original-text|textual|原文/.test(evidence)) return "text";
+      if (/project|layout|示意|排版/.test(evidence) || level === "G3") return path.hasTopologyDirection === true ? "topology" : "none";
       if (path.hasTopologyDirection === true || /topology|拓扑/.test(evidence) || ((level === "G1" || level === "G2") && path.hasDirection !== false)) return "topology";
       return "none";
     } function waterDirectionGlyph(path) {
@@ -1857,7 +2168,7 @@
   function tileCoordCode(gx,gy){const f=n=>`${n>=0?"+":"-"}${String(Math.abs(n)).padStart(3,"0")}`;return `X${f(gx)}_Y${f(gy)}`}
   function tileHTML(gx,gy,k,all,visible,left,top,size,semantic,isChanged,searchClass="",search=null){
     const q=state.filters.q.trim(),brushSelected=!!state.brushKeys?.has(k),flipped=state.flippedCell===k&&semantic!=="micro",selected=all.some(o=>o.id===state.selectedId),main=(visible[0]||all.find(o=>o.id===state.selectedId)||all.find(o=>o.geometryType==="area")||all[0]),changeBadge=isChanged&&state.layers.changes?`<span class="tile-change-badge">更改</span>`:"",pulse=state.searchPulseCell===k?"search-pulse":"",uiScale=Math.min(1.85,Math.max(.82,size/BASE_CELL_PX)),style=`left:${left}px;top:${top}px;width:${size}px;height:${size}px;--tile-ui:${uiScale}`;
-    const coord=tileCoordCode(gx,gy),tileImage=state.tileImageMapMode?syncedImageUrl(state.tileProfiles?.[k]?.imageUrl):"",tileImageHTML=tileImage?`<img class="tile-map-image" src="${esc(tileImage)}" alt="${esc((main?.name||"地块")+"主体图片")}" loading="lazy" decoding="async" draggable="false">`:"",imageClass=tileImage?"has-map-image":"",boardFlowHTML=v272TileAnnotationHTML(k);
+    const coord=tileCoordCode(gx,gy),tileImage=v110TileMapImagesVisible()?syncedImageUrl(state.tileProfiles?.[k]?.imageUrl):"",tileImageHTML=tileImage?`<img class="tile-map-image" src="${esc(tileImage)}" alt="${esc((main?.name||"地块")+"主体图片")}" loading="lazy" decoding="async" draggable="false">`:"",imageClass=tileImage?"has-map-image":"",boardFlowHTML=v272TileAnnotationHTML(k);
     if(!all.length){return `<div class="tile empty ${brushSelected?'brush-selected':''} ${flipped?'flipped':''} ${semantic} ${searchClass} ${pulse}" data-cell="${k}" data-gx="${gx}" data-gy="${gy}" style="${style}"><div class="tile-card"><div class="tile-face tile-front"><div class="tile-content empty-layout icon-only"><div class="empty-plus">${searchClass==='search-match'?'⌕':'＋'}</div></div></div><div class="tile-face tile-back"><div class="tile-empty-back"><strong>此格尚无对象</strong><p>${coordText(cellCenter(gx),cellCenter(gy))}为主格中心</p><button data-action="add">＋ 新增第一个对象</button></div></div></div></div>`}
     const ordered=state.filters.q?[...all].sort((a,b)=>searchRank(a,q)-searchRank(b,q)):all;
     const list=ordered.map(o=>{const matched=state.filters.q&&searchRank(o,q)<5,focused=o.id===state.searchPulseObject;return `<button class="tile-object-btn ${o.id===state.selectedId?'selected':''} ${matched?'search-object-match':''} ${focused?'search-object-focus':''}" data-object-id="${esc(o.id)}"><i class="${esc(o.geometryType||'point')}"></i><span><strong>${matched?markSearchText(o.name,q):esc(o.name)}</strong><small>${esc(o.rowRef||'NEW')} · ${esc(o.type||'未分类')}</small></span></button>`}).join("");
@@ -2737,7 +3048,7 @@
       setImportPolicy("supplement");const rows=await xlsxReadSheetRows(file,"程序导入数据"),headerIndex=rows.findIndex(row=>row.includes("程序状态")&&row.includes("审核Markdown_BASE64"));if(headerIndex<0)throw new Error("程序导入数据工作表缺少标准表头。");
       const headers=rows[headerIndex],records=rows.slice(headerIndex+1).filter(row=>row.some(value=>String(value||"").trim())).map(row=>Object.fromEntries(headers.map((header,index)=>[header,row[index]??""]))),approved=records.filter(row=>String(row["程序状态"]||"").trim()==="approved");if(!approved.length)throw new Error("审核表中没有 approved 文件。");if(approved.length>300)throw new Error("审核表中的允许导入文件超过300份。");
       const docs=approved.map(row=>{const name=String(row["源文件名"]||"").trim(),text=decodeDossierAuditText(row["审核Markdown_BASE64"]);if(!name||!text)throw new Error("程序导入数据存在空文件名或空内容。");const audit=parseDossierAuditHeader(text);if(!audit?.meta||audit.meta.status!=="approved")throw new Error(`${name} 的审核头无效。`);return {name,text,size:new TextEncoder().encode(text).length}});
-      renderImportFileBatch(docs);els.importFileName.textContent=`审核表：${file.name} · ${docs.length}份 approved`;els.importText.value=docs.map(({name,text})=>`<!-- SHMAP_IMPORT_FILE: ${name.replace(/-->/g,"—>")} -->\n${text.trim()}\n`).join("\n\n");analyzeImportText();toast("审核表读取完成",`已载入 ${docs.length} 份允许导入资料；请确认阻止写入为0后再执行。`)
+      state.importSourceFiles=docs.map(doc=>({...doc,type:"text/markdown"}));renderImportFileBatch(docs);els.importFileName.textContent=`审核表：${file.name} · ${docs.length}份 approved`;els.importText.value=docs.map(({name,text})=>`<!-- SHMAP_IMPORT_FILE: ${name.replace(/-->/g,"—>")} -->\n${text.trim()}\n`).join("\n\n");analyzeImportText();toast("审核表读取完成",`已载入 ${docs.length} 份允许导入资料；请确认阻止写入为0后再执行。`)
     }catch(error){console.warn(error);toast("审核表读取失败",error?.message||String(error),"error")}
   }
   function validMarkdownFile(file){return !!file&&(/\.(?:md|markdown)$/i.test(file.name)||/^(?:text\/markdown|text\/plain)$/i.test(file.type||""))}
@@ -4527,6 +4838,96 @@
       return line
     }).join("\n")
   }
+
+  // v1.1.2 · Markdown 批量导入文件级审计、被阻止名单与复制导入。
+  function importSourceFileName(entry){return String(entry?.sourceFile||"").trim()||"（手动粘贴内容）"}
+  function importFileRecordByName(name){return (state.importSourceFiles||[]).find(file=>file.name===name)||null}
+  function importEntryBlocked(entry){return entry?.status==="error"||entry?.skipImport===true||!importEntryEligible(entry)}
+  function importBlockedFileAudit(analysis=state.importAnalysis){
+    const entries=analysis?.entries||[],sourceRecords=(state.importSourceFiles||[]).length?state.importSourceFiles:[...new Set(entries.map(importSourceFileName))].map(name=>({name,size:0,text:""}));
+    const globalErrors=(analysis?.globalIssues||[]).filter(issue=>issue.level==="error"),result=[];
+    for(const source of sourceRecords){
+      const fileEntries=entries.filter(entry=>importSourceFileName(entry)===source.name),reasons=[];
+      if(!fileEntries.length)reasons.push("未识别出可写入条目");
+      fileEntries.forEach(entry=>{(entry.issues||[]).filter(issue=>issue.level==="error").forEach(issue=>reasons.push(issue.message));if(entry.skipImport)reasons.push(entry.skipReason||"该条目被安全导入规则跳过");if(entry.status!=="error"&&!entry.skipImport&&!importEntryEligible(entry))reasons.push("目标对象或父子绑定尚未通过安全校验")});
+      if(sourceRecords.length===1)globalErrors.forEach(issue=>reasons.push(issue.message));
+      const unique=[...new Set(reasons.filter(Boolean))],eligible=fileEntries.filter(entry=>!importEntryBlocked(entry)).length;
+      if(unique.length||eligible===0)result.push({name:source.name,size:source.size||0,text:source.text||"",entryCount:fileEntries.length,eligibleCount:eligible,reasons:unique.length?unique:["没有可安全写入的条目"]})
+    }
+    state.importBlockedFiles=result;return result
+  }
+  function importBlockedFileNames(analysis=state.importAnalysis){return new Set(importBlockedFileAudit(analysis).map(file=>file.name))}
+  function blockedImportReportText(analysis=state.importAnalysis){const blocked=importBlockedFileAudit(analysis),stamp=new Date().toLocaleString("zh-CN"),lines=["# SHmap Markdown 批量导入阻止报告",`生成时间：${stamp}`,`导入模式：${importPolicyValue()==="supplement"?"安全补充":"完整结构"}`,`被阻止文件：${blocked.length} 个`,""];blocked.forEach((file,index)=>lines.push(`## ${index+1}. ${file.name}`,`- 识别条目：${file.entryCount}`,`- 可安全写入：${file.eligibleCount}`,`- 阻止原因：${file.reasons.join("；")||"未识别原因"}`,""));if(!blocked.length)lines.push("当前没有被阻止文件。","");return lines.join("\n")}
+  function downloadTextFile(name,text,type="text/markdown;charset=utf-8"){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)}
+  function safeCopiedMarkdownName(value){return String(value||"未命名.md").replace(/[<>:"/\\|?*\x00-\x1F]/g,"_").replace(/\.+$/g,"").slice(0,180)||"未命名.md"}
+  function markdownFileReadErrorMessage(error,fileName="Markdown 文件"){
+    const name=String(fileName||"Markdown 文件"),code=String(error?.name||""),message=String(error?.message||error||"");
+    if(code==="NotReadableError")return `${name} 暂时无法读取。请确认文件位于本机普通目录，且未被编辑器或同步程序独占。`;
+    if(code==="NotAllowedError"||code==="SecurityError")return `${name} 没有读取权限。请重新选择本机可访问的 Markdown 文件。`;
+    if(code==="AbortError")return `${name} 的读取已取消。`;
+    return message?`${name}：${message}`:`${name} 无法读取。`
+  }
+  async function readMarkdownFileRecord(file,{retry=true}={}){
+    const meta={name:file?.name||"未命名.md",size:Number(file?.size)||0,type:file?.type||"",lastModified:Number(file?.lastModified)||0};
+    const readOnce=async()=>{const buffer=await file.arrayBuffer();return {...meta,text:new TextDecoder("utf-8").decode(buffer).replace(/^\uFEFF/,"")}};
+    try{return await readOnce()}catch(error){
+      if(retry&&String(error?.name||"")==="NotReadableError"){
+        await new Promise(resolve=>setTimeout(resolve,120));
+        try{return await readOnce()}catch(second){second.shmapFileName=meta.name;throw second}
+      }
+      error.shmapFileName=meta.name;throw error
+    }
+  }
+  async function readMarkdownFileRecords(files){const records=[];for(const file of files)records.push(await readMarkdownFileRecord(file));return records}
+
+  // v1.1.2-r2: Windows WebView2 对 showDirectoryPicker 的手势限制会导致批量复制失败。
+  // 改为生成一个“原文件副本 ZIP”，一次下载，既保留原文件又不依赖目录选择器。
+  let v112ZipCrcTable=null;
+  function v112ZipCrc32(bytes){
+    if(!v112ZipCrcTable){v112ZipCrcTable=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);v112ZipCrcTable[n]=c>>>0}}
+    let crc=0xFFFFFFFF;for(const byte of bytes)crc=v112ZipCrcTable[(crc^byte)&0xFF]^(crc>>>8);return (crc^0xFFFFFFFF)>>>0
+  }
+  function v112ZipDosDateTime(date=new Date()){
+    const year=Math.max(1980,date.getFullYear()),time=((date.getHours()&31)<<11)|((date.getMinutes()&63)<<5)|((Math.floor(date.getSeconds()/2))&31),day=((year-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate();return {time,day}
+  }
+  function v112ZipWrite16(view,offset,value){view.setUint16(offset,value&0xFFFF,true)}
+  function v112ZipWrite32(view,offset,value){view.setUint32(offset,value>>>0,true)}
+  function v112ZipConcat(parts){const total=parts.reduce((sum,part)=>sum+part.byteLength,0),out=new Uint8Array(total);let offset=0;for(const part of parts){out.set(part,offset);offset+=part.byteLength}return out}
+  function v112BuildStoredZip(records){
+    const encoder=new TextEncoder(),locals=[],centrals=[];let localOffset=0;
+    for(const record of records){
+      const nameBytes=encoder.encode(safeCopiedMarkdownName(record.name)),data=encoder.encode(String(record.text??"")),crc=v112ZipCrc32(data),dt=v112ZipDosDateTime(new Date(record.lastModified||Date.now()));
+      const local=new Uint8Array(30+nameBytes.length),lv=new DataView(local.buffer);v112ZipWrite32(lv,0,0x04034b50);v112ZipWrite16(lv,4,20);v112ZipWrite16(lv,6,0x0800);v112ZipWrite16(lv,8,0);v112ZipWrite16(lv,10,dt.time);v112ZipWrite16(lv,12,dt.day);v112ZipWrite32(lv,14,crc);v112ZipWrite32(lv,18,data.length);v112ZipWrite32(lv,22,data.length);v112ZipWrite16(lv,26,nameBytes.length);v112ZipWrite16(lv,28,0);local.set(nameBytes,30);locals.push(local,data);
+      const central=new Uint8Array(46+nameBytes.length),cv=new DataView(central.buffer);v112ZipWrite32(cv,0,0x02014b50);v112ZipWrite16(cv,4,20);v112ZipWrite16(cv,6,20);v112ZipWrite16(cv,8,0x0800);v112ZipWrite16(cv,10,0);v112ZipWrite16(cv,12,dt.time);v112ZipWrite16(cv,14,dt.day);v112ZipWrite32(cv,16,crc);v112ZipWrite32(cv,20,data.length);v112ZipWrite32(cv,24,data.length);v112ZipWrite16(cv,28,nameBytes.length);v112ZipWrite16(cv,30,0);v112ZipWrite16(cv,32,0);v112ZipWrite16(cv,34,0);v112ZipWrite16(cv,36,0);v112ZipWrite32(cv,38,0);v112ZipWrite32(cv,42,localOffset);central.set(nameBytes,46);centrals.push(central);localOffset+=local.length+data.length
+    }
+    const centralOffset=localOffset,centralSize=centrals.reduce((sum,part)=>sum+part.length,0),end=new Uint8Array(22),ev=new DataView(end.buffer);v112ZipWrite32(ev,0,0x06054b50);v112ZipWrite16(ev,4,0);v112ZipWrite16(ev,6,0);v112ZipWrite16(ev,8,records.length);v112ZipWrite16(ev,10,records.length);v112ZipWrite32(ev,12,centralSize);v112ZipWrite32(ev,16,centralOffset);v112ZipWrite16(ev,20,0);return v112ZipConcat([...locals,...centrals,end])
+  }
+  function v112DownloadRecordZip(records,{prefix="SHmap_MD副本"}={}){
+    if(!records?.length)throw new Error("没有可复制的 Markdown 文件。");
+    const zip=v112BuildStoredZip(records),stamp=new Date().toISOString().replace(/[:.]/g,"-").slice(0,19),name=`${prefix}_${stamp}.zip`,blob=new Blob([zip],{type:"application/zip"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);return {count:records.length,name}
+  }
+  async function copyBlockedImportFiles(){
+    const blocked=importBlockedFileAudit();if(!blocked.length){toast("没有被阻止文件","当前批次全部通过文件级安全校验。","ok");return}
+    const records=blocked.map(file=>importFileRecordByName(file.name)||file).filter(file=>typeof file.text==="string");if(!records.length){toast("无法复制原文件","当前阻止项没有保留原始 Markdown 文本。","error");return}
+    try{const result=v112DownloadRecordZip(records,{prefix:"SHmap_被阻止_MD"});toast("被阻止文件已批量导出",`${result.count} 个原始 Markdown 已打包为 ${result.name}`)}catch(error){console.warn(error);toast("批量复制失败",String(error?.message||error),"error")}
+  }
+  async function copiedFileImportFromPicker(files){
+    const valid=[...(files||[])].filter(validMarkdownFile);if(!valid.length){toast("没有可复制导入的 Markdown","请选择 .md 或 .markdown 文件。","error");return}
+    let records;try{records=await readMarkdownFileRecords(valid)}catch(error){console.warn(error);toast("无法读取 Markdown",markdownFileReadErrorMessage(error,error?.shmapFileName),"error");return}
+    try{const result=v112DownloadRecordZip(records,{prefix:"SHmap_导入原件副本"});toast("原文件副本已导出",`${result.count} 个 Markdown 已打包备份；正在进入导入检查。`);await readImportRecords(records,{forceBatch:true})}catch(error){console.warn(error);toast("复制文件导入失败",String(error?.message||error),"error")}
+  }
+  function openCopiedFileImportPicker(){
+    let input=document.getElementById("v112CopyImportInput");if(!input){input=document.createElement("input");input.id="v112CopyImportInput";input.type="file";input.multiple=true;input.accept=".md,.markdown,text/markdown,text/plain";input.hidden=true;document.body.appendChild(input);input.addEventListener("change",async()=>{const files=[...(input.files||[])];try{await copiedFileImportFromPicker(files)}finally{input.value=""}})}input.click()
+  }
+  function ensureImportAuditPanel(){
+    if(!els.importWorkspace)return;let panel=document.getElementById("v112ImportAuditPanel");
+    if(!panel){panel=document.createElement("section");panel.id="v112ImportAuditPanel";panel.className="v112-import-audit-panel";panel.innerHTML=`<div class="v112-import-audit-head"><div><strong>批量导入审计</strong><span id="v112ImportAuditMeta">等待选择 Markdown</span></div><div class="v112-import-audit-actions"><button type="button" id="v112CopyBlockedNames">复制名单</button><button type="button" id="v112CopyBlockedReport">复制详细报告</button><button type="button" id="v112ExportBlockedReport">导出报告</button><button type="button" id="v112CopyBlockedFiles">批量复制被阻止文件</button><button type="button" id="v112RetryBlockedFiles">仅重试被阻止文件</button></div></div><div id="v112ImportAuditList" class="v112-import-audit-list"><div class="import-empty">完成批量检查后，这里会单独列出被阻止的文件与原因。</div></div>`;const anchor=els.importBatchList||els.importSummary;anchor?.insertAdjacentElement("afterend",panel);panel.querySelector("#v112CopyBlockedNames")?.addEventListener("click",()=>{const names=importBlockedFileAudit().map(file=>file.name);if(!names.length){toast("没有被阻止文件","当前批次没有阻止名单。","ok");return}copyText(names.join("\n"),"被阻止文件名已复制")});panel.querySelector("#v112CopyBlockedReport")?.addEventListener("click",()=>copyText(blockedImportReportText(),"被阻止详细报告已复制"));panel.querySelector("#v112ExportBlockedReport")?.addEventListener("click",()=>downloadTextFile(`SHmap_blocked_import_${new Date().toISOString().slice(0,10)}.md`,blockedImportReportText()));panel.querySelector("#v112CopyBlockedFiles")?.addEventListener("click",copyBlockedImportFiles);panel.querySelector("#v112RetryBlockedFiles")?.addEventListener("click",()=>{const records=importBlockedFileAudit().map(file=>importFileRecordByName(file.name)||file).filter(file=>file.text);if(!records.length){toast("没有可重试原文件","当前阻止项没有保留原文件文本。","error");return}readImportRecords(records,{forceBatch:true})})}
+    let copyButton=document.getElementById("v112CopyFileImportBtn");if(!copyButton&&els.importChooseBatchBtn){copyButton=document.createElement("button");copyButton.type="button";copyButton.id="v112CopyFileImportBtn";copyButton.className=els.importChooseBatchBtn.className||"btn secondary";copyButton.textContent="复制文件导入";copyButton.title="先将所选 Markdown 原件打包为副本 ZIP，再进入批量导入检查";els.importChooseBatchBtn.insertAdjacentElement("afterend",copyButton);copyButton.addEventListener("click",openCopiedFileImportPicker)}
+    if(!document.getElementById("v112-import-audit-style")){const style=document.createElement("style");style.id="v112-import-audit-style";style.textContent=`.v112-import-audit-panel{margin:12px 0;padding:12px 14px;border:1px solid rgba(147,118,75,.24);border-radius:14px;background:rgba(251,248,239,.86)}.v112-import-audit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.v112-import-audit-head>div:first-child{display:flex;flex-direction:column;gap:3px}.v112-import-audit-head strong{color:#294f48;font-size:14px}.v112-import-audit-head span{font-size:11px;color:#817765}.v112-import-audit-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.v112-import-audit-actions button{border:1px solid rgba(126,105,71,.22);background:#f8f2e5;color:#3c514b;border-radius:8px;padding:6px 9px;font-size:11px;cursor:pointer}.v112-import-audit-actions button:disabled{opacity:.42;cursor:not-allowed}.v112-import-audit-list{margin-top:10px;display:grid;gap:7px;max-height:230px;overflow:auto}.v112-blocked-file{display:grid;grid-template-columns:minmax(150px,1fr) minmax(260px,2fr);gap:10px;padding:9px 10px;border-radius:10px;border:1px solid rgba(170,86,68,.24);background:rgba(255,245,240,.80)}.v112-blocked-file strong{font-size:12px;color:#7c3f34;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v112-blocked-file small{font-size:11px;line-height:1.45;color:#765f58}.region-overview-label[data-overview-mode=domain].domain-detail{min-height:42px!important;border-radius:11px!important;padding:6px 10px!important}.region-overview-label[data-overview-mode=domain].domain-detail .region-overview-name{font-size:14px!important}.region-overview-label[data-overview-mode=domain].domain-detail .region-overview-meta{font-size:10px!important;opacity:.72}`;document.head.appendChild(style)}renderImportBlockedAudit(state.importAnalysis)
+  }
+  function renderImportBlockedAudit(analysis=state.importAnalysis){const panel=document.getElementById("v112ImportAuditPanel");if(!panel)return;const list=panel.querySelector("#v112ImportAuditList"),meta=panel.querySelector("#v112ImportAuditMeta"),blocked=analysis?importBlockedFileAudit(analysis):[],sourceCount=(state.importSourceFiles||[]).length||(analysis?.entries?.length?new Set(analysis.entries.map(importSourceFileName)).size:0);if(meta)meta.textContent=analysis?`${sourceCount} 个源文件 · ${blocked.length} 个被阻止`:`等待选择 Markdown`;if(list)list.innerHTML=!analysis?'<div class="import-empty">完成批量检查后，这里会单独列出被阻止的文件与原因。</div>':!blocked.length?'<div class="issue ok"><strong>文件级检查通过</strong><br>当前没有被阻止文件。</div>':blocked.map(file=>`<article class="v112-blocked-file"><strong title="${esc(file.name)}">${esc(file.name)}</strong><small>${esc(file.reasons.join("；")||"没有可安全写入条目")}</small></article>`).join("");panel.querySelectorAll(".v112-import-audit-actions button").forEach(button=>button.disabled=!analysis||(!blocked.length&&!["v112CopyBlockedReport","v112ExportBlockedReport"].includes(button.id)))}
+  async function readImportRecords(records,{forceBatch=false}={}){const all=[...(records||[])],valid=all.filter(record=>/\.(?:md|markdown)$/i.test(record.name)||/^(?:text\/markdown|text\/plain)$/i.test(record.type||""));if(!valid.length){toast("没有可读取的 Markdown","请选择 .md 或 .markdown 文件。","error");return}if(valid.length>300){toast("批量文件过多","一次最多导入300个 Markdown 文件。","error");return}const sizes=valid.map(file=>file.size||new TextEncoder().encode(file.text||"").length),tooIndex=sizes.findIndex(size=>size>5*1024*1024),total=sizes.reduce((a,b)=>a+b,0);if(tooIndex>=0){toast("文件过大",`${valid[tooIndex].name} 超过5MB。`,"error");return}if(total>50*1024*1024){toast("批量内容过大","一次导入总量不能超过50MB。","error");return}const selected=forceBatch?valid:valid.slice(0,1);state.importSourceFiles=selected.map(file=>({...file,text:String(file.text||"").replace(/^\uFEFF/,"")}));renderImportFileBatch(selected);els.importText.value=state.importSourceFiles.map(({name,text})=>`<!-- SHMAP_IMPORT_FILE: ${String(name).replace(/-->/g,"—>")} -->\n${String(text).trim()}\n`).join("\n\n");analyzeImportText()}
+
   function importPolicyValue(){return state.importPolicy==="structure"?"structure":"supplement"}
   function updateImportApplyButtonLabel(){
     if(!els.importApplyBtn)return;const batch=state.importMode==="batch";
@@ -4541,10 +4942,13 @@
   function setImportPolicy(value){
     state.importPolicy=value==="structure"?"structure":"supplement";updateImportPolicyUi();renderExamplePanel();if(els.importText?.value.trim())analyzeImportText();else renderImportAnalysis(null)
   }
-  function openImportWorkspace(){els.importWorkspace.classList.remove("hidden");updateImportPolicyUi();renderExamplePanel();if(!els.importText.value.trim()){els.importText.value="";updateImportCharCount();renderImportAnalysis(null)}}
-  function resetImportFiles(){state.importFiles=[];state.importMode="single";updateImportApplyButtonLabel();els.importBatchList?.classList.add("hidden");if(els.importBatchList)els.importBatchList.innerHTML="";if(els.importFileInput)els.importFileInput.value="";if(els.importBatchFileInput)els.importBatchFileInput.value="";if(els.importAuditWorkbookInput)els.importAuditWorkbookInput.value=""}
+  function openImportWorkspace(){els.importWorkspace.classList.remove("hidden");ensureImportAuditPanel();updateImportPolicyUi();renderExamplePanel();if(!els.importText.value.trim()){els.importText.value="";updateImportCharCount();renderImportAnalysis(null)}}
+  function resetImportFiles(){state.importFiles=[];state.importSourceFiles=[];state.importBlockedFiles=[];state.importMode="single";updateImportApplyButtonLabel();els.importBatchList?.classList.add("hidden");if(els.importBatchList)els.importBatchList.innerHTML="";if(els.importFileInput)els.importFileInput.value="";if(els.importBatchFileInput)els.importBatchFileInput.value="";if(els.importAuditWorkbookInput)els.importAuditWorkbookInput.value=""}
   function renderImportFileBatch(files){const list=[...files];state.importFiles=list.map(f=>({name:f.name,size:f.size}));state.importMode=list.length>1?"batch":"single";els.importFileName.textContent=list.length>1?`已选择 ${list.length} 个 Markdown 文件`:list[0]?.name||"尚未选择文件";updateImportApplyButtonLabel();if(!els.importBatchList)return;if(list.length<=1){els.importBatchList.classList.add("hidden");els.importBatchList.innerHTML="";return}els.importBatchList.classList.remove("hidden");els.importBatchList.innerHTML=`<div class="import-batch-head"><strong>批量导入清单</strong><span>${list.length} 个文件 · ${Math.ceil(list.reduce((n,f)=>n+f.size,0)/1024)} KB</span></div><div class="import-batch-files">${list.map((f,i)=>`<span title="${esc(f.name)}"><i>${i+1}</i>${esc(f.name)}</span>`).join("")}</div>`}
-  async function readImportFiles(fileList,{forceBatch=false}={}){const all=[...(fileList||[])],files=all.filter(validMarkdownFile);if(!files.length){toast("没有可读取的 Markdown","请选择 .md 或 .markdown 文件。","error");return}if(files.length!==all.length)toast("已忽略非 Markdown 文件",`${all.length-files.length} 个文件未载入。`);if(files.length>300){toast("批量文件过多","一次最多导入300个 Markdown 文件。","error");return}const tooLarge=files.find(f=>f.size>5*1024*1024),total=files.reduce((n,f)=>n+f.size,0);if(tooLarge){toast("文件过大",`${tooLarge.name} 超过5MB。`,"error");return}if(total>50*1024*1024){toast("批量内容过大","一次导入总量不能超过50MB。","error");return}const selected=forceBatch?files:files.slice(0,1);renderImportFileBatch(selected);try{const texts=await Promise.all(selected.map(async f=>({name:f.name,text:(await f.text()).replace(/^\uFEFF/,"")})));els.importText.value=texts.map(({name,text})=>`<!-- SHMAP_IMPORT_FILE: ${name.replace(/-->/g,"—>")} -->\n${text.trim()}\n`).join("\n\n");analyzeImportText()}catch(err){console.warn(err);toast("无法读取文件","请确认文件未被其他程序锁定。","error")}}
+  async function readImportFiles(fileList,{forceBatch=false}={}){
+    const all=[...(fileList||[])],files=all.filter(validMarkdownFile);if(!files.length){toast("没有可读取的 Markdown","请选择 .md 或 .markdown 文件。","error");return}if(files.length!==all.length)toast("已忽略非 Markdown 文件",`${all.length-files.length} 个文件未载入。`);
+    try{const records=await readMarkdownFileRecords(files);await readImportRecords(records,{forceBatch})}catch(error){console.warn(error);toast("无法读取 Markdown",markdownFileReadErrorMessage(error,error?.shmapFileName),"error")}
+  }
   function supplementObjectTarget(entry){
     const byId=entry.id?state.objects.filter(o=>o.id===entry.id):[];if(byId.length===1)return {target:byId[0],matches:byId};
     let matches=state.objects.filter(o=>normalizeDossierImportName(o.name)===normalizeDossierImportName(entry.name));
@@ -4595,13 +4999,13 @@
   }
   function mergeSupplementTileValue(key,current,incoming){if(!hasText(incoming))return current;if(key==="localTags")return mergeSupplementTags(current,incoming);if(typeof incoming==="string")return mergeSupplementText(current,incoming);return current===undefined||current===null||current===""?incoming:current}
   function renderImportAnalysis(a){
-    updateImportPolicyUi();const supplement=importPolicyValue()==="supplement";
-    if(!a){els.importFormatBadge.className="format-badge neutral";els.importFormatBadge.textContent="等待输入";els.importValidationState.className="validation-state";els.importValidationState.textContent="尚未分析";els.importSummary.innerHTML=`<div><strong>0</strong><span>识别条目</span></div><div class="ok"><strong>0</strong><span>${supplement?"可补充":"可导入"}</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div>`;els.importObjectList.innerHTML='<div class="import-empty">载入文件后，这里会列出对象、地块档案或九段式地块博物志。</div>';els.importInspector.innerHTML='<div class="import-empty">系统会先核对目标是否已经存在，再决定是否允许写入。</div>';els.importApplyBtn.disabled=true;return}
+    ensureImportAuditPanel();updateImportPolicyUi();const supplement=importPolicyValue()==="supplement";
+    if(!a){els.importFormatBadge.className="format-badge neutral";els.importFormatBadge.textContent="等待输入";els.importValidationState.className="validation-state";els.importValidationState.textContent="尚未分析";els.importSummary.innerHTML=`<div><strong>0</strong><span>识别条目</span></div><div class="ok"><strong>0</strong><span>${supplement?"可补充":"可导入"}</span></div><div class="warn"><strong>0</strong><span>警告</span></div><div class="error"><strong>0</strong><span>错误</span></div>`;els.importObjectList.innerHTML='<div class="import-empty">载入文件后，这里会列出对象、地块档案或九段式地块博物志。</div>';els.importInspector.innerHTML='<div class="import-empty">系统会先核对目标是否已经存在，再决定是否允许写入。</div>';els.importApplyBtn.disabled=true;renderImportBlockedAudit(null);return}
     const entries=a.entries||[],warn=entries.filter(o=>o.status==="warn"&&!o.skipImport).length,error=entries.filter(o=>o.status==="error").length+(a.globalIssues||[]).filter(i=>i.level==="error").length,importable=entries.filter(importEntryEligible).length,skipped=entries.filter(o=>o.skipImport).length,validFormat=["object-v1","tile-profile-v1","mixed-v1","dossier-v1","mixed-dossier-v1"].includes(a.format),cls=validFormat?(error?"error":warn?"warn":"ok"):"error";
     els.importFormatBadge.className=`format-badge ${cls}`;els.importFormatBadge.textContent=`${importFormatLabel(a.format)} · ${supplement?"安全补充":"结构导入"}`;els.importValidationState.className=`validation-state ${cls}`;els.importValidationState.textContent=error?"存在阻断错误":warn?(supplement?"可补充，但有需核对项":"可导入，但有警告"):skipped?`已跳过${skipped}项`:"全部通过";els.importSummary.innerHTML=`<div><strong>${entries.length}</strong><span>识别条目</span></div><div class="ok"><strong>${importable}</strong><span>${supplement?"可补充":"可导入"}</span></div><div class="warn"><strong>${warn}</strong><span>警告条目</span></div><div class="error"><strong>${error}</strong><span>错误</span></div>`;
     const globalHtml=(a.globalIssues||[]).map(i=>`<div class="issue ${i.level}">第${i.line||1}行：${esc(i.message)}</div>`).join("");
     els.importObjectList.innerHTML=globalHtml+entries.map((o,i)=>{let meta;if(o.kind==="tile_profile")meta=`${supplement?"补充地块":"地块档案"} · ${o.cellKey||"坐标未完成"}`;else if(o.kind==="dossier_document"&&o.childLocationMode)meta=`父子地点 · ${o.parentObjectName} → ${o.name} · ${o.entryCount}项 · ${o.detailFieldCount||0}个详情字段`;else if(o.kind==="dossier_document"){const kindLabel=WATER_BINDING_LABELS[o.waterKind]||"对象博物志";meta=`${kindLabel} → ${o.targetId?o.targetName:"未匹配"} · ${o.entryCount}项 · ${o.detailFieldCount||0}个详情字段`}else meta=supplement?`补充 → ${o.targetId?o.targetName:"未匹配"}`:`${o.geometryType||"几何类型未识别"} · ${o.x===null?"坐标未完成":coordText(o.x,o.y)}`;const label=o.skipImport?"跳过":o.childLocationMode==="candidate"?"可建子项":o.childLocationMode==="existing"?"可更新":o.status==='ok'?(supplement?'可补充':'通过'):o.status==='warn'?'需核对':'阻止';return `<button class="import-result-item ${o.status} ${o.skipImport?'skipped':''} ${i===state.importSelectedIndex?'selected':''}" data-import-index="${i}"><em>${label}</em><strong>${esc(o.name||o.headerName||'未命名条目')}</strong><small>${o.sourceFile?`${esc(o.sourceFile)} · `:""}第${o.startLine}行 · ${esc(meta)}</small></button>`}).join("");
-    els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(entries.length)renderImportInspector(entries[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable;updateImportApplyButtonLabel()
+    els.importObjectList.querySelectorAll("[data-import-index]").forEach(b=>b.addEventListener("click",()=>{state.importSelectedIndex=Number(b.dataset.importIndex);renderImportAnalysis(a)}));if(entries.length)renderImportInspector(entries[state.importSelectedIndex]);else els.importInspector.innerHTML='<div class="import-empty">请先修正左侧文件格式。</div>';els.importApplyBtn.disabled=!importable;updateImportApplyButtonLabel();renderImportBlockedAudit(a)
   }
   function renderImportInspector(o){
     if(!o){els.importInspector.innerHTML='<div class="import-empty">未选择条目。</div>';return}const supplement=importPolicyValue()==="supplement";
@@ -4615,7 +5019,7 @@
     els.importInspector.innerHTML=issueHtml+childLocationResolutionHTML(o)+`<div class="field-audit">${rows.map(([k,v])=>`<div class="field-audit-row"><b>${esc(k)}</b><code>${v!==""?esc(v):'—'}</code></div>`).join("")}</div>`;bindChildLocationResolutionControls(o)
   }
   function applyMarkdownImport(){
-    const a=state.importAnalysis;if(!a)return;const supplement=importPolicyValue()==="supplement",valid=(a.entries||[]).filter(importEntryEligible),skipped=(a.entries||[]).filter(o=>o.skipImport);if(!valid.length){toast(supplement?"没有可补充条目":"没有可导入条目","请先修正匹配、父子绑定方式或格式错误。","error");return}
+    const a=state.importAnalysis;if(!a)return;const supplement=importPolicyValue()==="supplement",blockedFiles=importBlockedFileNames(a),valid=(a.entries||[]).filter(entry=>importEntryEligible(entry)&&!blockedFiles.has(importSourceFileName(entry))),skipped=(a.entries||[]).filter(o=>o.skipImport||blockedFiles.has(importSourceFileName(o)));if(!valid.length){toast(supplement?"没有可补充条目":"没有可导入条目","请先修正匹配、父子绑定方式或格式错误。","error");return}
     const added=[],updatedObjects=[],profiles=[],dossiers=[],unchanged=[],childLocationsCreated=[],childLocationsUpdated=[];
     valid.forEach(p=>{
       if(p.kind==="object"){
@@ -4816,9 +5220,124 @@
   function updateV029MinimapViewport(){
     const wrap=document.getElementById("researchMinimap"),box=document.getElementById("researchMinimapViewport");if(!wrap||!box)return;let b;try{b=JSON.parse(wrap.dataset.bounds||"null")}catch{return}if(!b)return;const pt=(x,y)=>({x:b.ox+(x-b.minX)*b.sc,y:b.h-(b.oy+(y-b.minY)*b.sc)}),v=visibleWorld(),nw=pt(v.left,v.top),se=pt(v.right,v.bottom);box.style.left=`${Math.max(0,nw.x)}px`;box.style.top=`${Math.max(0,nw.y)}px`;box.style.width=`${Math.max(4,Math.min(b.w,nw.x<0?se.x:se.x-nw.x))}px`;box.style.height=`${Math.max(4,Math.min(b.h,nw.y<0?se.y:se.y-nw.y))}px`
   }
+  function v110MinimapModeDigest(){
+    const zoom=state.camera.zoom||1,zoomBand=zoom<.14?"macro":zoom<.52?"detail":"evidence";
+    return [state.overviewMode||"region",zoomBand,state.regionOverviewMode?1:0,state.filters?.q||"",state.filters?.chapter||"",state.filters?.type||"",state.selectedRegionId||"",state.selectedId||"",state.selectedWaterPathId||"",state.layers?.environment?1:0,state.viewPreset||"all"].join("|")
+  }
+  function v110MinimapBounds(){
+    if(v272BoardLayoutAvailable())return v110V272WorldBounds();
+    return ensureObjectIndexes().bounds
+  }
+  function v110CreateMinimapProjector(w,h,pad=12){
+    const bounds=v110MinimapBounds(),minX=Number(bounds?.minX)||-100,maxX=Number(bounds?.maxX)||100,minY=Number(bounds?.minY)||-100,maxY=Number(bounds?.maxY)||100;
+    const sx=(w-pad*2)/(maxX-minX||1),sy=(h-pad*2)/(maxY-minY||1),sc=Math.min(sx,sy),ox=(w-(maxX-minX)*sc)/2,oy=(h-(maxY-minY)*sc)/2;
+    const pt=(x,y)=>({x:ox+(x-minX)*sc,y:h-(oy+(y-minY)*sc)});
+    return {minX,maxX,minY,maxY,sc,ox,oy,w,h,pt}
+  }
+  function v110MinimapModeLabel(){
+    return V071_OVERVIEW_MODE_LABELS[state.overviewMode]||V071_OVERVIEW_MODE_LABELS.region||"地理区域"
+  }
+  function v110DrawMinimapBackground(ctx,p){
+    const {w,h,pt}=p;
+    const bg=ctx.createLinearGradient(0,0,0,h);
+    bg.addColorStop(0,'#f4efe2');
+    bg.addColorStop(.58,'#efe8d8');
+    bg.addColorStop(1,'#e8e0cf');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+    ctx.save();ctx.globalAlpha=.16;ctx.strokeStyle='rgba(116,102,80,.18)';ctx.lineWidth=1;
+    const grid=Math.max(26,Math.min(44,Math.round(w/6)));
+    for(let x=grid+.5;x<w;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+    for(let y=grid+.5;y<h;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+    ctx.restore();
+    if(v272BoardLayoutAvailable()){
+      for(const run of BOARD_LAYOUT.backgroundRuns||[]){
+        const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;
+        const nw=pt(west,north),se=pt(east,south),pal=v272BoardPalette(run.kind);
+        const rw=se.x-nw.x,rh=se.y-nw.y;
+        if(rw<=0||rh<=0)continue;
+        ctx.fillStyle=pal.fill;ctx.globalAlpha=run.kind==='sea'||run.kind==='inner-sea'?0.88:0.76;ctx.fillRect(nw.x,nw.y,rw,rh);
+        ctx.globalAlpha=.3;ctx.strokeStyle=pal.line;ctx.strokeRect(nw.x+.25,nw.y+.25,Math.max(.5,rw-.5),Math.max(.5,rh-.5));
+      }
+      ctx.globalAlpha=1;
+    }else{
+      const idx=ensureObjectIndexes();
+      tileRenderObjects(tileVisibleObjects()).forEach(o=>{const a=objectAnchor(o),q=pt(a.x,a.y),pal=TERRAIN_PALETTE[isHydrologyObject(o)?"water":terrainCategory(o)]||TERRAIN_PALETTE.unknown;ctx.fillStyle=pal.color;ctx.globalAlpha=.18;ctx.fillRect(q.x-1.5,q.y-1.5,3,3)});
+      ctx.globalAlpha=1;
+      for(const line of idx.lines||[]){
+        const points=Array.isArray(line.path)?line.path:[];if(points.length<2)continue;
+        ctx.beginPath();points.forEach((point,index)=>{const q=pt(point[0],point[1]);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+        ctx.strokeStyle=isHydrologyObject(line)?'rgba(73,142,166,.38)':'rgba(108,92,74,.22)';ctx.lineWidth=1;ctx.stroke();
+      }
+    }
+  }
+  function v110DrawMinimapWorldLabels(ctx,p){
+    if(!v272BoardLayoutAvailable())return;
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 10px sans-serif';
+    for(const label of (BOARD_LAYOUT.worldLabels||[]).slice(0,32)){
+      const text=String(label?.name||'').replace(/^L[23]\s*/, '').trim();if(!text)continue;
+      const q=p.pt(Number(label.canvasX)||0,Number(label.canvasY)||0),sea=label.kind==='sea';
+      const width=Math.max(30,ctx.measureText(text).width+10),height=16;
+      waterRoundRect(ctx,q.x-width/2,q.y-height/2,width,height,8);
+      ctx.fillStyle=sea?'rgba(235,246,250,.88)':'rgba(251,246,234,.86)';ctx.fill();
+      ctx.strokeStyle=sea?'rgba(78,131,150,.22)':'rgba(128,104,67,.18)';ctx.lineWidth=.8;ctx.stroke();
+      ctx.fillStyle=sea?'#4d7f92':'#7b6747';ctx.fillText(text,q.x,q.y+.5)
+    }
+    ctx.restore();
+  }
+  function v110DrawMinimapOverviewGroups(ctx,p){
+    const mode=state.overviewMode||'region',groups=regionOverviewGroups();
+    ctx.save();
+    if(mode==='hydrology'){
+      const paths=(state.waterPaths||[]).slice().sort((a,b)=>(b.isMain?1:0)-(a.isMain?1:0));
+      paths.forEach(path=>{const points=Array.isArray(path.points)?path.points:[];if(points.length<2)return;ctx.beginPath();points.forEach((point,index)=>{const q=p.pt(Number(point[0])||0,Number(point[1])||0);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=path.id===state.selectedWaterPathId?'rgba(42,118,147,.96)':path.isMain?'rgba(55,138,166,.84)':'rgba(95,164,186,.58)';ctx.lineWidth=path.isMain?2.6:1.6;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke()});
+      for(const annotation of BOARD_LAYOUT.annotations||[]){
+        if(!['water-flow','flowing-sand'].includes(annotation.kind))continue;
+        const arrows=[...new Set((annotation.arrows||[]).filter(Boolean))];if(!arrows.length)continue;const q=p.pt(Number(annotation.canvasX)||0,Number(annotation.canvasY)||0);
+        ctx.save();ctx.font='700 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(51,128,152,.82)';ctx.fillText(arrows.join(' '),q.x,q.y);ctx.restore();
+      }
+    }else if(mode==='chapter'){
+      const palette=['#567b72','#71815d','#7b6d8b','#7b7658','#5e7c8b','#8b6f59'];
+      groups.forEach((group,index)=>{const color=palette[index%palette.length],box={minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY},nw=p.pt(box.minX,box.maxY),se=p.pt(box.maxX,box.minY),rw=se.x-nw.x,rh=se.y-nw.y;ctx.fillStyle=v053RegionRangeRgba(color,.12);ctx.strokeStyle=v053RegionRangeRgba(color,.72);ctx.lineWidth=1.3;ctx.setLineDash([4,3]);waterRoundRect(ctx,nw.x,nw.y,Math.max(4,rw),Math.max(4,rh),8);ctx.fill();ctx.stroke();ctx.setLineDash([]);const c=p.pt(group.x,group.y);ctx.fillStyle=color;ctx.beginPath();ctx.arc(c.x,c.y,2.3,0,Math.PI*2);ctx.fill()});
+    }else if(mode==='domain'){
+      groups.forEach((group,index)=>{const color=v071OverviewColor(group,index),selected=!!group.selected,geometry=v071GroupGeometry(group);if(geometry.length){for(const shape of geometry){const pts=(shape.points||[]).map(point=>p.pt(point.x,point.y));if(pts.length<2)continue;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.fillStyle=v053RegionRangeRgba(color,.12);ctx.strokeStyle=v053RegionRangeRgba(color,selected?.95:.72);ctx.lineWidth=selected?2.2:1.3;ctx.setLineDash(shape.hard?[]:[4,3]);ctx.fill();ctx.stroke();ctx.setLineDash([])}}const c=p.pt(group.x,group.y);ctx.beginPath();ctx.arc(c.x,c.y,group.macroRegion?3.2:2.2,0,Math.PI*2);ctx.fillStyle=group.macroRegion?color:'#f7f2e7';ctx.strokeStyle=color;ctx.lineWidth=1.2;ctx.fill();ctx.stroke()});
+    }else if(mode==='civilization'){
+      groups.forEach((group,index)=>{const color=v071OverviewColor(group,index),c=p.pt(group.x,group.y),selected=!!group.selected;ctx.beginPath();ctx.arc(c.x,c.y,selected?3.6:2.5,0,Math.PI*2);ctx.fillStyle=group.civilizationKind==='people'?v053RegionRangeRgba(color,.88):v053RegionRangeRgba(color,.66);ctx.strokeStyle=selected?'#f7f1e3':color;ctx.lineWidth=selected?2:1;ctx.fill();ctx.stroke()});
+    }else {
+      groups.forEach((group,index)=>{const color=v071OverviewColor(group,index),selected=!!group.selected;const geometries=v071GroupGeometry(group);if(geometries.length){for(const geometry of geometries){const pts=(geometry.points||[]).map(point=>p.pt(point.x,point.y));if(pts.length<2)continue;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.fillStyle=v053RegionRangeRgba(color,mode==='domain'?.16:.11);ctx.strokeStyle=v053RegionRangeRgba(color,selected?.95:.68);ctx.lineWidth=selected?2.2:1.4;ctx.setLineDash(mode==='domain'?[5,3]:[]);ctx.fill();ctx.stroke();ctx.setLineDash([])}}else{const nw=p.pt(group.minX,group.maxY),se=p.pt(group.maxX,group.minY),rw=Math.max(4,se.x-nw.x),rh=Math.max(4,se.y-nw.y);ctx.fillStyle=v053RegionRangeRgba(color,mode==='civilization'?.16:.12);ctx.strokeStyle=v053RegionRangeRgba(color,selected?.95:.68);ctx.lineWidth=selected?2.1:1.35;ctx.setLineDash(mode==='domain'?[5,3]:mode==='civilization'?[3,3]:[]);waterRoundRect(ctx,nw.x,nw.y,rw,rh,Math.min(10,Math.max(4,Math.min(rw,rh)*.18)));ctx.fill();ctx.stroke();ctx.setLineDash([])}
+        const c=p.pt(group.x,group.y);ctx.beginPath();ctx.arc(c.x,c.y,selected?3.1:2.2,0,Math.PI*2);ctx.fillStyle=selected?color:'#f6f1e5';ctx.strokeStyle=color;ctx.lineWidth=1.1;ctx.fill();ctx.stroke();
+      })
+    }
+    ctx.restore();
+    return groups
+  }
+  function v110DrawMinimapBanner(ctx,w,h,groups){
+    const modeLabel=v110MinimapModeLabel(),count=Array.isArray(groups)?groups.length:0;
+    ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';ctx.font='700 9px sans-serif';
+    const title=`${modeLabel} · ${count}`;const width=Math.max(68,ctx.measureText(title).width+14),height=20;
+    waterRoundRect(ctx,7,7,width,height,8);ctx.fillStyle='rgba(252,249,240,.80)';ctx.fill();ctx.strokeStyle='rgba(90,115,107,.18)';ctx.lineWidth=.8;ctx.stroke();
+    ctx.fillStyle='#2f6058';ctx.fillText(title,14,17);ctx.restore();
+  }
   function renderV029Minimap(force=false){
     const wrap=document.getElementById("researchMinimap"),canvas=document.getElementById("researchMinimapCanvas");if(!wrap||!canvas||!state.objects.length)return;const dpr=Math.min(devicePixelRatio||1,2),w=wrap.clientWidth,h=wrap.clientHeight,sizeKey=`${w}x${h}@${dpr}`;if(!w||!h)return;
-    const redraw=force||state.perf.minimapRevision!==state.objectRevision||state.perf.minimapSize!==sizeKey;if(redraw){const idx=ensureObjectIndexes(),{minX,maxX,minY,maxY}=idx.bounds,pad=12,sx=(w-pad*2)/(maxX-minX||1),sy=(h-pad*2)/(maxY-minY||1),sc=Math.min(sx,sy),ox=(w-(maxX-minX)*sc)/2,oy=(h-(maxY-minY)*sc)/2,pt=(x,y)=>({x:ox+(x-minX)*sc,y:h-(oy+(y-minY)*sc)});canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle="#ece8dc";ctx.fillRect(0,0,w,h);idx.lines.forEach(o=>{ctx.beginPath();o.path.forEach((p,i)=>{const q=pt(p[0],p[1]);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=isHydrologyObject(o)?"rgba(43,127,153,.58)":"rgba(92,85,72,.38)";ctx.lineWidth=1;ctx.stroke()});tileRenderObjects(tileVisibleObjects()).forEach(o=>{const a=objectAnchor(o),q=pt(a.x,a.y),pal=TERRAIN_PALETTE[isHydrologyObject(o)?"water":terrainCategory(o)]||TERRAIN_PALETTE.unknown;ctx.fillStyle=pal.color;ctx.globalAlpha=.7;ctx.fillRect(q.x-1,q.y-1,2,2)});ctx.globalAlpha=1;const z=pt(0,0);ctx.fillStyle="#ad4d3d";ctx.fillRect(z.x-2,z.y-2,4,4);wrap.dataset.bounds=JSON.stringify({minX,maxX,minY,maxY,sc,ox,oy,w,h});state.perf.minimapRevision=state.objectRevision;state.perf.minimapSize=sizeKey}updateV029MinimapViewport()
+    const modeDigest=v110MinimapModeDigest();
+    const redraw=force||state.perf.minimapRevision!==state.objectRevision||state.perf.minimapSize!==sizeKey||state.perf.minimapModeDigest!==modeDigest;
+    if(redraw){
+      const projector=v110CreateMinimapProjector(w,h,12),{pt,minX,maxX,minY,maxY,sc,ox,oy}=projector;
+      canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+      v110DrawMinimapBackground(ctx,projector);
+      const groups=v110DrawMinimapOverviewGroups(ctx,projector);
+      if(state.overviewMode!=='hydrology'){
+        const idx=ensureObjectIndexes();
+        for(const line of (idx.lines||[]).slice(0,120)){
+          const points=Array.isArray(line.path)?line.path:[];if(points.length<2)continue;ctx.beginPath();points.forEach((point,index)=>{const q=pt(point[0],point[1]);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=isHydrologyObject(line)?'rgba(59,139,163,.20)':'rgba(112,96,78,.14)';ctx.lineWidth=.9;ctx.stroke();
+        }
+      }
+      if(v272BoardLayoutAvailable()&&state.overviewMode!=='chapter')v110DrawMinimapWorldLabels(ctx,projector);
+      const z=pt(0,0);ctx.fillStyle="#ad4d3d";ctx.fillRect(z.x-2.5,z.y-2.5,5,5);
+      v110DrawMinimapBanner(ctx,w,h,groups);
+      wrap.dataset.bounds=JSON.stringify({minX,maxX,minY,maxY,sc,ox,oy,w,h});state.perf.minimapRevision=state.objectRevision;state.perf.minimapSize=sizeKey;state.perf.minimapModeDigest=modeDigest
+    }
+    updateV029MinimapViewport()
   }
   function v044DirectionArrow(dx,dy){
     if(Math.hypot(dx,dy)<1)return "◎";const angle=Math.atan2(dy,dx),sector=Math.round(angle/(Math.PI/4));return ({0:"→",1:"↗",2:"↑",3:"↖",4:"←","-4":"←","-3":"↙","-2":"↓","-1":"↘"})[sector]||"→"
@@ -5432,14 +5951,14 @@
     for(const wetland of model.wetlands){if(v071Visible(wetland,v,260))v071DrawWetland(ctx,wetland,s,opacity)}
     ctx.restore();
   }
-  const V071_OVERVIEW_MODE_LABELS={region:"地理区域",domain:"地块域",chapter:"经书",hydrology:"水系",civilization:"文明／族群"};
+  const V071_OVERVIEW_MODE_LABELS={region:"地理区域",domain:"地域",chapter:"经书",hydrology:"水系",civilization:"文明／族群"};
   function v071UpdateOverviewModeUi(){
     const label=V071_OVERVIEW_MODE_LABELS[state.overviewMode]||V071_OVERVIEW_MODE_LABELS.region;if(els.overviewModeBtn)els.overviewModeBtn.textContent=`总览：${label}`;
     els.overviewModeMenu?.querySelectorAll("[data-overview-mode]").forEach(button=>button.classList.toggle("active",button.dataset.overviewMode===state.overviewMode));
     els.viewport.dataset.overviewMode=state.overviewMode;
   }
   function v071SetOverviewMode(mode){
-    if(!V071_OVERVIEW_MODE_LABELS[mode])return;state.overviewMode=mode;state.perf.regionCache.clear();state.perf.regionRangeCache.clear();state.perf.regionOverviewLayerActive=false;state.perf.regionOverviewNodes=new Map();state.perf.regionOverviewVisibleGroups=new Map();els.tileLayer.replaceChildren();v071UpdateOverviewModeUi();scheduleRender();persist();toast(`总览模式：${V071_OVERVIEW_MODE_LABELS[mode]}`,mode==="region"?"按真实区域名合并地块":mode==="domain"?"显示面积域与作用域":mode==="chapter"?"按十八经篇查看分布":mode==="hydrology"?"按水系查看河网":"查看国度、部落与族群分布")
+    if(!V071_OVERVIEW_MODE_LABELS[mode])return;state.overviewMode=mode;state.perf.regionCache.clear();state.perf.regionRangeCache.clear();state.perf.minimapModeDigest="";state.perf.regionOverviewLayerActive=false;state.perf.regionOverviewNodes=new Map();state.perf.regionOverviewVisibleGroups=new Map();els.tileLayer.replaceChildren();v071UpdateOverviewModeUi();renderV029Minimap(true);scheduleRender();persist();toast(`总览模式：${V071_OVERVIEW_MODE_LABELS[mode]}`,mode==="region"?"按真实区域名合并地块":mode==="domain"?"按V272正式地域层与有证据面积查看分布":mode==="chapter"?"按十八经篇查看分布":mode==="hydrology"?"按水系查看河网":"只显示族群／人群与聚落文明节点，不把国家名当族群，也不绘势力范围")
   }
   function setupV071Features(){
     els.queryModeBtn?.addEventListener("click",()=>v071SetWorkspaceMode("query"));els.focusModeBtn?.addEventListener("click",()=>v071SetWorkspaceMode("focus"));
@@ -5485,7 +6004,7 @@
     updateTileImageMapUi()
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"1.0.6",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"data-derived-static-overview-fade-to-tile-cards",visualTheme:"yujian-shanhai-assets",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge-autosave",tileImageMap:"switchable-image-or-terrain-card",mapDetailImages:"object-primary-then-tile-primary-in-precision-preview-cards",batchPatch:"content-only-preview-with-multi-select-resolution",bootGuard:true};
+  window.__SHJ_APP_RUNTIME_INFO__={version:"1.1.2-r2",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"v272-world-art-bottom-structural-calibration-overlay",visualTheme:"v272-final-ink-world-art",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge-autosave",tileImageMap:"switchable-image-or-terrain-card",mapDetailImages:"object-primary-then-tile-primary-in-precision-preview-cards",batchPatch:"content-only-preview-with-multi-select-resolution",bootGuard:true};
   setupV027State();
   init();
   bindTileImageManager();

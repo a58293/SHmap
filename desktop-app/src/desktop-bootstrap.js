@@ -18,8 +18,8 @@ const MAIN_SCRIPT_TIMEOUT_MS = 8000;
 const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
-const DESKTOP_EDITION = "v010";
-const DESKTOP_VERSION = "1.0.6";
+const DESKTOP_EDITION = "v011";
+const DESKTOP_VERSION = "1.1.2";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -62,6 +62,43 @@ function queueSave(payload){
 function formatTime(value){try{return new Intl.DateTimeFormat("zh-CN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value||""}}
 function escapeHtml(v){return String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 
+
+function ensureCriticalUiBeforeMain(){
+  if(document.getElementById("v110-unified-menu-style"))return;
+  const style=document.createElement("style");style.id="v110-unified-menu-style";style.textContent=`
+    .v098-map-tools-menu,.v098-top-data-menu,.v050-top-system{position:relative;display:flex;align-items:stretch;margin:0}
+    .v098-map-tools-menu>summary,.v098-top-data-menu>summary,.v050-top-system>summary{list-style:none;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px;min-height:54px;padding:9px 18px;border-radius:14px;border:1px solid rgba(141,119,80,.26);background:linear-gradient(180deg,rgba(248,242,230,.98) 0%,rgba(239,231,214,.98) 100%);color:#314742;box-shadow:0 1px 0 rgba(255,255,255,.75) inset,0 1px 4px rgba(92,76,48,.08);cursor:pointer;user-select:none;white-space:nowrap}
+    .v098-map-tools-menu>summary::-webkit-details-marker,.v098-top-data-menu>summary::-webkit-details-marker,.v050-top-system>summary::-webkit-details-marker{display:none}
+    .v098-map-tools-menu>summary::after,.v098-top-data-menu>summary::after,.v050-top-system>summary::after{content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;color:#7a715f;pointer-events:none}
+    .v098-map-tools-menu[open]>summary::after,.v098-top-data-menu[open]>summary::after,.v050-top-system[open]>summary::after{transform:translateY(-50%) rotate(180deg)}
+    .v098-map-tools-menu>summary>span,.v098-top-data-menu>summary,.v050-top-system>summary{font-size:15px;font-weight:700;letter-spacing:.01em}
+    .v098-map-tools-menu>summary small,.v098-top-data-menu>summary small,.v050-top-system>summary small{font-size:11px;line-height:1.15;color:#7f7768;font-weight:600;letter-spacing:.02em}
+    .v098-map-tools-menu{min-width:166px}.v098-top-data-menu,.v050-top-system{min-width:112px}
+    .v098-top-data-menu>summary,.v050-top-system>summary{padding-right:28px;align-items:center;text-align:center;justify-content:center;font-size:14px}.v098-map-tools-menu>summary{padding-right:30px}
+    .v098-map-tools-panel,.v098-top-data-menu>div,.v050-top-system>div{margin-top:8px;border-radius:16px;border:1px solid rgba(135,117,82,.22);background:rgba(251,248,240,.98);box-shadow:0 18px 36px rgba(56,48,35,.15),0 1px 0 rgba(255,255,255,.88) inset;backdrop-filter:blur(10px)}
+    .v098-top-data-menu>div,.v050-top-system>div{padding:12px}.map-toolbar .v098-map-tools-menu,.top-actions .v098-top-data-menu,.top-actions .v050-top-system{align-self:center}
+  `;document.head.appendChild(style)
+}
+
+function ensureStableUiBootCurtain(){
+  let curtain=document.getElementById("shjStableUiBootCurtain");if(curtain)return curtain;
+  const style=document.createElement("style");style.id="shj-stable-ui-boot-style";style.textContent=`
+    #shjStableUiBootCurtain{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:linear-gradient(180deg,#f4efe3 0%,#eee6d6 100%);color:#244c45;transition:opacity .18s ease;pointer-events:all}
+    #shjStableUiBootCurtain.hidden{opacity:0;pointer-events:none}
+    #shjStableUiBootCurtain .card{min-width:320px;max-width:520px;padding:24px 28px;border:1px solid rgba(111,93,62,.20);border-radius:18px;background:rgba(252,249,241,.90);box-shadow:0 18px 48px rgba(57,48,32,.12);text-align:center}
+    #shjStableUiBootCurtain strong{display:block;font-size:20px;letter-spacing:.04em;margin-bottom:8px}
+    #shjStableUiBootCurtain span{display:block;font-size:13px;color:#6f746a;line-height:1.6}
+    #shjStableUiBootCurtain i{display:block;width:120px;height:3px;border-radius:999px;margin:16px auto 0;background:linear-gradient(90deg,transparent,#36766c,transparent);animation:shjBootPulse 1.15s ease-in-out infinite}
+    @keyframes shjBootPulse{0%,100%{opacity:.28;transform:scaleX(.72)}50%{opacity:.92;transform:scaleX(1)}}
+  `;document.head.appendChild(style);
+  curtain=document.createElement("section");curtain.id="shjStableUiBootCurtain";curtain.innerHTML='<div class="card"><strong>山海经原典地图研究台</strong><span id="shjStableUiBootMessage">正在准备正式地图界面……</span><i></i></div>';document.body.appendChild(curtain);return curtain
+}
+function setStableUiBootMessage(message){const node=document.getElementById("shjStableUiBootMessage");if(node)node.textContent=message}
+async function revealStableUiAfterLayout(){
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  const curtain=document.getElementById("shjStableUiBootCurtain");if(!curtain)return;curtain.classList.add("hidden");setTimeout(()=>curtain.remove(),220)
+}
+
 function syncDesktopVersionChrome(){
   document.title=`山海经原典地图研究台 · 桌面版 ${DESKTOP_EDITION} · ${DESKTOP_VERSION}`;
   const brandVersion=document.querySelector(".brand-copy h1 small");
@@ -89,7 +126,7 @@ function authGateTemplate(){
 function createAuthGate(){
   let gate=document.querySelector("#desktopAuthGate");
   if(gate)return gate;
-  gate=document.createElement("section");gate.id="desktopAuthGate";gate.className="desktop-auth-gate";gate.innerHTML=authGateTemplate();document.body.appendChild(gate);return gate
+  gate=document.createElement("section");gate.id="desktopAuthGate";gate.className="desktop-auth-gate";gate.style.zIndex="10020";gate.innerHTML=authGateTemplate();document.body.appendChild(gate);return gate
 }
 
 function setAuthGateMessage(gate,message,type="info"){
@@ -306,6 +343,7 @@ function setupNativeUi(){
 function updateStartupStatus(message){
   const line=document.querySelector("#versionLine");
   if(line)line.textContent=message;
+  setStableUiBootMessage(message);
 }
 function usableWorkspaceSnapshot(payload){
   if(!payload||typeof payload!=="string")return false;
@@ -355,6 +393,8 @@ async function loadMainScript(){
   }
 }
 async function start(){
+  ensureCriticalUiBeforeMain();
+  ensureStableUiBootCurtain();
   syncDesktopVersionChrome();
   updateStartupStatus("正在验证 GitHub 地图访问权限……");
   const githubAuth=await ensureGitHubAccess();
@@ -410,6 +450,8 @@ async function start(){
   };
   await loadMainScript();
   setupNativeUi();
+  updateStartupStatus("界面布局已完成，正在进入地图……");
+  await revealStableUiAfterLayout();
   if(startupFallback){
     recoveryBanner("桌面数据库读取超时，已从V272私有种子或同版本安全缓存恢复地图。当前会话请先核对资料，不要进行编辑。")
     const saveState=document.querySelector("#saveState");if(saveState)saveState.textContent="安全缓存恢复模式"
