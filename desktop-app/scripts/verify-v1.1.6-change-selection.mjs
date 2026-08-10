@@ -1,0 +1,13 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+const app=fs.readFileSync(new URL("../public/app/app.js",import.meta.url),"utf8");
+assert.match(app,/function v116UploadSelectedChanges\(/);
+assert.match(app,/function v116RevertSelectedChanges\(/);
+assert.match(app,/data-change-select=/);
+assert.match(app,/上传所选/);
+assert.match(app,/还原所选/);
+assert.match(app,/v116ExpandUploadDependencies/);
+assert.match(app,/v116ExpandRevertDependencies/);
+assert.doesNotMatch(app,/data-change-edit=/);
+assert.match(app,/async function createPatchMeta\(changes=state\.changes\)/);
+console.log("PASS v1.1.6 selected change upload + revert controls");
