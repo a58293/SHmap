@@ -1,6 +1,7 @@
 
 import "./desktop-ui.css";
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const STORAGE_KEY = "shj_infinite_tile_demo_v018_v031";
 const isTauri = Boolean(window.__TAURI_INTERNALS__);
@@ -18,8 +19,8 @@ const MAIN_SCRIPT_TIMEOUT_MS = 8000;
 const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
-const DESKTOP_EDITION = "v011";
-const DESKTOP_VERSION = "1.1.6";
+const DESKTOP_EDITION = "v012";
+const DESKTOP_VERSION = "1.1.7";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -58,6 +59,25 @@ async function flushWorkspace(){
 }
 function queueSave(payload){
   savePending=payload;clearTimeout(saveTimer);saveTimer=setTimeout(pumpSave,80)
+}
+
+let nativeCloseApproved=false;
+async function setupNativeCloseSaveGuard(){
+  if(!isTauri)return;
+  const appWindow=getCurrentWindow();
+  await appWindow.onCloseRequested(async event=>{
+    if(nativeCloseApproved)return;
+    event.preventDefault();
+    try{
+      window.__SHJ_FLUSH_PERSIST__?.();
+      await flushWorkspace();
+    }catch(error){
+      console.error("Final workspace save failed",error);
+    }finally{
+      nativeCloseApproved=true;
+      await appWindow.destroy();
+    }
+  });
 }
 function formatTime(value){try{return new Intl.DateTimeFormat("zh-CN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}catch{return value||""}}
 function escapeHtml(v){return String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -446,9 +466,12 @@ async function start(){
     flush:flushWorkspace,
     createBackup:async label=>{await flushWorkspace();return invoke("create_backup",{label:label||"手动备份"})},
     bootInfo,
-    publishPatch:args=>invoke("publish_patch_to_github",args)
+    publishPatch:args=>invoke("publish_patch_to_github",args),
+    listPrivatePatches:()=>invoke("list_private_submissions"),
+    readPrivatePatch:path=>invoke("read_private_submission",{path})
   };
   await loadMainScript();
+  await setupNativeCloseSaveGuard();
   setupNativeUi();
   updateStartupStatus("界面布局已完成，正在进入地图……");
   await revealStableUiAfterLayout();
@@ -458,6 +481,5 @@ async function start(){
   }
   scheduleAutomaticUpdateCheck();
   if(!isTauri)toast("当前为浏览器预览模式；SQLite与原生备份未启用。",true);
-  window.addEventListener("beforeunload",()=>{if(savePending&&isTauri&&nativeStorageReady)navigator.sendBeacon?.("about:blank")},{capture:true});
 }
 start().catch(err=>{console.error(err);document.body.innerHTML=`<main class="desktop-boot-error"><article><h1>桌面版启动失败</h1><p>程序未能初始化地图。请关闭窗口后重新启动；原有数据库与备份不会被删除。</p><pre>${escapeHtml(err?.stack||err)}</pre></article></main>`});

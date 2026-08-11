@@ -1,7 +1,7 @@
 {
   "name": "shanhaijing-map-desktop",
   "private": true,
-  "version": "1.1.6",
+  "version": "1.1.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,7 @@
     "desktop:build": "tauri build",
     "import:master": "node scripts/import-master-v053.mjs",
     "data:private": "node scripts/build-private-map-bundle.mjs",
-    "verify": "npm run build && npm run verify:architecture && npm run verify:v272-data && npm run verify:critical && npm run verify:overview-policy && npm run verify:import-audit && npm run verify:v113 && npm run verify:v114 && npm run verify:v116 && npm run verify:release",
+    "verify": "npm run build && npm run verify:architecture && npm run verify:v272-data && npm run verify:critical && npm run verify:overview-policy && npm run verify:import-audit && npm run verify:v113 && npm run verify:v114 && npm run verify:v116 && npm run verify:v117 && npm run verify:release",
     "verify:architecture": "node scripts/verify-clean-architecture.mjs",
     "verify:v272-data": "node scripts/verify-v272-board.mjs",
     "verify:critical": "node scripts/verify-critical-features.mjs",
@@ -21,7 +21,8 @@
     "verify:import-audit": "node scripts/verify-v1.1.2-import-audit.mjs",
     "verify:v113": "node scripts/verify-v1.1.3-features.mjs",
     "verify:v114": "node scripts/verify-v1.1.4-child-import.mjs",
-    "verify:v116": "node scripts/verify-v1.1.6-change-selection.mjs"
+    "verify:v116": "node scripts/verify-v1.1.6-change-selection.mjs",
+    "verify:v117": "node scripts/verify-v1.1.7-stability.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1"

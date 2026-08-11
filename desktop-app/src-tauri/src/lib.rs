@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::{HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
     process::Command,
@@ -320,11 +321,21 @@ fn insert_backup(conn: &Connection, backup_dir: &Path, label: &str, kind: &str, 
     let created_at = now_text();
     let hash = hash_payload(payload);
     let count = object_count(parsed);
+    let existing: Option<i64> = conn.query_row(
+        "SELECT backup_id FROM backups WHERE kind=?1 AND payload_sha256=?2 ORDER BY backup_id DESC LIMIT 1",
+        params![kind, hash],
+        |row| row.get(0),
+    ).optional().map_err(|e| e.to_string())?;
+    if let Some(id) = existing { return Ok(id); }
     conn.execute("INSERT INTO backups(created_at,label,kind,object_count,payload_sha256,payload) VALUES(?1,?2,?3,?4,?5,?6)", params![created_at, label, kind, count as i64, hash, payload]).map_err(|e| e.to_string())?;
     let id = conn.last_insert_rowid();
     let file_name = format!("{}_{}_{}.shjbackup.json", created_at.replace(':', "-"), id, safe_filename(label));
     let envelope = json!({"format":"shj-desktop-backup-v1","createdAt":created_at,"label":label,"kind":kind,"objectCount":count,"payloadSha256":hash,"workspace":parsed});
-    fs::write(backup_dir.join(file_name), serde_json::to_vec_pretty(&envelope).map_err(|e| e.to_string())?).map_err(|e| format!("写入备份文件失败：{e}"))?;
+    // Automatic snapshots are already stored in SQLite. Only user/milestone
+    // backups are duplicated as external JSON recovery files.
+    if kind != "auto" {
+        fs::write(backup_dir.join(file_name), serde_json::to_vec_pretty(&envelope).map_err(|e| e.to_string())?).map_err(|e| format!("写入备份文件失败：{e}"))?;
+    }
     if kind == "auto" { prune_auto_backups(conn, backup_dir)?; }
     Ok(id)
 }
@@ -351,10 +362,60 @@ fn preserve_local_object_fields(seed_object: &mut Value, current_object: &Value)
         if let Some(value) = current.get(key) { seed.insert(key.to_string(), value.clone()); }
     }
 }
+fn collect_local_change_fields(current: &Value) -> HashMap<String, HashSet<String>> {
+    fn collect_change(change: &Value, changed: &mut HashMap<String, HashSet<String>>) {
+        let Some(entity_id) = change.get("entityId").and_then(Value::as_str) else { return; };
+        if entity_id.starts_with("CELL-") { return; }
+        let (Some(before), Some(after)) = (
+            change.get("before").and_then(Value::as_object),
+            change.get("after").and_then(Value::as_object),
+        ) else { return; };
+        let fields = changed.entry(entity_id.to_string()).or_default();
+        for key in before.keys().chain(after.keys()) {
+            if before.get(key) != after.get(key) {
+                fields.insert(key.to_string());
+            }
+        }
+    }
+
+    let mut changed = HashMap::new();
+    if let Some(changes) = current.get("changes").and_then(Value::as_array) {
+        for change in changes { collect_change(change, &mut changed); }
+    }
+    if let Some(archives) = current.get("changeArchives").and_then(Value::as_array) {
+        for archive in archives {
+            if let Some(changes) = archive.get("changes").and_then(Value::as_array) {
+                for change in changes { collect_change(change, &mut changed); }
+            }
+        }
+    }
+    if let Some(protected) = current.get("protectedObjectFields").and_then(Value::as_object) {
+        for (entity_id, fields) in protected {
+            let target = changed.entry(entity_id.clone()).or_default();
+            if let Some(fields) = fields.as_array() {
+                for field in fields.iter().filter_map(Value::as_str) {
+                    if field != "id" && field != "rowRef" { target.insert(field.to_string()); }
+                }
+            }
+        }
+    }
+    changed
+}
+fn preserve_changed_object_fields(seed_object: &mut Value, current_object: &Value, fields: Option<&HashSet<String>>) {
+    let (Some(seed), Some(current), Some(fields)) = (seed_object.as_object_mut(), current_object.as_object(), fields) else { return; };
+    for key in fields {
+        if key == "id" || key == "rowRef" { continue; }
+        match current.get(key) {
+            Some(value) => { seed.insert(key.clone(), value.clone()); }
+            None => { seed.remove(key); }
+        }
+    }
+}
 fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Value, String> {
     let seed_objects = seed.get("objects").and_then(Value::as_array).ok_or_else(|| "V272正式母表缺少objects".to_string())?;
     let current_objects = current.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
     let mut merged = current.clone();
+    let locally_changed_fields = collect_local_change_fields(current);
     let target = merged.as_object_mut().ok_or_else(|| "当前工作区不是JSON对象".to_string())?;
     let mut official = Vec::with_capacity(seed_objects.len());
     for source in seed_objects {
@@ -362,6 +423,7 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
         if let Some(id) = source.get("id").and_then(Value::as_str) {
             if let Some(local) = current_objects.iter().find(|item| item.get("id").and_then(Value::as_str)==Some(id)) {
                 preserve_local_object_fields(&mut next, local);
+                preserve_changed_object_fields(&mut next, local, locally_changed_fields.get(id));
             }
         }
         official.push(next);
@@ -700,6 +762,8 @@ pub fn run() {
             github_auth::github_begin_device_flow,
             github_auth::github_complete_device_flow,
             github_auth::github_logout,
+            github_auth::list_private_submissions,
+            github_auth::read_private_submission,
             github_auth::open_github_device_page,
             github_auth::github_auth_configuration
         ])

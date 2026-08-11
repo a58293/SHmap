@@ -14,12 +14,12 @@
   const PUBLISH_REPO_KEY = "shj_publish_repo_path_v1";
   const GITHUB_CONFIG = {
     owner: "a58293",
-    repo: "SHmap",
+    repo: "SHmap-Data",
     branch: "main",
-    currentPath: "data/current.json",
+    currentPath: "manifest.json",
     pendingPath: "submissions/pending",
     assetsPath: "submissions/assets",
-    repoUrl: "https://github.com/a58293/SHmap",
+    repoUrl: "https://github.com/a58293/SHmap-Data",
     apiBase: "https://api.github.com"
   };
   const CELL_LI = 100;
@@ -262,18 +262,22 @@
 
   const saved = loadSaved();
   const dataUpgradeFrom = saved?.dataVersion && saved.dataVersion!==INITIAL.metadata?.dataVersion ? saved.dataVersion : "";
+  function savedObjectChangedFields(savedState){
+    const changed=new Map(),add=(id,key)=>{if(!id||!key||id.startsWith("CELL-")||key==="id"||key==="rowRef")return;if(!changed.has(id))changed.set(id,new Set());changed.get(id).add(key)},collect=change=>{const id=String(change?.entityId||""),before=change?.before,after=change?.after;if(!id||!before||!after||typeof before!=="object"||typeof after!=="object"||Array.isArray(before)||Array.isArray(after))return;new Set([...Object.keys(before),...Object.keys(after)]).forEach(key=>{if(!sameValue(before[key],after[key]))add(id,key)})};
+    (savedState?.changes||[]).forEach(collect);(savedState?.changeArchives||[]).forEach(archive=>(archive?.changes||[]).forEach(collect));Object.entries(savedState?.protectedObjectFields||{}).forEach(([id,fields])=>(Array.isArray(fields)?fields:[]).forEach(key=>add(id,key)));return changed
+  }
   function migrateWorkspaceObjects(savedState){
     const master=structuredClone(INITIAL.objects||[]);
     if(!savedState?.objects?.length)return master;
     const savedById=new Map(savedState.objects.map(object=>[object.id,object]));
-    const localKeys=["dossier","childHierarchy","waterHierarchy","images","imageUrl","imageSource","imageCopyright","updatedAt","createdAt","notesLocal"];
+    const changedFields=savedObjectChangedFields(savedState),localKeys=["dossier","childHierarchy","waterHierarchy","images","imageUrl","imageSource","imageCopyright","updatedAt","createdAt","notesLocal"];
     const merged=master.map(object=>{
       const local=savedById.get(object.id),next={...object};
-      if(local)for(const key of localKeys)if(Object.prototype.hasOwnProperty.call(local,key))next[key]=structuredClone(local[key]);
+      if(local)for(const key of new Set([...localKeys,...(changedFields.get(object.id)||[])])){if(Object.prototype.hasOwnProperty.call(local,key))next[key]=structuredClone(local[key]);else delete next[key]}
       return next
     });
-    const masterIds=new Set(master.map(object=>object.id));
-    savedState.objects.filter(object=>object?.rowRef==="NEW"||!masterIds.has(object.id)).forEach(object=>merged.push(object));
+    const masterIds=new Set(master.map(object=>object.id)),masterRows=new Set(master.map(object=>object.rowRef).filter(Boolean));
+    savedState.objects.filter(object=>object?.rowRef==="NEW"||(!masterIds.has(object.id)&&(!object?.rowRef||!masterRows.has(object.rowRef)))).forEach(object=>merged.push(object));
     return merged
   }
   const applyObjectRoles=objects=>window.SHJ_OBJECT_ROLE_MANIFEST?.apply?.(objects)||(objects||[]);
@@ -284,6 +288,7 @@
     changeArchives: saved?.changeArchives || [],
     appliedRemotePatches: saved?.appliedRemotePatches || [],
     remotePatchHistory: saved?.remotePatchHistory || [],
+    protectedObjectFields: saved?.protectedObjectFields || {},
     viewedRemotePatches: saved?.viewedRemotePatches || [],
     githubPendingFiles: [],
     githubPendingView: "new",
@@ -727,7 +732,7 @@
     if(dataUpgradeFrom)setTimeout(()=>toast("地图数据已升级",`${dataUpgradeFrom} → ${state.dataVersion} · ${independentObjectCount()}个独立对象 / ${state.objects.length}条资料记录 · ${state.waterPaths.length}段线型水系`),420);
     const ro=new ResizeObserver(()=>{resizeCanvas();state.perf.minimapRevision=-1;scheduleRender()});ro.observe(els.viewport);
     const rangeRO=new ResizeObserver(()=>{resizeRangeCanvas();drawRangeEditor()});rangeRO.observe(els.rangeViewport);
-    window.addEventListener("beforeunload",()=>flushPersist(),{capture:true});document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushPersist()});
+    window.__SHJ_FLUSH_PERSIST__=flushPersist;window.addEventListener("beforeunload",()=>flushPersist(),{capture:true});document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushPersist()});
   }
   function updateHeader(){
     const meta=INITIAL.metadata||{};
@@ -2498,7 +2503,7 @@
   async function publishPendingRound(){const meta=state.pendingRoundExport;if(!meta||meta.uploadStatus==="uploading")return;if(!window.SHJ_DESKTOP?.active||typeof window.SHJ_DESKTOP.publishPatch!=="function"){meta.uploadStatus="error";meta.uploadError="当前不是桌面程序，无法自动调用本机 Git 与 GitHub Desktop。";renderRoundSummary(meta);return}meta.uploadStatus="uploading";meta.uploadError="";renderRoundSummary(meta);let repoPath=localStorage.getItem(PUBLISH_REPO_KEY)||"";const invokePublish=path=>window.SHJ_DESKTOP.publishPatch({repoPath:path||null,fileName:meta.filename,content:meta.remotePayload||meta.payload,assets:meta.assetPayloads||[],commitMessage:`data: 发布 ${meta.filename}`});try{let result;try{result=await invokePublish(repoPath)}catch(error){const message=String(error||"");if(message.includes("PUBLISH_REPO_REQUIRED")){const chosen=window.prompt("未找到本地 SHmap 仓库。请输入仓库根目录：",repoPath||"F:\\SHmap\\SHmap");if(!chosen)throw new Error("未选择本地仓库目录");repoPath=chosen.trim();result=await invokePublish(repoPath)}else throw error}meta.uploadStatus="success";meta.uploaded=true;meta.repoPath=result?.repoPath||repoPath;meta.remotePath=result?.remotePath||`${GITHUB_CONFIG.pendingPath}/${meta.filename}`;meta.commit=result?.commit||"";meta.uploadedAt=result?.pushedAt||new Date().toISOString();if(meta.repoPath)localStorage.setItem(PUBLISH_REPO_KEY,meta.repoPath);renderRoundSummary(meta);toast("本轮资料与图片已上传",`${meta.changeCount}项更改 · ${Number(result?.assetCount??meta.assetCount)||0}张图片 · 其他设备可检查更新`);setTimeout(()=>{if(state.pendingRoundExport===meta&&meta.uploadStatus==="success")archiveCurrentRound(true)},650)}catch(error){meta.uploadStatus="error";meta.uploadError=String(error?.message||error||"上传失败").replace(/^Error:\s*/,"");renderRoundSummary(meta);toast("自动上传失败",meta.uploadError,"error")}}
   async function finishRoundAndPublish(){if(!state.changes.length){toast("没有可提交的更改","先新增、修改或删除内容后再完成本轮。","error");return}persist(true);try{await window.SHJ_DESKTOP?.flush?.()}catch(error){toast("工作区保存失败",String(error||"无法写入桌面数据库"),"error");return}state.pendingRoundExport=await createPatchMeta();if(!state.pendingRoundExport)return;openModal("roundModal");renderRoundSummary(state.pendingRoundExport);await publishPendingRound()}
   function exportPendingRoundLocally(){const meta=state.pendingRoundExport;if(!meta)return;download(meta.filename,meta.payload);meta.exported=true;meta.uploadStatus="exported";renderRoundSummary(meta);toast("已导出本地更改包",meta.filename)}
-  function archiveCurrentRound(auto=false){const meta=state.pendingRoundExport;if(!meta||!state.changes.length){closeModal("roundModal");toast("没有可归档的本轮更改","本轮记录可能已经归档。","error");return}if(!meta.uploaded&&!meta.exported){toast("本轮尚未安全保存","请先上传 GitHub 或导出本地更改包。","error");return}const uploaded=!!meta.uploaded,archive={archiveId:`ROUND-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,createdAt:meta.createdAt,createdLabel:meta.createdLabel,filename:meta.filename,baseVersion:meta.baseVersion,summary:meta.summary,changeCount:meta.changeCount,status:uploaded?"uploaded":"exported",statusLabel:uploaded?"已上传 GitHub":"已导出",uploadedAt:meta.uploadedAt||"",remotePath:meta.remotePath||"",commit:meta.commit||"",changes:cloneJSON(meta.changes)};state.changeArchives.unshift(archive);state.changes=[];state.pendingRoundExport=null;closeModal("roundModal");persist();updateHeader();renderSidebar();renderDetails();scheduleRender();toast(auto&&uploaded?"已上传并开始新一轮":"已开始新一轮编辑",uploaded?`上一轮${archive.changeCount}项更改已同步到 GitHub`:`上一轮${archive.changeCount}项更改已归档`)}
+  function archiveCurrentRound(auto=false){const meta=state.pendingRoundExport;if(!meta||!state.changes.length){closeModal("roundModal");toast("没有可归档的本轮更改","本轮记录可能已经归档。","error");return}if(!meta.uploaded&&!meta.exported){toast("本轮尚未安全保存","请先上传 GitHub 或导出本地更改包。","error");return}const uploaded=!!meta.uploaded,archive={archiveId:`ROUND-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,createdAt:meta.createdAt,createdLabel:meta.createdLabel,filename:meta.filename,baseVersion:meta.baseVersion,summary:meta.summary,changeCount:meta.changeCount,status:uploaded?"uploaded":"exported",statusLabel:uploaded?"已上传 GitHub":"已导出",uploadedAt:meta.uploadedAt||"",remotePath:meta.remotePath||"",commit:meta.commit||"",changes:cloneJSON(meta.changes)};state.changeArchives.unshift(archive);state.changes=[];state.pendingRoundExport=null;closeModal("roundModal");persist(true);updateHeader();renderSidebar();renderDetails();scheduleRender();toast(auto&&uploaded?"已上传并开始新一轮":"已开始新一轮编辑",uploaded?`上一轮${archive.changeCount}项更改已同步到 GitHub`:`上一轮${archive.changeCount}项更改已归档`)}
   function archiveStatusLabel(a){return a.status==="uploaded"?"已上传 GitHub":"已导出"}
   function markArchiveUploaded(id){const a=state.changeArchives.find(x=>x.archiveId===id);if(!a)return;a.status="uploaded";a.statusLabel="已上传 GitHub";a.uploadedAt=new Date().toISOString();persist();showChanges();toast("已标记为已上传",a.filename||a.archiveId)}
   function archiveRows(a){return (a.changes||[]).slice().reverse().map(c=>`<tr><td>${esc(c.operationLabel||c.operation||'更改')}</td><td>${esc(c.after?.name||c.before?.name||c.entityId||'')}</td><td>${esc(c.summary||'')}</td><td>${esc(c.time||'')}</td></tr>`).join("")||`<tr><td colspan="4">归档中没有具体更改条目。</td></tr>`}
@@ -2610,34 +2615,23 @@
   function showSpecs(){els.infoEyebrow.textContent="ACTIVE SPECIFICATION";els.infoTitle.textContent="当前地图规格";els.infoBody.innerHTML=`<div class="info-section"><h3>当前执行优先级</h3><p>研究方法 v002作为基础研究规范；制图执行规则 v004具有更高优先级。冲突条款以v004为准。</p></div><div class="info-section"><h3>当前制图规则</h3><ul><li>都广之野（0，0）固定为全局原点。</li><li>底层坐标单位为里；100里主格用于无限索引。</li><li>420%以上进入10里彩色精细地图；380%以下恢复100里地块。</li><li>同一地块允许多个对象；同坐标对象用“/”展示并保留独立档案。</li><li>河流和溪流使用线型叠加；湖、泽、海等明确水域使用面积。</li><li>缺少路径或边界证据时不自动补造几何形状。</li></ul></div><div class="info-section"><h3>研究操作</h3><p>地图浏览 → 宽幅地块简述 → 完整博物志 → Markdown资料更新；画笔可快速采集多个地块形成简述集合。</p></div>`;openModal("infoModal")}
   function versionParts(value){const m=String(value||"").match(/v?(\d+)(?:\D+r?(\d+))?/i);return m?[Number(m[1]||0),Number(m[2]||0)]:[0,0]}
   function compareDataVersion(a,b){const av=versionParts(a),bv=versionParts(b);return av[0]===bv[0]?Math.sign(av[1]-bv[1]):Math.sign(av[0]-bv[0])}
-  function githubContentsApi(path){return `${GITHUB_CONFIG.apiBase}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${String(path||"").split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(GITHUB_CONFIG.branch)}&t=${Date.now()}`}
-  function decodeGithubContent(content){const raw=atob(String(content||"").replace(/\s/g,"")),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));return new TextDecoder("utf-8").decode(bytes)}
-  async function githubFetch(url){const res=await fetch(url,{headers:{Accept:"application/vnd.github+json"},cache:"no-store"});if(res.status===403){let detail="";try{const body=await res.json();detail=body?.message||""}catch{}throw new Error(detail||"GitHub访问次数达到临时上限，请稍后再试")};return res}
   async function fetchGithubCurrent(){
-    const res=await githubFetch(githubContentsApi(GITHUB_CONFIG.currentPath));
-    if(res.status===404)throw new Error("仓库已连接，但尚未找到 data/current.json");
-    if(!res.ok)throw new Error(`GitHub返回 ${res.status}`);
-    const payload=await res.json();
-    if(!payload?.content)throw new Error("data/current.json 内容为空");
-    return JSON.parse(decodeGithubContent(payload.content));
+    const info=window.SHJ_DESKTOP?.privateMapInfo;
+    if(!info)throw new Error("尚未读取私有地图版本信息，请重新登录后启动客户端");
+    return {data_version:info.dataVersion||state.dataVersion,object_count:Number(info.objectCount)||0,sha256:info.sha256||"",repository:`${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`,private:true};
   }
   async function fetchGithubPendingFiles(){
-    const res=await githubFetch(githubContentsApi(GITHUB_CONFIG.pendingPath));
-    if(res.status===404)return [];
-    if(!res.ok)throw new Error(`读取 pending 目录失败：GitHub返回 ${res.status}`);
-    const payload=await res.json();
+    const reader=window.SHJ_DESKTOP?.listPrivatePatches;
+    if(typeof reader!=="function")throw new Error("当前客户端未启用私有更改包读取功能");
+    const payload=await reader();
     if(!Array.isArray(payload))return [];
-    return payload.filter(x=>x?.type==="file"&&/\.shjpatch$/i.test(x.name||"")).sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"zh-CN"));
+    return payload.filter(x=>x?.kind==="file"&&/\.shjpatch$/i.test(x.name||"")).sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"zh-CN"));
   }
   async function fetchGithubPatch(entry){
     const cacheKey=entry?.sha||entry?.path||entry?.name;if(cacheKey&&state.githubPendingCache[cacheKey])return state.githubPendingCache[cacheKey];
-    let payload=null,text="";
-    const detailUrl=entry?.url||githubContentsApi(entry?.path||"");
-    const res=await githubFetch(detailUrl);
-    if(!res.ok)throw new Error(`下载更改包失败：GitHub返回 ${res.status}`);
-    payload=await res.json();
-    if(payload?.content)text=decodeGithubContent(payload.content);
-    else if(payload?.download_url){const rawRes=await fetch(payload.download_url,{cache:"no-store"});if(!rawRes.ok)throw new Error(`下载更改包失败：${rawRes.status}`);text=await rawRes.text()}
+    const reader=window.SHJ_DESKTOP?.readPrivatePatch;
+    if(typeof reader!=="function")throw new Error("当前客户端未启用私有更改包下载功能");
+    const text=await reader(entry?.path||"");
     if(!text)throw new Error("更改包内容为空");
     let pkg;try{pkg=JSON.parse(text)}catch{throw new Error("更改包不是有效的 JSON 文件")}
     if(cacheKey)state.githubPendingCache[cacheKey]=pkg;
@@ -2645,8 +2639,9 @@
   }
   function remotePatchKey(entry){return String(entry?.sha||entry?.path||entry?.name||"")}
   function appliedRemoteRecord(entry){
-    if(entry?.sha)return state.appliedRemotePatches.find(x=>x.sha===entry.sha||x.key===entry.sha);
-    const key=remotePatchKey(entry);return state.appliedRemotePatches.find(x=>x.key===key||x.path&&x.path===entry?.path)
+    if(entry?.sha){const bySha=state.appliedRemotePatches.find(x=>x.sha===entry.sha||x.key===entry.sha);if(bySha)return bySha}
+    const key=remotePatchKey(entry),applied=state.appliedRemotePatches.find(x=>x.key===key||x.path&&x.path===entry?.path);if(applied)return applied;
+    const archived=state.changeArchives.find(x=>x.status==="uploaded"&&x.remotePath&&x.remotePath===entry?.path);return archived?{...archived,key,path:entry.path,name:entry.name,localArchive:true,appliedAt:archived.uploadedAt||archived.createdAt}:null
   }
   function isRemotePatchApplied(entry){return !!appliedRemoteRecord(entry)}
   function viewedRemoteRecord(entry){
@@ -2876,7 +2871,11 @@
     const applyCount=results.filter(x=>x.status==="apply").length,skipCount=results.filter(x=>x.status==="skip").length,conflictCount=results.filter(x=>x.status==="conflict").length;
     const autoMergedCount=results.filter(x=>x.autoMerged).length,manualCount=results.filter(x=>x.manualResolution).length,netNoop=sameValue(initial,draft);return {pkg,draft,results,packageErrors,applyCount,skipCount,conflictCount,autoMergedCount,manualCount,netNoop,baseMismatch:!!pkg?.base_data_version&&pkg.base_data_version!==state.dataVersion}
   }
+  function rememberRemoteObjectFields(pkg){
+    (pkg?.changes||[]).forEach(change=>{const id=String(change?.entityId||change?.after?.id||change?.before?.id||"");if(!id||id.startsWith("CELL-"))return;const before=change?.before&&typeof change.before==="object"&&!Array.isArray(change.before)?change.before:{},after=change?.after&&typeof change.after==="object"&&!Array.isArray(change.after)?change.after:{};const fields=new Set(state.protectedObjectFields[id]||[]);new Set([...Object.keys(before),...Object.keys(after)]).forEach(key=>{if(key!=="id"&&key!=="rowRef"&&!sameValue(before[key],after[key]))fields.add(key)});if(fields.size)state.protectedObjectFields[id]=[...fields]})
+  }
   function rememberRemotePatch(entry,pkg,simulation){
+    rememberRemoteObjectFields(pkg);
     const key=remotePatchKey(entry),source=entry?.source||"github",contentHash=entry?.contentHash||"";if(!state.appliedRemotePatches.some(x=>x.key===key||contentHash&&x.contentHash===contentHash))state.appliedRemotePatches.unshift({key,sha:entry?.sha||"",contentHash,path:entry?.path||"",name:entry?.name||"",source,appliedAt:new Date().toISOString(),packageCreatedAt:pkg?.created_at||"",changeCount:Number(pkg?.change_count)||pkg?.changes?.length||0,summary:pkg?.summary||"",baseVersion:pkg?.base_data_version||"",netNoop:!!simulation?.netNoop});
     state.remotePatchHistory.unshift({historyId:`REMOTE-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name:entry?.name||"更改包",path:entry?.path||"",sha:entry?.sha||"",contentHash,source,appliedAt:new Date().toISOString(),summary:pkg?.summary||"",changeCount:Number(pkg?.change_count)||pkg?.changes?.length||0,applyCount:simulation?.applyCount||0,skipCount:simulation?.skipCount||0,baseVersion:pkg?.base_data_version||"",netNoop:!!simulation?.netNoop});
     state.remotePatchHistory=state.remotePatchHistory.slice(0,100)
@@ -3953,7 +3952,7 @@
 
   function workspaceSnapshot(){return {
     uiSchemaVersion:53,
-    objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,viewedRemotePatches:state.viewedRemotePatches,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter,dossierMode:state.dossierMode,layers:state.layers,brushKeys:[...(state.brushKeys||[])],brushStrokes:state.brushStrokes||[],brushHistory:state.brushHistory||[],viewPreset:state.viewPreset,relationEvidenceFilter:state.relationEvidenceFilter,objectSort:state.objectSort,compareKeys:[...(state.compareKeys||[])],indexMode:state.indexMode,selectedRegionId:state.selectedRegionId,selectedHierarchyNode:state.selectedHierarchyNode,expandedRegionIds:[...(state.expandedRegionIds||[])],
+    objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,protectedObjectFields:state.protectedObjectFields,viewedRemotePatches:state.viewedRemotePatches,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter,dossierMode:state.dossierMode,layers:state.layers,brushKeys:[...(state.brushKeys||[])],brushStrokes:state.brushStrokes||[],brushHistory:state.brushHistory||[],viewPreset:state.viewPreset,relationEvidenceFilter:state.relationEvidenceFilter,objectSort:state.objectSort,compareKeys:[...(state.compareKeys||[])],indexMode:state.indexMode,selectedRegionId:state.selectedRegionId,selectedHierarchyNode:state.selectedHierarchyNode,expandedRegionIds:[...(state.expandedRegionIds||[])],
     workspaceUi:state.workspaceUi,overviewMode:state.overviewMode,waterConversionAudit:state.waterConversionAudit,tileImageMapMode:state.tileImageMapMode,spatialFocusArmed:state.spatialFocusArmed,spatialFocusAreaIds:[...(state.spatialFocusAreaIds||[])],relationDepth:state.relationDepth,relationDisplayMode:state.relationDisplayMode,relationBundleMode:state.relationBundleMode,objectFocusMode:state.objectFocusMode,presentationMode:state.presentationMode,relationPinnedTargetId:state.relationPinnedTargetId,relationLegendCollapsed:state.relationLegendCollapsed,navigationHistory:state.navigationHistory,navigationIndex:state.navigationIndex,researchBookmarks:state.researchBookmarks,undoStack:(state.undoStack||[]).slice(-40),redoStack:(state.redoStack||[]).slice(-40)
 
   }}

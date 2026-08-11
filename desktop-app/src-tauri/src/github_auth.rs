@@ -127,6 +127,26 @@ pub struct PrivateMapBundleResponse {
     sha256: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct GitHubContentEntry {
+    name: String,
+    path: String,
+    sha: String,
+    size: u64,
+    #[serde(rename = "type")]
+    kind: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrivateSubmissionEntry {
+    name: String,
+    path: String,
+    sha: String,
+    size: u64,
+    kind: String,
+}
+
 #[derive(Clone, Debug)]
 pub struct PrivatePublishAsset {
     pub file_name: String,
@@ -646,6 +666,70 @@ async fn fetch_private_repo_raw(
         .text()
         .await
         .map_err(|error| format!("读取私有地图文件 {path} 内容失败：{error}"))
+}
+
+fn validate_private_submission_path(path: &str) -> Result<(), String> {
+    if !path.starts_with("submissions/pending/")
+        || !path.ends_with(".shjpatch")
+        || path.starts_with('/')
+        || path.contains("..")
+        || path.contains('\\')
+        || path.split('/').any(|part| part.is_empty())
+    {
+        return Err("Invalid private submission path".to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_private_submissions(
+    state: tauri::State<'_, GitHubAuthState>,
+) -> Result<Vec<PrivateSubmissionEntry>, String> {
+    let token = active_authorized_token(&state).await?;
+    let api_path = format!(
+        "/repos/{REPOSITORY_OWNER}/{REPOSITORY_NAME}/contents/submissions/pending?ref=main"
+    );
+    let response = authenticated_get(&state, &token, &api_path).await?;
+    if response.status() == StatusCode::NOT_FOUND {
+        return Ok(Vec::new());
+    }
+    if response.status() == StatusCode::UNAUTHORIZED {
+        clear_authorized_session(&state);
+        let _ = delete_token();
+        return Err("GitHub login expired; please sign in again".to_string());
+    }
+    if !response.status().is_success() {
+        return Err(format!(
+            "Unable to list private submissions (HTTP {})",
+            response.status().as_u16()
+        ));
+    }
+    let mut entries = response
+        .json::<Vec<GitHubContentEntry>>()
+        .await
+        .map_err(|error| format!("Invalid private submission listing: {error}"))?
+        .into_iter()
+        .filter(|entry| entry.kind == "file" && entry.name.ends_with(".shjpatch"))
+        .map(|entry| PrivateSubmissionEntry {
+            name: entry.name,
+            path: entry.path,
+            sha: entry.sha,
+            size: entry.size,
+            kind: entry.kind,
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by(|left, right| right.name.cmp(&left.name));
+    Ok(entries)
+}
+
+#[tauri::command]
+pub async fn read_private_submission(
+    state: tauri::State<'_, GitHubAuthState>,
+    path: String,
+) -> Result<String, String> {
+    validate_private_submission_path(&path)?;
+    let token = active_authorized_token(&state).await?;
+    fetch_private_repo_raw(&state, &token, &path).await
 }
 
 fn private_contents_url(path: &str) -> Result<Url, String> {
