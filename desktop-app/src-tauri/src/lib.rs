@@ -348,8 +348,8 @@ fn should_auto_backup(conn: &Connection, payload_hash: &str) -> Result<bool, Str
     Ok(Utc::now().signed_duration_since(parsed).num_minutes() >= AUTO_BACKUP_MINUTES)
 }
 
-// V272_DATA_MIGRATION_START
-const V272_LOCAL_OBJECT_FIELDS: [&str; 10] = [
+// OFFICIAL_DATA_MIGRATION_START
+const LOCAL_OBJECT_FIELDS: [&str; 10] = [
     "dossier", "childHierarchy", "waterHierarchy", "images", "imageUrl",
     "imageSource", "imageCopyright", "updatedAt", "createdAt", "notesLocal"
 ];
@@ -358,7 +358,7 @@ fn workspace_data_version(payload: &Value) -> String {
 }
 fn preserve_local_object_fields(seed_object: &mut Value, current_object: &Value) {
     let (Some(seed), Some(current)) = (seed_object.as_object_mut(), current_object.as_object()) else { return; };
-    for key in V272_LOCAL_OBJECT_FIELDS {
+    for key in LOCAL_OBJECT_FIELDS {
         if let Some(value) = current.get(key) { seed.insert(key.to_string(), value.clone()); }
     }
 }
@@ -412,9 +412,11 @@ fn preserve_changed_object_fields(seed_object: &mut Value, current_object: &Valu
     }
 }
 fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Value, String> {
-    let seed_objects = seed.get("objects").and_then(Value::as_array).ok_or_else(|| "V272正式母表缺少objects".to_string())?;
+    let seed_objects = seed.get("objects").and_then(Value::as_array).ok_or_else(|| "正式母表缺少objects".to_string())?;
     let current_objects = current.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
     let mut merged = current.clone();
+    let seed_version = workspace_data_version(seed);
+    let authoritative_v282 = seed_version.starts_with("v282");
     let locally_changed_fields = collect_local_change_fields(current);
     let target = merged.as_object_mut().ok_or_else(|| "当前工作区不是JSON对象".to_string())?;
     let mut official = Vec::with_capacity(seed_objects.len());
@@ -423,13 +425,26 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
         if let Some(id) = source.get("id").and_then(Value::as_str) {
             if let Some(local) = current_objects.iter().find(|item| item.get("id").and_then(Value::as_str)==Some(id)) {
                 preserve_local_object_fields(&mut next, local);
-                preserve_changed_object_fields(&mut next, local, locally_changed_fields.get(id));
+                // V282 is a complete re-audit of official names, coordinates,
+                // layers and source fields. Only user dossiers and image assets
+                // survive that migration; official spreadsheet fields win.
+                if !authoritative_v282 {
+                    preserve_changed_object_fields(&mut next, local, locally_changed_fields.get(id));
+                }
             }
         }
         official.push(next);
     }
+    let official_ids: HashSet<String> = official.iter().filter_map(|item| item.get("id").and_then(Value::as_str).map(str::to_string)).collect();
+    let official_rows: HashSet<String> = official.iter().filter_map(|item| item.get("rowRef").and_then(Value::as_str).map(str::to_string)).collect();
+    for local in &current_objects {
+        let id = local.get("id").and_then(Value::as_str).unwrap_or("");
+        let row_ref = local.get("rowRef").and_then(Value::as_str).unwrap_or("");
+        let is_local_new = row_ref == "NEW" || (!official_ids.contains(id) && (row_ref.is_empty() || !official_rows.contains(row_ref)));
+        if is_local_new { official.push(local.clone()); }
+    }
     target.insert("objects".to_string(), Value::Array(official));
-    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v272-r0001".to_string())));
+    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v282-r0001".to_string())));
     let valid_ids = target.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
     let selected_valid = target.get("selectedId").and_then(Value::as_str).map(|id| valid_ids.iter().any(|item| item.get("id").and_then(Value::as_str)==Some(id))).unwrap_or(false);
     if !selected_valid {
@@ -438,7 +453,7 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
     }
     Ok(merged)
 }
-// V272_DATA_MIGRATION_END
+// OFFICIAL_DATA_MIGRATION_END
 
 #[tauri::command]
 fn bootstrap_workspace(
@@ -457,14 +472,14 @@ fn bootstrap_workspace(
         let current_version = workspace_data_version(&parsed);
         if !seed_version.is_empty() && current_version != seed_version {
             let merged = merge_official_seed_with_current(&seed_parsed, &parsed)?;
-            let merged_payload = serde_json::to_string(&merged).map_err(|e| format!("V272迁移序列化失败：{e}"))?;
+            let merged_payload = serde_json::to_string(&merged).map_err(|e| format!("正式母表迁移序列化失败：{e}"))?;
             let label = format!("正式地图升级前备份 {} → {}", if current_version.is_empty(){"未知版本"}else{&current_version}, seed_version);
             let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
             insert_backup(&tx, &state.backup_dir, &label, "pre_data_upgrade", &payload, &parsed)?;
             write_current(&tx, &merged_payload, &merged, &now_text())?;
-            insert_backup(&tx, &state.backup_dir, "V272正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
+            insert_backup(&tx, &state.backup_dir, "V282正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
             tx.commit().map_err(|e| e.to_string())?;
-            return Ok(BootstrapResponse{snapshot:merged_payload,source:"database-upgraded-v272".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&merged)});
+            return Ok(BootstrapResponse{snapshot:merged_payload,source:"database-upgraded-official".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&merged)});
         }
         return Ok(BootstrapResponse{snapshot:payload,source:"database".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&parsed)});
     }
@@ -598,7 +613,7 @@ fn open_data_directory(
 #[tauri::command]
 fn app_version() -> AppVersionInfo {
     AppVersionInfo {
-        edition: "v010",
+        edition: "v012",
         version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "shmap-v282-baseline-1",
+  "sourceWorkbook": "山海经原典地图_都广之野核心区_v282_十八卷世界分层逐条重审单画布校正版.xlsx",
+  "sourceWorkbookVersion": "V282",
+  "dataVersion": "v282-r0001",
+  "formalObjectCount": 1378,
+  "rowRefStart": "R9",
+  "rowRefEnd": "R1386",
+  "boardSheet": "坐标棋盘图",
+  "boardOrigin": "都广之野 (0,0)",
+  "boardCoordinateBounds": {"minX": -160, "maxX": 140, "minY": -136, "maxY": 140},
+  "boardDimensions": {"columns": 301, "rows": 277},
+  "boardOccupiedCellCount": 875,
+  "boardPlacementCount": 1378,
+  "mainGridLi": 100,
+  "waterPathCount": 82,
+  "worldLayers": {"L1": 1034, "L2": 35, "L3": 53, "L4": 256},
+  "coordinateStatus": {"关系锁定": 115, "红色推定": 1263},
+  "boardLayoutSchema": "v282-board-layout-1",
+  "rules": [
+    "V282电子表格是正式名称、经篇、世界层级、坐标状态和表2格位的权威来源",
+    "1378项均须进入唯一棋盘，允许同格附着、包含或共现",
+    "红色仅表示绝对世界锚点可调整，不否定内部方向、里数和注流关系",
+    "红色山系只能整组平移，附着对象只能随宿主移动",
+    "海带宽度和外围轮廓不得反推为原典真实里数",
+    "V272视觉背景不得覆盖V282四层世界坐标"
+  ]
+}

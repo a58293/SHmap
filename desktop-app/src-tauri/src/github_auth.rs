@@ -116,6 +116,21 @@ struct PrivateDataManifest {
     data_path: String,
     sha256: String,
     object_count: usize,
+    #[serde(default)]
+    minimum_desktop_version: Option<String>,
+}
+
+fn version_parts(value: &str) -> Vec<u64> {
+    value.split('.').map(|part| part.parse::<u64>().unwrap_or(0)).collect()
+}
+
+fn version_is_older(current: &str, minimum: &str) -> bool {
+    let current = version_parts(current);
+    let minimum = version_parts(minimum);
+    let width = current.len().max(minimum.len());
+    (0..width).map(|index| *current.get(index).unwrap_or(&0)).cmp(
+        (0..width).map(|index| *minimum.get(index).unwrap_or(&0))
+    ).is_lt()
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -971,6 +986,12 @@ pub async fn load_private_map_bundle(
             "SHmap-Data manifest 版本不兼容：{}",
             manifest.schema_version
         ));
+    }
+    if let Some(minimum) = manifest.minimum_desktop_version.as_deref() {
+        let current = env!("CARGO_PKG_VERSION");
+        if version_is_older(current, minimum) {
+            return Err(format!("正式地图 {} 需要 SHmap {} 或更高版本；当前客户端为 {}，请先更新客户端", manifest.data_version, minimum, current));
+        }
     }
     validate_private_data_path(&manifest.data_path)?;
     let payload = fetch_private_repo_raw(state, &token, &manifest.data_path).await?;

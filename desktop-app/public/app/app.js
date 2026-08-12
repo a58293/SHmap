@@ -262,18 +262,34 @@
 
   const saved = loadSaved();
   const dataUpgradeFrom = saved?.dataVersion && saved.dataVersion!==INITIAL.metadata?.dataVersion ? saved.dataVersion : "";
+  const STARTUP_COMPARE_METADATA_KEYS=new Set(["updatedAt","createdAt","importedAt"]);
+  function startupComparable(value){
+    if(Array.isArray(value))return value.map(startupComparable);
+    if(value&&typeof value==="object"){
+      const out={};
+      Object.keys(value).sort().forEach(key=>{
+        if(key==="coordinateText"||key==="distance"||key==="originalLink"||STARTUP_COMPARE_METADATA_KEYS.has(key))return;
+        out[key]=startupComparable(value[key]);
+      });
+      return out
+    }
+    return value===undefined?null:value
+  }
+  function startupSameValue(a,b){return JSON.stringify(startupComparable(a))===JSON.stringify(startupComparable(b))}
   function savedObjectChangedFields(savedState){
-    const changed=new Map(),add=(id,key)=>{if(!id||!key||id.startsWith("CELL-")||key==="id"||key==="rowRef")return;if(!changed.has(id))changed.set(id,new Set());changed.get(id).add(key)},collect=change=>{const id=String(change?.entityId||""),before=change?.before,after=change?.after;if(!id||!before||!after||typeof before!=="object"||typeof after!=="object"||Array.isArray(before)||Array.isArray(after))return;new Set([...Object.keys(before),...Object.keys(after)]).forEach(key=>{if(!sameValue(before[key],after[key]))add(id,key)})};
+    const changed=new Map(),add=(id,key)=>{if(!id||!key||id.startsWith("CELL-")||key==="id"||key==="rowRef")return;if(!changed.has(id))changed.set(id,new Set());changed.get(id).add(key)},collect=change=>{const id=String(change?.entityId||""),before=change?.before,after=change?.after;if(!id||!before||!after||typeof before!=="object"||typeof after!=="object"||Array.isArray(before)||Array.isArray(after))return;new Set([...Object.keys(before),...Object.keys(after)]).forEach(key=>{if(!startupSameValue(before[key],after[key]))add(id,key)})};
     (savedState?.changes||[]).forEach(collect);(savedState?.changeArchives||[]).forEach(archive=>(archive?.changes||[]).forEach(collect));Object.entries(savedState?.protectedObjectFields||{}).forEach(([id,fields])=>(Array.isArray(fields)?fields:[]).forEach(key=>add(id,key)));return changed
   }
   function migrateWorkspaceObjects(savedState){
     const master=structuredClone(INITIAL.objects||[]);
     if(!savedState?.objects?.length)return master;
     const savedById=new Map(savedState.objects.map(object=>[object.id,object]));
+    const authoritativeV282=String(INITIAL.metadata?.dataVersion||"").startsWith("v282");
     const changedFields=savedObjectChangedFields(savedState),localKeys=["dossier","childHierarchy","waterHierarchy","images","imageUrl","imageSource","imageCopyright","updatedAt","createdAt","notesLocal"];
     const merged=master.map(object=>{
       const local=savedById.get(object.id),next={...object};
-      if(local)for(const key of new Set([...localKeys,...(changedFields.get(object.id)||[])])){if(Object.prototype.hasOwnProperty.call(local,key))next[key]=structuredClone(local[key]);else delete next[key]}
+      const preservedKeys=authoritativeV282?localKeys:[...localKeys,...(changedFields.get(object.id)||[])];
+      if(local)for(const key of new Set(preservedKeys)){if(Object.prototype.hasOwnProperty.call(local,key))next[key]=structuredClone(local[key]);else delete next[key]}
       return next
     });
     const masterIds=new Set(master.map(object=>object.id)),masterRows=new Set(master.map(object=>object.rowRef).filter(Boolean));
@@ -281,7 +297,13 @@
     return merged
   }
   const applyObjectRoles=objects=>window.SHJ_OBJECT_ROLE_MANIFEST?.apply?.(objects)||(objects||[]);
-  const migratedWorkspaceObjects=applyObjectRoles(migrateWorkspaceObjects(saved));
+  let migratedWorkspaceObjects;
+  try{migratedWorkspaceObjects=applyObjectRoles(migrateWorkspaceObjects(saved))}
+  catch(error){
+    console.error("SHmap workspace migration failed; falling back to the saved or official object set.",error);
+    const fallbackObjects=saved?.objects?.length?saved.objects:(INITIAL.objects||[]);
+    migratedWorkspaceObjects=applyObjectRoles(structuredClone(fallbackObjects));
+  }
   const state = {
     objects: migratedWorkspaceObjects,
     changes: saved?.changes || [],
@@ -294,7 +316,7 @@
     githubPendingView: "new",
     githubPendingCache: {},
     githubCurrent: null,
-    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v272-r0003",
+    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v282-r0001",
     camera: saved?.camera || {x:0,y:0,zoom:.92},
     selectedId: saved?.selectedId || (INITIAL.objects?.[0]?.id || null),
     selectedCell: saved?.selectedCell || null,
@@ -733,6 +755,7 @@
     const ro=new ResizeObserver(()=>{resizeCanvas();state.perf.minimapRevision=-1;scheduleRender()});ro.observe(els.viewport);
     const rangeRO=new ResizeObserver(()=>{resizeRangeCanvas();drawRangeEditor()});rangeRO.observe(els.rangeViewport);
     window.__SHJ_FLUSH_PERSIST__=flushPersist;window.addEventListener("beforeunload",()=>flushPersist(),{capture:true});document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flushPersist()});
+    window.__SHJ_MAIN_READY__=true;
   }
   function updateHeader(){
     const meta=INITIAL.metadata||{};
@@ -900,7 +923,7 @@
   }
   function hexToRgba(hex,alpha){const h=String(hex||"#777").replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`}
 
-  function v272BoardLayoutAvailable(){return String(BOARD_LAYOUT?.schemaVersion||"").startsWith("v272-board-layout")&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
+  function v272BoardLayoutAvailable(){return /^v(?:272|282)-board-layout/.test(String(BOARD_LAYOUT?.schemaVersion||""))&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
   function v272BoardCellAnnotations(key){return V272_BOARD_ANNOTATIONS_BY_CELL.get(String(key))||[]}
   function v272BoardPalette(kind){return kind==="sea"?{fill:"rgba(210,232,243,.82)",line:"rgba(80,135,157,.16)",text:"#3d7184"}:kind==="outer"?{fill:"rgba(241,232,210,.72)",line:"rgba(139,112,72,.10)",text:"#775f3d"}:{fill:"rgba(255,255,255,.78)",line:"rgba(102,98,84,.07)",text:"#4f554f"}}
   function v272BoardMassPalette(kind){
@@ -1616,7 +1639,19 @@
   function v110V272WorldBounds(){
     if(state.perf.v110V272WorldBounds)return state.perf.v110V272WorldBounds;
     const runs=(BOARD_LAYOUT&&BOARD_LAYOUT.backgroundRuns)||[];
-    if(!runs.length)return {minX:-7450,maxX:2950,minY:-1750,maxY:3750};
+    if(!runs.length){
+      const source=BOARD_LAYOUT?.coordinateBounds||{};
+      const minX=Number.isFinite(source.minX)?source.minX:source.minGx;
+      const maxX=Number.isFinite(source.maxX)?source.maxX:source.maxGx;
+      const minY=Number.isFinite(source.minY)?source.minY:source.minGy;
+      const maxY=Number.isFinite(source.maxY)?source.maxY:source.maxGy;
+      if([minX,maxX,minY,maxY].every(Number.isFinite)){
+        const padX=CELL_LI*1.6,padY=CELL_LI*1.25;
+        const bounds={minX:Number(minX)*CELL_LI-CELL_LI/2-padX,maxX:Number(maxX)*CELL_LI+CELL_LI/2+padX,minY:Number(minY)*CELL_LI-CELL_LI/2-padY,maxY:Number(maxY)*CELL_LI+CELL_LI/2+padY};
+        state.perf.v110V272WorldBounds=bounds;return bounds
+      }
+      return {minX:-7450,maxX:2950,minY:-1750,maxY:3750}
+    }
     let minGx=Infinity,maxGx=-Infinity,minGy=Infinity,maxGy=-Infinity;
     runs.forEach(run=>{minGx=Math.min(minGx,Number(run.startGx));maxGx=Math.max(maxGx,Number(run.endGx));minGy=Math.min(minGy,Number(run.gy));maxGy=Math.max(maxGy,Number(run.gy))});
     const padX=CELL_LI*1.6,padY=CELL_LI*1.25;
@@ -1625,6 +1660,7 @@
   }
   function v110V272OverviewArtOpacity(){
     if(!v272BoardLayoutAvailable()||!state.layers.environment)return 0;
+    if(!String(BOARD_LAYOUT?.schemaVersion||"").startsWith("v272-board-layout"))return 0;
     if(state.precisionMode)return 0;
     const zoom=state.camera.zoom||1;
     if(zoom<=V110_V272_WORLD_ART.fullUntil)return .94;

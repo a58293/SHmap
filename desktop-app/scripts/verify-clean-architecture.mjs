@@ -14,7 +14,7 @@ assert.ok(!/app\/data\.js/i.test(html),"index.html 不得引用 data.js");
 
 const boot=read("src/desktop-bootstrap.js");
 assert.ok(boot.includes('invoke("load_private_map_bundle")'),"启动必须从 Private SHmap-Data 读取正式地图");
-assert.ok(boot.includes('"SHJ_BOARD_LAYOUT"'),"启动必须注入 V272 坐标棋盘布局");
+assert.ok(boot.includes('"SHJ_BOARD_LAYOUT"'),"启动必须注入正式坐标棋盘布局");
 assert.ok(boot.includes("preferredStartupFallback")||boot.includes("snapshotDataVersion"),"启动降级必须感知数据版本");
 
 const rust=read("src-tauri/src/lib.rs");
@@ -34,7 +34,7 @@ const verifyChain=String(pkg.scripts.verify||"").split("&&").map(item=>item.trim
 const requiredVerifyChain=[
   "npm run build",
   "npm run verify:architecture",
-  "npm run verify:v272-data",
+  "npm run verify:v282-data",
   "npm run verify:critical",
   "npm run verify:overview-policy",
   "npm run verify:import-audit",

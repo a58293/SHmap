@@ -20,7 +20,7 @@ const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
 const DESKTOP_EDITION = "v012";
-const DESKTOP_VERSION = "1.1.7";
+const DESKTOP_VERSION = "1.2.0";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -405,11 +405,36 @@ function loadMainScriptAttempt(url){
     script.src=url;script.onload=()=>finish();script.onerror=()=>finish(new Error("无法加载地图主程序"));document.body.appendChild(script)
   })
 }
+function waitForMainProgramReady(){
+  return new Promise((resolve,reject)=>{
+    const started=Date.now();
+    const check=()=>{
+      if(window.__SHJ_MAIN_READY__===true){resolve();return}
+      if(Date.now()-started>=MAIN_SCRIPT_TIMEOUT_MS){reject(new Error("地图主程序已载入，但初始化没有完成"));return}
+      setTimeout(check,40)
+    };
+    check()
+  })
+}
 async function loadMainScript(){
   updateStartupStatus("正在加载地图主程序……");
-  try{await loadMainScriptAttempt("/app/app.js")}catch(firstError){
-    console.warn("地图主程序首次加载失败，正在重试",firstError);
-    await loadMainScriptAttempt(`/app/app.js?retry=${Date.now()}`)
+  window.__SHJ_MAIN_READY__=false;
+  let runtimeError=null;
+  const captureError=event=>{runtimeError=event?.error||new Error(event?.message||"地图主程序运行异常")};
+  const captureRejection=event=>{runtimeError=event?.reason instanceof Error?event.reason:new Error(String(event?.reason||"地图主程序异步运行异常"))};
+  window.addEventListener("error",captureError,true);window.addEventListener("unhandledrejection",captureRejection,true);
+  try{
+    try{await loadMainScriptAttempt("/app/app.js");await waitForMainProgramReady()}catch(firstError){
+      if(runtimeError)throw runtimeError;
+      console.warn("地图主程序首次加载失败，正在重试",firstError);
+      document.querySelectorAll('script[src^="/app/app.js"]').forEach(node=>node.remove());
+      window.__SHJ_MAIN_READY__=false;
+      await loadMainScriptAttempt(`/app/app.js?retry=${Date.now()}`);
+      await waitForMainProgramReady()
+    }
+    if(runtimeError)throw runtimeError
+  }finally{
+    window.removeEventListener("error",captureError,true);window.removeEventListener("unhandledrejection",captureRejection,true)
   }
 }
 async function start(){
@@ -441,14 +466,14 @@ async function start(){
       localStorage.setItem(STORAGE_KEY,fallback);
       bootInfo={source:selectedFallback.source,snapshot:fallback,objectCount:JSON.parse(fallback).objects.length,databasePath:""};
       console.error("桌面数据库启动降级",error);
-      updateStartupStatus("数据库响应较慢，正在使用与V272匹配的安全缓存启动……");
+      updateStartupStatus(`数据库响应较慢，正在使用与${privateMapInfo?.dataVersion||"正式母表"}匹配的安全缓存启动……`);
       task.then(info=>{
         bootstrapRecoveryTask=null;nativeStorageReady=true;
         if(window.SHJ_DESKTOP){window.SHJ_DESKTOP.databaseRecovered=true;window.SHJ_DESKTOP.bootInfo=info}
         recoveryBanner("桌面数据库已经恢复连接。当前页面使用安全缓存，为避免覆盖差异，请重新启动程序后继续编辑。")
       }).catch(recoveryError=>{
         bootstrapRecoveryTask=null;console.error("桌面数据库后台恢复失败",recoveryError);
-        recoveryBanner("桌面数据库暂未恢复。当前地图来自V272私有种子或同版本缓存，请先不要编辑；关闭程序后重新启动。")
+        recoveryBanner("桌面数据库暂未恢复。当前地图来自最新私有种子或同版本缓存，请先不要编辑；关闭程序后重新启动。")
       })
     }
   }
@@ -476,7 +501,7 @@ async function start(){
   updateStartupStatus("界面布局已完成，正在进入地图……");
   await revealStableUiAfterLayout();
   if(startupFallback){
-    recoveryBanner("桌面数据库读取超时，已从V272私有种子或同版本安全缓存恢复地图。当前会话请先核对资料，不要进行编辑。")
+    recoveryBanner(`桌面数据库读取超时，已从${privateMapInfo?.dataVersion||"最新"}私有种子或同版本安全缓存恢复地图。当前会话请先核对资料，不要进行编辑。`)
     const saveState=document.querySelector("#saveState");if(saveState)saveState.textContent="安全缓存恢复模式"
   }
   scheduleAutomaticUpdateCheck();
