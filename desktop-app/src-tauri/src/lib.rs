@@ -779,6 +779,7 @@ pub fn run() {
             github_auth::github_logout,
             github_auth::list_private_submissions,
             github_auth::read_private_submission,
+            github_auth::resolve_private_asset,
             github_auth::open_github_device_page,
             github_auth::github_auth_configuration
         ])

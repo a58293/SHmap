@@ -2,7 +2,7 @@ import fs from "node:fs";import path from "node:path";import assert from "node:a
 const root=process.cwd(),read=p=>fs.readFileSync(path.join(root,p),"utf8"),json=p=>JSON.parse(read(p));
 const pkg=json("package.json"),version=json("VERSION.json"),tauri=json("src-tauri/tauri.conf.json"),release=json("src-tauri/tauri.release.conf.json"),cargo=read("src-tauri/Cargo.toml"),app=read("public/app/app.js"),bootstrap=read("src/desktop-bootstrap.js");
 const cv=cargo.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
-assert.equal(pkg.version,"1.2.0");assert.equal(version.semver,"1.2.0");assert.equal(tauri.version,"1.2.0");assert.equal(cv,"1.2.0");assert.equal(version.data_version,"v282-r0001");assert.equal(version.object_count,1378);assert.equal(version.board_occupied_cells,875);assert.equal(release.bundle?.createUpdaterArtifacts,true);
+assert.equal(pkg.version,"1.2.1");assert.equal(version.semver,"1.2.1");assert.equal(tauri.version,"1.2.1");assert.equal(cv,"1.2.1");assert.equal(version.data_version,"v282-r0001");assert.equal(version.object_count,1378);assert.equal(version.board_occupied_cells,875);assert.equal(release.bundle?.createUpdaterArtifacts,true);
 assert.ok(app.includes('function v112PopulationNames(object)'),'缺少族群名称提取');
 assert.ok(app.includes('function v112IsCivilizationNode(object)'),'缺少文明节点分类');
 assert.ok(app.includes('domainRegionId:region.id'),'地域总览未接入V272 hierarchy');
@@ -11,4 +11,4 @@ assert.ok(!app.includes('civilizationKind==="country"'),'文明/族群仍残留�
 assert.ok(app.includes('domain:"地域"'),'地域模式标签未更新');
 assert.ok(bootstrap.includes('function ensureStableUiBootCurtain()'),'缺少稳定启动遮罩');
 assert.ok(bootstrap.includes('await revealStableUiAfterLayout();'),'启动遮罩没有等待最终布局');
-console.log("PASS v1.2.0 / V282 release baseline");
+console.log("PASS v1.2.1 / V282 release baseline");

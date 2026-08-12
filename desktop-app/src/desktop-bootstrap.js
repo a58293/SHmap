@@ -20,7 +20,7 @@ const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
 const DESKTOP_EDITION = "v012";
-const DESKTOP_VERSION = "1.2.0";
+const DESKTOP_VERSION = "1.2.1";
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -493,7 +493,8 @@ async function start(){
     bootInfo,
     publishPatch:args=>invoke("publish_patch_to_github",args),
     listPrivatePatches:()=>invoke("list_private_submissions"),
-    readPrivatePatch:path=>invoke("read_private_submission",{path})
+    readPrivatePatch:path=>invoke("read_private_submission",{path}),
+    resolvePrivateAsset:fileName=>invoke("resolve_private_asset",{fileName})
   };
   await loadMainScript();
   await setupNativeCloseSaveGuard();

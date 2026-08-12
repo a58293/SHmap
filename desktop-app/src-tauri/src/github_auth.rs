@@ -5,7 +5,8 @@ use reqwest::{header, Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, process::Command, sync::Mutex, time::Duration};
+use std::{collections::HashMap, fs, process::Command, sync::Mutex, time::Duration};
+use tauri::{AppHandle, Manager};
 use url::Url;
 use tokio::time::sleep;
 
@@ -818,6 +819,70 @@ async fn fetch_private_repo_bytes_if_exists(
         .await
         .map_err(|error| format!("读取 SHmap-Data/{path} 内容失败：{error}"))?;
     Ok(Some(bytes.to_vec()))
+}
+
+fn validate_private_asset_name(file_name: &str) -> Result<(&str, &'static str), String> {
+    let (hash, extension) = file_name
+        .rsplit_once('.')
+        .ok_or_else(|| "Private image file name is invalid".to_string())?;
+    let extension = extension.to_ascii_lowercase();
+    if hash.len() != 64
+        || !hash.chars().all(|ch| ch.is_ascii_hexdigit())
+        || !matches!(extension.as_str(), "webp" | "png" | "jpg" | "jpeg")
+    {
+        return Err("Private image file name is invalid".to_string());
+    }
+    Ok((hash, match extension.as_str() { "png" => "png", "jpg" | "jpeg" => "jpg", _ => "webp" }))
+}
+
+fn private_asset_data_url(bytes: &[u8], extension: &str) -> String {
+    let mime = match extension {
+        "png" => "image/png",
+        "jpg" => "image/jpeg",
+        _ => "image/webp",
+    };
+    format!("data:{mime};base64,{}", BASE64_STANDARD.encode(bytes))
+}
+
+/// Resolve an authenticated SHmap-Data image and keep a verified local cache.
+/// The UI receives a data URL so the private repository URL and token never enter <img src>.
+#[tauri::command]
+pub async fn resolve_private_asset(
+    state: tauri::State<'_, GitHubAuthState>,
+    app: AppHandle,
+    file_name: String,
+) -> Result<String, String> {
+    let normalized = file_name.to_ascii_lowercase();
+    let (expected_hash, extension) = validate_private_asset_name(&normalized)?;
+    let cache_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Unable to locate the private image cache: {error}"))?
+        .join("private-image-cache");
+    fs::create_dir_all(&cache_dir)
+        .map_err(|error| format!("Unable to create the private image cache: {error}"))?;
+    let cache_path = cache_dir.join(&normalized);
+
+    if let Ok(bytes) = fs::read(&cache_path) {
+        let actual = hex::encode(Sha256::digest(&bytes));
+        if actual.eq_ignore_ascii_case(expected_hash) {
+            return Ok(private_asset_data_url(&bytes, extension));
+        }
+        let _ = fs::remove_file(&cache_path);
+    }
+
+    let token = active_authorized_token(&state).await?;
+    let path = format!("submissions/assets/{normalized}");
+    let bytes = fetch_private_repo_bytes_if_exists(&state, &token, &path)
+        .await?
+        .ok_or_else(|| format!("Private image is missing: {normalized}"))?;
+    let actual = hex::encode(Sha256::digest(&bytes));
+    if !actual.eq_ignore_ascii_case(expected_hash) {
+        return Err(format!("Private image SHA-256 verification failed: {normalized}"));
+    }
+    fs::write(&cache_path, &bytes)
+        .map_err(|error| format!("Unable to save the private image cache: {error}"))?;
+    Ok(private_asset_data_url(&bytes, extension))
 }
 
 fn clean_commit_message(value: &str, fallback: &str) -> String {
