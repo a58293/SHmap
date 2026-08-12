@@ -5482,7 +5482,7 @@
     for(let x=grid+.5;x<w;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
     for(let y=grid+.5;y<h;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
     ctx.restore();
-    if(v272BoardLayoutAvailable()){
+    if(v272BoardLayoutAvailable()&&(BOARD_LAYOUT.backgroundRuns||[]).length){
       for(const run of BOARD_LAYOUT.backgroundRuns||[]){
         const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;
         const nw=pt(west,north),se=pt(east,south),pal=v272BoardPalette(run.kind);
@@ -5492,7 +5492,7 @@
         ctx.globalAlpha=.3;ctx.strokeStyle=pal.line;ctx.strokeRect(nw.x+.25,nw.y+.25,Math.max(.5,rw-.5),Math.max(.5,rh-.5));
       }
       ctx.globalAlpha=1;
-    }else{
+    }else if(!v272BoardLayoutAvailable()){
       const idx=ensureObjectIndexes();
       tileRenderObjects(tileVisibleObjects()).forEach(o=>{const a=objectAnchor(o),q=pt(a.x,a.y),pal=TERRAIN_PALETTE[isHydrologyObject(o)?"water":terrainCategory(o)]||TERRAIN_PALETTE.unknown;ctx.fillStyle=pal.color;ctx.globalAlpha=.18;ctx.fillRect(q.x-1.5,q.y-1.5,3,3)});
       ctx.globalAlpha=1;
@@ -5503,20 +5503,24 @@
       }
     }
   }
-  function v110DrawMinimapWorldLabels(ctx,p){
-    if(!v272BoardLayoutAvailable())return;
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 10px sans-serif';
-    for(const label of (BOARD_LAYOUT.worldLabels||[]).slice(0,32)){
-      const text=String(label?.name||'').replace(/^L[23]\s*/, '').trim();if(!text)continue;
-      const q=p.pt(Number(label.canvasX)||0,Number(label.canvasY)||0),sea=label.kind==='sea';
-      const width=Math.max(30,ctx.measureText(text).width+10),height=16;
-      waterRoundRect(ctx,q.x-width/2,q.y-height/2,width,height,8);
-      ctx.fillStyle=sea?'rgba(235,246,250,.88)':'rgba(251,246,234,.86)';ctx.fill();
-      ctx.strokeStyle=sea?'rgba(78,131,150,.22)':'rgba(128,104,67,.18)';ctx.lineWidth=.8;ctx.stroke();
-      ctx.fillStyle=sea?'#4d7f92':'#7b6747';ctx.fillText(text,q.x,q.y+.5)
-    }
-    ctx.restore();
+  const V122_MINIMAP_LAYERS={L1:{label:'\u4e2d\u592e\uff0f\u6d77\u5185',color:'#987547'},L2:{label:'\u56db\u6d77\u6c34\u57df',color:'#3f8ca6'},L3:{label:'\u6d77\u5916\u8fd1\u6d77',color:'#4f8067'},L4:{label:'\u5927\u8352\u5916\u56f4',color:'#9a5f4f'}};
+  function v122MinimapWorldLayer(o){
+    const raw=[o?.worldLayer,o?.worldLevel,o?.worldDisplayLayer,o?.worldLayerDecision,o?.layerDecision,o?.macroRegionId,o?.macroRegion,o?.region,o?.annotations].filter(Boolean).join(' '),hit=raw.match(/(?:^|\s)(L[1-4])(?:\s|$)/i);if(hit)return hit[1].toUpperCase();
+    const chapter=String(o?.chapter||''),name=String(o?.name||''),type=String(o?.type||'');if(isHydrologyObject(o)&&/(?:\u6d77\u57df|\u6d77\u4e2d|\u6d77\u4e4b\u6e1a|\u6d77|\u6e1a|\u6d32)/.test(`${name} ${type}`))return 'L2';if(/\u6d77\u5916(?:\u5357|\u897f|\u5317|\u4e1c)\u7ecf/.test(chapter))return 'L3';if(/\u5927\u8352(?:\u5357|\u897f|\u5317|\u4e1c)\u7ecf/.test(chapter))return 'L4';return 'L1'
   }
+  function v122MinimapObjectColor(o){if(isHydrologyObject(o))return '#3f91ad';const cat=objectCategory(o);if(cat==='terrain')return '#6d7956';if(cat==='plants')return '#4f8464';if(cat==='animals')return '#a66b45';if(cat==='people')return '#a44f45';if(cat==='minerals')return '#8975a0';if(cat==='events')return '#b1873d';return '#6f736b'}
+  function v122MinimapObjects(){return tileRenderObjects(tileVisibleObjects()).filter(o=>{const a=objectAnchor(o);return Number.isFinite(a.x)&&Number.isFinite(a.y)})}
+  function v122DrawMinimapLayerClouds(ctx,p,objects){
+    const groups=new Map();objects.forEach(o=>{const key=v122MinimapWorldLayer(o),a=objectAnchor(o);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(a)});ctx.save();
+    for(const [key,points] of groups){if(!points.length)continue;const style=V122_MINIMAP_LAYERS[key]||V122_MINIMAP_LAYERS.L1,projected=points.map(a=>p.pt(a.x,a.y)),xs=projected.map(q=>q.x).sort((a,b)=>a-b),ys=projected.map(q=>q.y).sort((a,b)=>a-b),lo=Math.floor((points.length-1)*.04),hi=Math.ceil((points.length-1)*.96),minX=xs[lo],maxX=xs[hi],minY=ys[lo],maxY=ys[hi],cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=Math.max(15,(maxX-minX)/2+8),ry=Math.max(11,(maxY-minY)/2+7);ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.fillStyle=v053RegionRangeRgba(style.color,.055);ctx.fill();ctx.strokeStyle=v053RegionRangeRgba(style.color,.24);ctx.lineWidth=.8;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([])}ctx.restore()
+  }
+  function v122DrawMinimapWaterways(ctx,p){const paths=(state.waterPaths||[]).filter(path=>Array.isArray(path.points)&&path.points.length>1);ctx.save();ctx.lineCap='round';ctx.lineJoin='round';for(const path of paths){ctx.beginPath();path.points.forEach((point,index)=>{const q=p.pt(Number(point[0])||0,Number(point[1])||0);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=path.id===state.selectedWaterPathId?'rgba(26,109,144,.96)':path.isMain?'rgba(49,133,164,.70)':'rgba(70,150,178,.42)';ctx.lineWidth=path.id===state.selectedWaterPathId?2.8:path.isMain?1.7:1;ctx.stroke()}ctx.restore()}
+  function v122DrawMinimapObjects(ctx,p,objects){const points=[];ctx.save();for(const o of objects){const a=objectAnchor(o),q=p.pt(a.x,a.y),selected=o.id===state.selectedId,r=selected?4.2:isHydrologyObject(o)?1.8:1.45;ctx.beginPath();ctx.arc(q.x,q.y,r,0,Math.PI*2);ctx.fillStyle=v122MinimapObjectColor(o);ctx.globalAlpha=selected?1:.78;ctx.fill();if(selected){ctx.globalAlpha=1;ctx.strokeStyle='#fffdf5';ctx.lineWidth=2.2;ctx.stroke();ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.strokeStyle='#ad4d3d';ctx.lineWidth=1.5;ctx.stroke()}points.push({o,x:q.x,y:q.y})}ctx.globalAlpha=1;ctx.restore();return points}
+  function v110DrawMinimapWorldLabels(ctx,p){
+    const objects=v122MinimapObjects(),counts={L1:0,L2:0,L3:0,L4:0};objects.forEach(o=>counts[v122MinimapWorldLayer(o)]++);ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 8px sans-serif';const keys=['L1','L2','L3','L4'],gap=4,margin=7,width=(p.w-margin*2-gap*3)/4,height=16,y=p.h-47;
+    keys.forEach((key,index)=>{const style=V122_MINIMAP_LAYERS[key],x=margin+index*(width+gap),text=`${key} ${counts[key]}`;waterRoundRect(ctx,x,y,width,height,7);ctx.fillStyle='rgba(253,250,241,.90)';ctx.fill();ctx.strokeStyle=v053RegionRangeRgba(style.color,.48);ctx.lineWidth=.8;ctx.stroke();ctx.fillStyle=style.color;ctx.fillText(text,x+width/2,y+height/2+.5)});ctx.restore()
+  }
+  function v122DrawMinimapCategoryLegend(ctx,p){const items=[['#6d7956','\u5c71\u5730'],['#3f91ad','\u6c34\u7cfb'],['#a44f45','\u4eba\u6587'],['#b1873d','\u4e8b\u8ff9']];ctx.save();ctx.font='700 8px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';let x=10;for(const [color,label] of items){ctx.beginPath();ctx.arc(x,35,2.5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.fillStyle='#53655f';ctx.fillText(label,x+5,35);x+=ctx.measureText(label).width+20}ctx.restore()}
   function v110DrawMinimapOverviewGroups(ctx,p){
     const mode=state.overviewMode||'region',groups=regionOverviewGroups();
     ctx.save();
@@ -5544,11 +5548,11 @@
     return groups
   }
   function v110DrawMinimapBanner(ctx,w,h,groups){
-    const modeLabel=v110MinimapModeLabel(),count=Array.isArray(groups)?groups.length:0;
+    const modeLabel=v110MinimapModeLabel(),objects=v122MinimapObjects(),cells=new Set(objects.map(o=>{const c=objectCell(o);return `${c.gx},${c.gy}`}));
     ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';ctx.font='700 9px sans-serif';
-    const title=`${modeLabel} · ${count}`;const width=Math.max(68,ctx.measureText(title).width+14),height=20;
-    waterRoundRect(ctx,7,7,width,height,8);ctx.fillStyle='rgba(252,249,240,.80)';ctx.fill();ctx.strokeStyle='rgba(90,115,107,.18)';ctx.lineWidth=.8;ctx.stroke();
-    ctx.fillStyle='#2f6058';ctx.fillText(title,14,17);ctx.restore();
+    const title=`${objects.length}\u5bf9\u8c61 \u00b7 ${cells.size}\u683c \u00b7 ${modeLabel}`,width=Math.min(w-92,Math.max(100,ctx.measureText(title).width+14)),height=20,x=50;
+    waterRoundRect(ctx,x,7,width,height,8);ctx.fillStyle='rgba(252,249,240,.86)';ctx.fill();ctx.strokeStyle='rgba(90,115,107,.18)';ctx.lineWidth=.8;ctx.stroke();
+    ctx.fillStyle='#2f6058';ctx.fillText(title,x+7,17);ctx.restore();
   }
   function renderV029Minimap(force=false){
     const wrap=document.getElementById("researchMinimap"),canvas=document.getElementById("researchMinimapCanvas");if(!wrap||!canvas||!state.objects.length)return;const dpr=Math.min(devicePixelRatio||1,2),w=wrap.clientWidth,h=wrap.clientHeight,sizeKey=`${w}x${h}@${dpr}`;if(!w||!h)return;
@@ -5558,6 +5562,9 @@
       const projector=v110CreateMinimapProjector(w,h,12),{pt,minX,maxX,minY,maxY,sc,ox,oy}=projector;
       canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
       v110DrawMinimapBackground(ctx,projector);
+      const minimapObjects=v122MinimapObjects();
+      v122DrawMinimapLayerClouds(ctx,projector,minimapObjects);
+      v122DrawMinimapWaterways(ctx,projector);
       const groups=v110DrawMinimapOverviewGroups(ctx,projector);
       if(state.overviewMode!=='hydrology'){
         const idx=ensureObjectIndexes();
@@ -5565,7 +5572,9 @@
           const points=Array.isArray(line.path)?line.path:[];if(points.length<2)continue;ctx.beginPath();points.forEach((point,index)=>{const q=pt(point[0],point[1]);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=isHydrologyObject(line)?'rgba(59,139,163,.20)':'rgba(112,96,78,.14)';ctx.lineWidth=.9;ctx.stroke();
         }
       }
-      if(v272BoardLayoutAvailable()&&state.overviewMode!=='chapter')v110DrawMinimapWorldLabels(ctx,projector);
+      const minimapPoints=v122DrawMinimapObjects(ctx,projector,minimapObjects);wrap._minimapPoints=minimapPoints;
+      if(state.overviewMode!=='chapter')v110DrawMinimapWorldLabels(ctx,projector);
+      v122DrawMinimapCategoryLegend(ctx,projector);
       const z=pt(0,0);ctx.fillStyle="#ad4d3d";ctx.fillRect(z.x-2.5,z.y-2.5,5,5);
       v110DrawMinimapBanner(ctx,w,h,groups);
       wrap.dataset.bounds=JSON.stringify({minX,maxX,minY,maxY,displayMinX:projector.displayMinX,displayMaxX:projector.displayMaxX,displayMinY:projector.displayMinY,displayMaxY:projector.displayMaxY,compact:projector.compact,sc,ox,oy,w,h});state.perf.minimapRevision=state.objectRevision;state.perf.minimapSize=sizeKey;state.perf.minimapModeDigest=modeDigest
@@ -5638,11 +5647,12 @@
   function toggleMapSpacingMode(){state.mapSpacingMode=state.mapSpacingMode==="source"?"compact":"source";state.perf.minimapRevision=-1;state.perf.minimapModeDigest="";els.tileLayer.replaceChildren();updateMapSpacingModeUi();fitAll();toast(state.mapSpacingMode==="compact"?"已切换紧凑浏览":"已恢复原典比例",state.mapSpacingMode==="compact"?"只压缩无对象的超长空档；坐标、距离与母表数据保持不变。":"地块间距按V282正式坐标显示。")}
   function navigateFromMinimap(clientX,clientY){const p=minimapWorldPoint(clientX,clientY),minimap=document.getElementById("researchMinimap");if(!p)return;if(minimap)minimap.dataset.lastJump=`${p.x.toFixed(1)},${p.y.toFixed(1)}`;hideTooltip();state.flippedCell=null;animateCameraTo(p.x,p.y,state.camera.zoom,420,()=>persist())}
   function setupMinimapNavigation(){
-    const minimap=document.getElementById("researchMinimap"),overview=document.getElementById("minimapOverviewBtn");if(!minimap)return;let dragging=false,pointerId=null;
+    const minimap=document.getElementById("researchMinimap"),overview=document.getElementById("minimapOverviewBtn"),info=document.getElementById("researchMinimapInfo");if(!minimap)return;let dragging=false,pointerId=null;
+    const hover=e=>{if(!info)return;const r=minimap.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,points=minimap._minimapPoints||[];let nearest=null,best=Infinity;for(const point of points){const d=Math.hypot(point.x-px,point.y-py);if(d<best){best=d;nearest=point}}const world=minimapWorldPoint(e.clientX,e.clientY);if(nearest&&best<=9){const o=nearest.o,layer=v122MinimapWorldLayer(o),type=o.type||objectCategory(o)||'\u5730\u56fe\u5bf9\u8c61';info.innerHTML=`<strong>${esc(o.name)}</strong><em>${layer} \u00b7 ${esc(type)} \u00b7 ${coordText(Math.round(objectAnchor(o).x),Math.round(objectAnchor(o).y))}</em>`;minimap.dataset.hoverObjectId=o.id}else{info.textContent=world?`${coordText(Math.round(world.x),Math.round(world.y))} \u00b7 \u70b9\u51fb\u8df3\u8f6c`:'\u60ac\u505c\u67e5\u770b\u5bf9\u8c61 \u00b7 \u70b9\u51fb\u8df3\u8f6c';delete minimap.dataset.hoverObjectId}};
     const stop=e=>{e.stopPropagation()};minimap.addEventListener("pointerdown",e=>{if(e.target.closest("#minimapOverviewBtn"))return;stop(e);e.preventDefault();dragging=true;pointerId=e.pointerId;minimap.classList.add("is-navigating");try{minimap.setPointerCapture(e.pointerId)}catch{}navigateFromMinimap(e.clientX,e.clientY)},true);
-    minimap.addEventListener("pointermove",e=>{if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();navigateFromMinimap(e.clientX,e.clientY)},true);
+    minimap.addEventListener("pointermove",e=>{hover(e);if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();navigateFromMinimap(e.clientX,e.clientY)},true);
     const end=e=>{if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();dragging=false;pointerId=null;minimap.classList.remove("is-navigating");try{minimap.releasePointerCapture(e.pointerId)}catch{}};minimap.addEventListener("pointerup",end,true);minimap.addEventListener("pointercancel",end,true);minimap.addEventListener("click",e=>{if(e.target.closest("#minimapOverviewBtn"))return;e.stopPropagation();e.preventDefault()},true);minimap.addEventListener("dblclick",e=>{e.stopPropagation();e.preventDefault();fitAll()},true);
-    overview?.addEventListener("pointerdown",e=>e.stopPropagation(),true);overview?.addEventListener("click",e=>{e.stopPropagation();e.preventDefault();fitAll();toast("已打开地图总览","已缩放到全部已录入对象范围")})
+    minimap.addEventListener("pointerleave",()=>{if(info)info.textContent='\u60ac\u505c\u67e5\u770b\u5bf9\u8c61 \u00b7 \u70b9\u51fb\u8df3\u8f6c';delete minimap.dataset.hoverObjectId});overview?.addEventListener("pointerdown",e=>e.stopPropagation(),true);overview?.addEventListener("click",e=>{e.stopPropagation();e.preventDefault();fitAll();toast("已打开地图总览","已缩放到全部已录入对象范围")})
   }
   function setupV029Features(){const presetBtn=document.getElementById("viewPresetBtn"),presetMenu=document.getElementById("viewPresetMenu"),relationBtn=document.getElementById("relationModeBtn"),compareBtn=document.getElementById("compareModeBtn"),measureBtn=document.getElementById("measureModeBtn");presetBtn?.addEventListener("click",e=>{e.stopPropagation();presetMenu.classList.toggle("hidden")});presetMenu?.querySelectorAll("[data-view-preset]").forEach(b=>b.addEventListener("click",()=>{state.viewPreset=b.dataset.viewPreset;presetMenu.classList.add("hidden");if(state.viewPreset==="geography"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}else if(state.viewPreset==="hydrology"){state.layers.rivers=true;state.layers.terrain=true;state.layers.areas=true}else if(state.viewPreset==="all"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}els.layerTerrain.checked=state.layers.terrain;els.layerRivers.checked=state.layers.rivers;els.layerAreas.checked=state.layers.areas;state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`关系线已切换为${V029_PRESETS[state.viewPreset]||"全部"}`,v044RelationPresetDescription())}));presetMenu?.querySelectorAll("[data-relation-evidence]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();state.relationEvidenceFilter=b.dataset.relationEvidence||"all";state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`证据筛选：${V045_EVIDENCE_LABELS[state.relationEvidenceFilter]}`,v044RelationPresetDescription())}));document.addEventListener("click",e=>{if(!e.target.closest(".research-tool-wrap")&&!e.target.closest("#viewPresetMenu"))presetMenu?.classList.add("hidden")});relationBtn?.addEventListener("click",()=>{state.relationMode=!state.relationMode;if(state.relationMode&&!state.selectedId)toast("请先选择对象","关系高亮以当前选中对象为中心。","error");scheduleRender();scheduleBrushTraceDraw()});compareBtn?.addEventListener("click",()=>{if(state.compareMode&&state.compareKeys.size>=2)openV029Compare();else{state.compareMode=!state.compareMode;state.measureMode=false;setBrushMode(false);updateV029ToolUI();scheduleRender();toast(state.compareMode?"对比选择已开启":"对比选择已退出",state.compareMode?"点击2—4个地块；右键可移除。":"")}});measureBtn?.addEventListener("click",()=>{state.measureMode=!state.measureMode;state.compareMode=false;setBrushMode(false);state.measure={active:false,start:null,current:null,final:null};updateV029ToolUI();scheduleRender()});document.getElementById("isolatedObjectsBtn")?.addEventListener("click",openV029Isolated);document.getElementById("closeIsolatedWorkspace")?.addEventListener("click",()=>document.getElementById("isolatedWorkspace").classList.add("hidden"));document.getElementById("closeCompareWorkspace")?.addEventListener("click",()=>document.getElementById("compareWorkspace").classList.add("hidden"));document.getElementById("openCompareBtn")?.addEventListener("click",openV029Compare);document.getElementById("clearCompareBtn")?.addEventListener("click",()=>{state.compareKeys.clear();updateV029ToolUI();scheduleRender();persist()});document.getElementById("exitCompareBtn")?.addEventListener("click",()=>{state.compareMode=false;updateV029ToolUI();scheduleRender()});document.getElementById("clearMeasureBtn")?.addEventListener("click",()=>{state.measure={active:false,start:null,current:null,final:null};scheduleRender();updateV029ToolUI()});document.getElementById("compareWorkspace")?.addEventListener("click",e=>{if(e.target.id==="compareWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("isolatedWorkspace")?.addEventListener("click",e=>{if(e.target.id==="isolatedWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("mapBreadcrumb")?.addEventListener("click",e=>{const b=e.target.closest("[data-breadcrumb]");if(!b)return;if(b.dataset.breadcrumb==="world")v052SelectWorld(true);else if(b.dataset.breadcrumb==="region"&&b.dataset.regionId)v052SelectRegion(b.dataset.regionId,true);else if(b.dataset.breadcrumb==="tile"&&state.selectedCell)jumpToCell(state.selectedCell);else if(b.dataset.breadcrumb==="object"&&state.selectedId)jumpToObject(state.selectedId,true,true)});setupMinimapNavigation();setupV044RelationNavigation();setupV044LocationGuide();
     els.viewport.addEventListener("pointerdown",e=>{if(state.compareMode&&e.button===0&&e.target.closest(".tile,.precision-object-group")){e.preventDefault();e.stopImmediatePropagation()}},true);els.viewport.addEventListener("click",e=>{if(!state.compareMode)return;const tile=e.target.closest(".tile"),group=e.target.closest(".precision-object-group");let key=tile?.dataset.cell;if(!key&&group){const id=group.querySelector("[data-precision-main]")?.dataset.precisionMain,o=state.objects.find(x=>x.id===id);if(o){const c=objectCell(o);key=cellKey(c.gx,c.gy)}}if(!key)return;e.preventDefault();e.stopImmediatePropagation();if(state.compareKeys.has(key))state.compareKeys.delete(key);else if(state.compareKeys.size<4)state.compareKeys.add(key);else toast("最多对比四个地块","请先移除一个已选地块。","error");updateV029ToolUI();scheduleRender();persist()},true);els.viewport.addEventListener("contextmenu",e=>{if(state.compareMode){const w=screenToWorld(e.clientX,e.clientY),key=cellKey(cellIndex(w.x),cellIndex(w.y));if(state.compareKeys.has(key)){e.preventDefault();e.stopImmediatePropagation();state.compareKeys.delete(key);updateV029ToolUI();scheduleRender();persist();return}}if(state.measureMode){e.preventDefault();state.measure={active:false,start:null,current:null,final:null};scheduleRender();updateV029ToolUI()}},true);document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(state.measureMode){state.measureMode=false;state.measure={active:false,start:null,current:null,final:null};updateV029ToolUI();scheduleRender()}else if(state.compareMode){state.compareMode=false;updateV029ToolUI();scheduleRender()}}},true);updateV029ToolUI();renderV029Minimap();updateV029Breadcrumb();setTimeout(()=>scheduleRender(),50)}
