@@ -349,9 +349,14 @@ fn should_auto_backup(conn: &Connection, payload_hash: &str) -> Result<bool, Str
 }
 
 // OFFICIAL_DATA_MIGRATION_START
-const LOCAL_OBJECT_FIELDS: [&str; 10] = [
+const LOCAL_OBJECT_FIELDS: [&str; 32] = [
     "dossier", "childHierarchy", "waterHierarchy", "images", "imageUrl",
-    "imageSource", "imageCopyright", "updatedAt", "createdAt", "notesLocal"
+    "imageSource", "imageCopyright", "updatedAt", "createdAt", "notesLocal",
+    "terrain", "water", "plants", "animals", "minerals", "wildlife",
+    "beasts", "people", "gods", "residents", "appearance", "abilities",
+    "events", "annotations", "otherTexts", "modernResearch", "commonLocation",
+    "popularSources", "misconceptions", "derivation", "sourceNotes",
+    "pendingQuestions"
 ];
 fn workspace_data_version(payload: &Value) -> String {
     payload.get("dataVersion").and_then(Value::as_str).unwrap_or("").to_string()
@@ -416,7 +421,7 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
     let current_objects = current.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
     let mut merged = current.clone();
     let seed_version = workspace_data_version(seed);
-    let authoritative_v282 = seed_version.starts_with("v282");
+    let authoritative_workbook = seed_version.starts_with("v28");
     let locally_changed_fields = collect_local_change_fields(current);
     let target = merged.as_object_mut().ok_or_else(|| "当前工作区不是JSON对象".to_string())?;
     let mut official = Vec::with_capacity(seed_objects.len());
@@ -425,10 +430,10 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
         if let Some(id) = source.get("id").and_then(Value::as_str) {
             if let Some(local) = current_objects.iter().find(|item| item.get("id").and_then(Value::as_str)==Some(id)) {
                 preserve_local_object_fields(&mut next, local);
-                // V282 is a complete re-audit of official names, coordinates,
+                // V282/V283 are complete re-audits of official names, coordinates,
                 // layers and source fields. Only user dossiers and image assets
                 // survive that migration; official spreadsheet fields win.
-                if !authoritative_v282 {
+                if !authoritative_workbook {
                     preserve_changed_object_fields(&mut next, local, locally_changed_fields.get(id));
                 }
             }
@@ -444,7 +449,7 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
         if is_local_new { official.push(local.clone()); }
     }
     target.insert("objects".to_string(), Value::Array(official));
-    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v282-r0001".to_string())));
+    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v283-r0001".to_string())));
     let valid_ids = target.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
     let selected_valid = target.get("selectedId").and_then(Value::as_str).map(|id| valid_ids.iter().any(|item| item.get("id").and_then(Value::as_str)==Some(id))).unwrap_or(false);
     if !selected_valid {
@@ -477,7 +482,7 @@ fn bootstrap_workspace(
             let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
             insert_backup(&tx, &state.backup_dir, &label, "pre_data_upgrade", &payload, &parsed)?;
             write_current(&tx, &merged_payload, &merged, &now_text())?;
-            insert_backup(&tx, &state.backup_dir, "V282正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
+            insert_backup(&tx, &state.backup_dir, "V283正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
             tx.commit().map_err(|e| e.to_string())?;
             return Ok(BootstrapResponse{snapshot:merged_payload,source:"database-upgraded-official".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&merged)});
         }
@@ -532,6 +537,11 @@ fn create_backup(
     let id = insert_backup(&conn, &state.backup_dir, &label, "manual", &payload, &parsed)?;
     let created_at: String = conn.query_row("SELECT created_at FROM backups WHERE backup_id=?1", [id], |r| r.get(0)).map_err(|e| e.to_string())?;
     Ok(BackupSummary{backup_id:id,created_at,label,kind:"manual".into(),object_count:object_count(&parsed),payload_sha256:hash_payload(&payload)})
+}
+
+#[tauri::command]
+fn exit_application(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 #[tauri::command]
@@ -763,6 +773,7 @@ pub fn run() {
             load_private_map_bundle,
             bootstrap_workspace,
             save_workspace,
+            exit_application,
             create_backup,
             list_backups,
             restore_backup,

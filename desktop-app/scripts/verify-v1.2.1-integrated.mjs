@@ -10,9 +10,9 @@ const boot = read("src/desktop-bootstrap.js");
 const rust = read("src-tauri/src/github_auth.rs");
 const lib = read("src-tauri/src/lib.rs");
 
-assert.equal(pkg.version, "1.2.2");
-assert.equal(version.semver, "1.2.2");
-assert.equal(version.data_version, "v282-r0001");
+assert.equal(pkg.version, "1.2.5");
+assert.equal(version.semver, "1.2.5");
+assert.equal(version.data_version, "v283-r0001");
 assert.ok(index.includes('id="mapSpacingModeBtn"'), "缺少紧凑/原典比例切换按钮");
 assert.ok(app.includes('mapSpacingMode:saved?.mapSpacingMode'), "紧凑地图模式没有保存");
 assert.ok(app.includes("compactAxisForward"), "缺少紧凑地图正向投影");
@@ -26,4 +26,4 @@ assert.ok(rust.includes("private-image-cache"), "私有图片没有使用应用�
 assert.ok(rust.includes("active_authorized_token"), "私有图片下载没有经过授权会话");
 assert.ok(lib.includes("github_auth::resolve_private_asset"), "私有图片命令没有注册");
 assert.ok(!/function syncedImageUrl[\s\S]{0,800}raw\.githubusercontent\.com/.test(app), "私有图片仍可能匿名访问 raw URL");
-console.log("PASS v1.2.1 safeguards retained by v1.2.2");
+console.log("PASS v1.2.1 safeguards retained by v1.2.5");

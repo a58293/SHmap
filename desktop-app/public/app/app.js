@@ -284,11 +284,11 @@
     const master=structuredClone(INITIAL.objects||[]);
     if(!savedState?.objects?.length)return master;
     const savedById=new Map(savedState.objects.map(object=>[object.id,object]));
-    const authoritativeV282=String(INITIAL.metadata?.dataVersion||"").startsWith("v282");
-    const changedFields=savedObjectChangedFields(savedState),localKeys=["dossier","childHierarchy","waterHierarchy","images","imageUrl","imageSource","imageCopyright","updatedAt","createdAt","notesLocal"];
+    const authoritativeWorkbook=String(INITIAL.metadata?.dataVersion||"").startsWith("v28");
+    const changedFields=savedObjectChangedFields(savedState),localKeys=["dossier","childHierarchy","waterHierarchy","images","imageUrl","imageSource","imageCopyright","updatedAt","createdAt","notesLocal","terrain","water","plants","animals","minerals","wildlife","beasts","people","gods","residents","appearance","abilities","events","annotations","otherTexts","modernResearch","commonLocation","popularSources","misconceptions","derivation","sourceNotes","pendingQuestions"];
     const merged=master.map(object=>{
       const local=savedById.get(object.id),next={...object};
-      const preservedKeys=authoritativeV282?localKeys:[...localKeys,...(changedFields.get(object.id)||[])];
+      const preservedKeys=authoritativeWorkbook?localKeys:[...localKeys,...(changedFields.get(object.id)||[])];
       if(local)for(const key of new Set(preservedKeys)){if(Object.prototype.hasOwnProperty.call(local,key))next[key]=structuredClone(local[key]);else delete next[key]}
       return next
     });
@@ -316,7 +316,7 @@
     githubPendingView: "new",
     githubPendingCache: {},
     githubCurrent: null,
-    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v282-r0001",
+    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v283-r0001",
     camera: saved?.camera || {x:0,y:0,zoom:.92},
     mapSpacingMode:saved?.mapSpacingMode==="source"?"source":"compact",
     selectedId: saved?.selectedId || (INITIAL.objects?.[0]?.id || null),
@@ -929,7 +929,7 @@
   }
   function hexToRgba(hex,alpha){const h=String(hex||"#777").replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`}
 
-  function v272BoardLayoutAvailable(){return /^v(?:272|282)-board-layout/.test(String(BOARD_LAYOUT?.schemaVersion||""))&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
+  function v272BoardLayoutAvailable(){return /^v(?:272|282|283)-board-layout/.test(String(BOARD_LAYOUT?.schemaVersion||""))&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
   function v272BoardCellAnnotations(key){return V272_BOARD_ANNOTATIONS_BY_CELL.get(String(key))||[]}
   function v272BoardPalette(kind){return kind==="sea"?{fill:"rgba(210,232,243,.82)",line:"rgba(80,135,157,.16)",text:"#3d7184"}:kind==="outer"?{fill:"rgba(241,232,210,.72)",line:"rgba(139,112,72,.10)",text:"#775f3d"}:{fill:"rgba(255,255,255,.78)",line:"rgba(102,98,84,.07)",text:"#4f554f"}}
   function v272BoardMassPalette(kind){
@@ -989,7 +989,7 @@
     ctx.restore();
   }
   function drawV272BoardWorldLabels(ctx,v,s){
-    if(!v272BoardLayoutAvailable())return;const cellPx=CELL_LI*s;if(cellPx<4)return;
+    if(!v272BoardLayoutAvailable()||v122UseWorldRegionAtlas())return;const cellPx=CELL_LI*s;if(cellPx<4)return;
     ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
     for(const label of BOARD_LAYOUT.worldLabels||[]){const x=Number(label.canvasX)||0,y=Number(label.canvasY)||0;if(x<v.left-180||x>v.right+180||y<v.bottom-180||y>v.top+180)continue;const p=worldToScreen(x,y),sea=label.kind==="sea",font=Math.max(10,Math.min(22,8+cellPx*.15));ctx.font=`800 ${font}px ${getComputedStyle(document.body).fontFamily}`;const text=String(label.name||"").replace(/^L[23]\s*/,"");const width=Math.max(70,ctx.measureText(text).width+18),height=font+12;waterRoundRect(ctx,p.x-width/2,p.y-height/2,width,height,Math.min(10,height/2));ctx.fillStyle=sea?"rgba(235,247,251,.90)":"rgba(250,246,235,.88)";ctx.fill();ctx.strokeStyle=sea?"rgba(69,128,151,.34)":"rgba(131,102,59,.25)";ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=sea?"#3f7589":"#725d3d";ctx.fillText(text,p.x,p.y+.5)}
     ctx.restore();
@@ -1279,21 +1279,38 @@
     if(label)return {x:Number(label.canvasX)||0,y:Number(label.canvasY)||0};
     const center=region?.center||{};return {x:Number(center.x??region?.centerX)||0,y:Number(center.y??region?.centerY)||0}
   }
+  function v122AtlasRegionName(object){
+    const raw=String(object?.primaryRegionName||object?.region||'').trim();if(!raw)return '';
+    const named=[[/都广/,'都广区域'],[/昆仑/,'昆仑区域'],[/(?:苍梧|九嶷)/,'苍梧—九嶷区域'],[/流沙/,'流沙区域'],[/洞庭/,'洞庭区域'],[/荆山/,'荆山区域'],[/岷山/,'岷山区域'],[/太行/,'太行区域'],[/北海/,'北海区域'],[/南海/,'南海区域'],[/东海/,'东海区域'],[/西海/,'西海区域'],[/黑水/,'黑水区域'],[/赤水/,'赤水区域'],[/大泽/,'大泽区域']];
+    for(const [pattern,name] of named)if(pattern.test(raw))return name;
+    const classic=raw.match(/((?:南|西|北|东|中)(?:次[一二三四五六七八九十]+|山)[经經])/);if(classic)return `${classic[1].replace('經','经')}山系`;
+    let name=raw.replace(/^卷[一二三四五六七八九十百0-9]+(?:M\d+)?/i,'').replace(/(?:最终|连续|局部|完整|外接|接口|拓扑|生成|关系|路径|分流|升降|并列|列名|水文|生态|墓葬|事件|山水|山组|山群)*(?:模块|网络|主干|走廊|层)$/g,'').trim();
+    const parts=name.split(/[—－/／]/).map(part=>cleanRegionOverviewName(part)).filter(part=>part&&part.length>1&&!/^(东|南|西|北|中|海内|海外|大荒)$/.test(part));
+    if(parts.length)name=parts.slice(0,2).join('—');else name=cleanRegionOverviewName(name);
+    name=name.replace(/(?:区域|山系)+$/,'');return name?`${name}区域`:''
+  }
+  function v122AtlasRegionGroups(filtered,filteredSet,filterActive){
+    const buckets=new Map();
+    for(const object of filtered){const name=v122AtlasRegionName(object);if(!name)continue;const parentMacroId=v111ObjectMacroRegionId(object),key=`${parentMacroId}:${name}`;if(!buckets.has(key))buckets.set(key,{name,parentMacroId,items:[]});buckets.get(key).items.push(object)}
+    const groups=[];for(const [key,bucket] of buckets){const items=filterActive?bucket.items.filter(object=>filteredSet.has(object.id)):bucket.items;if(items.length<2)continue;const bounds=v071OverviewBoundsFromItems(items,26),group=v071OverviewGroup(`atlas:${key}`,bucket.name,items,bounds,{atlasRegion:true,parentMacroId:bucket.parentMacroId,boost:/都广|昆仑|苍梧|九嶷|流沙|洞庭/.test(bucket.name)?8:0,meta:`${items.length}处地点`});if(group)groups.push(group)}return groups
+  }
   function v071CivilizationTokens(object){return v112CivilizationEntries(object).map(entry=>entry.name)}
   function regionOverviewGroups(){
-    const mode=state.overviewMode||"region",cacheKey=[state.objectRevision,state.profileRevision,mode,state.filters.q,state.filters.chapter,state.filters.type,state.selectedRegionId||""].join("|");
+    const mode=state.overviewMode||"region",zoom=state.camera.zoom||1,zoomBand=mode==="region"?(zoom<.26?"world-atlas":"region-detail"):mode==="domain"?(zoom<.14?"domain-world":zoom<.52?"domain-region":"domain-object"):"static",cacheKey=[state.objectRevision,state.profileRevision,mode,zoomBand,state.filters.q,state.filters.chapter,state.filters.type,state.selectedRegionId||""].join("|");
     if(state.perf.regionCache.has(cacheKey))return state.perf.regionCache.get(cacheKey);
     const filtered=getSearchContext().filteredObjects,filteredSet=new Set(filtered.map(o=>o.id)),filterActive=!!(state.filters.q||state.filters.chapter||state.filters.type),groups=[];
     if(mode==="region"){
       const h=v052Hierarchy(),overviewZoom=state.camera.zoom||1,macros=h.regions.filter(region=>region.level===1);
-      for(const region of macros){
+      const worldAtlas=v122UseWorldRegionAtlas();
+      if(worldAtlas)groups.push(...v122AtlasRegionGroups(filtered,filteredSet,filterActive));
+      else for(const region of macros){
         const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(object=>filteredSet.has(object.id)):rawItems;
         if(!items.length)continue;
         const bounds=v071OverviewBoundsFromItems(items,72)||region.bounds,name=v111MacroShortName(region);
         const group=v071OverviewGroup(`macro:${region.id}`,name,items,bounds,{regionId:region.id,macroRegion:true,parentMacroId:region.id,selected:region.id===state.selectedRegionId,boost:80,meta:`世界大区 · ${items.length}个对象`});
         if(group)groups.push(group)
       }
-      if(overviewZoom>=.26||filterActive||state.selectedRegionId){
+      if(!worldAtlas&&(overviewZoom>=.26||filterActive||state.selectedRegionId)){
         for(const region of h.regions.filter(r=>r.level===2)){
           const rawItems=v052RegionMembers(region),items=filterActive?rawItems.filter(object=>filteredSet.has(object.id)):rawItems;
           if(!items.length)continue;
@@ -1372,13 +1389,13 @@
       groups.splice(0,groups.length,...split)
     }
     groups.sort((a,b)=>b.priority-a.priority||a.name.localeCompare(b.name,"zh-CN"));
-    const maxLabels=mode==="region"?40:mode==="chapter"?24:mode==="domain"?42:mode==="civilization"?40:24,accepted=[];
+    const worldAtlas=mode==="region"&&v122UseWorldRegionAtlas(),maxLabels=mode==="region"?(worldAtlas?48:40):mode==="chapter"?24:mode==="domain"?42:mode==="civilization"?40:24,accepted=[];
     const acceptGroup=group=>{const tooClose=accepted.some(other=>Math.hypot(other.x-group.x,other.y-group.y)<95&&(other.name.includes(group.name)||group.name.includes(other.name)));if(!tooClose||group.selected||group.macroRegion)accepted.push(group)};
     if(mode==="region"){
-      groups.filter(group=>group.macroRegion).forEach(acceptGroup);
-      if((state.camera.zoom||1)>=.26||filterActive||state.selectedRegionId){
+      if(!worldAtlas)groups.filter(group=>group.macroRegion).forEach(acceptGroup);
+      if(worldAtlas||(state.camera.zoom||1)>=.26||filterActive||state.selectedRegionId){
         const buckets=new Map();for(const group of groups.filter(group=>!group.macroRegion)){const key=group.parentMacroId||"unresolved";if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(group)}
-        let round=0,progress=true;while(progress&&accepted.length<maxLabels&&round<6){progress=false;for(const bucket of buckets.values()){const candidate=bucket[round];if(!candidate)continue;progress=true;acceptGroup(candidate);if(accepted.length>=maxLabels)break}round++}
+        let round=0,progress=true;while(progress&&accepted.length<maxLabels&&round<(worldAtlas?12:6)){progress=false;for(const bucket of buckets.values()){const candidate=bucket[round];if(!candidate)continue;progress=true;acceptGroup(candidate);if(accepted.length>=maxLabels)break}round++}
       }
     }else if(mode==="domain"){
       groups.filter(group=>group.macroRegion).forEach(acceptGroup);
@@ -1423,8 +1440,8 @@
         : "拖动地图 · 滚轮缩放 · 右键返回 · 放大至420%进入彩色精细地图";
     }
   } function regionOverviewLabelPlacement(groups){
-    const r=els.viewport.getBoundingClientRect(),placed=[],offsets=[[0,0],[0,-30],[0,30],[-48,0],[48,0],[-42,-28],[42,-28],[-42,28],[42,28],[0,-58],[0,58]];
-    return groups.map(g=>{const p=worldToScreen(g.x,g.y),compact=state.overviewMode==="domain"&&!g.macroRegion,w=compact?Math.min(190,Math.max(92,42+g.name.length*14)):Math.min(260,Math.max(112,54+g.name.length*18)),h=compact?44:(g.priority>=7?62:52);let best={x:p.x,y:p.y,hidden:false};let found=false;
+    const r=els.viewport.getBoundingClientRect(),placed=[],worldAtlas=v122UseWorldRegionAtlas(),offsets=worldAtlas?[[0,0],[0,-23],[0,23],[-38,0],[38,0],[-34,-22],[34,-22],[-34,22],[34,22],[0,-46],[0,46]]:[[0,0],[0,-30],[0,30],[-48,0],[48,0],[-42,-28],[42,-28],[-42,28],[42,28],[0,-58],[0,58]];
+    return groups.map(g=>{const rawPoint=worldToScreen(g.x,g.y),p=worldAtlas?{x:Math.max(58,Math.min(r.width-58,rawPoint.x)),y:Math.max(28,Math.min(r.height-28,rawPoint.y))}:rawPoint,compact=state.overviewMode==="domain"&&!g.macroRegion,worldGroup=worldAtlas&&!g.macroRegion,w=worldGroup?Math.min(166,Math.max(90,34+g.name.length*12)):compact?Math.min(190,Math.max(92,42+g.name.length*14)):Math.min(260,Math.max(112,54+g.name.length*18)),h=worldGroup?34:compact?44:(g.priority>=7?62:52);let best={x:p.x,y:p.y,hidden:false};let found=false;
       for(const [ox,oy] of offsets){const x=p.x+ox,y=p.y+oy,rect={l:x-w/2,r:x+w/2,t:y-h/2,b:y+h/2};if(rect.r<8||rect.l>r.width-8||rect.b<8||rect.t>r.height-8)continue;const hit=placed.some(q=>!(rect.r+8<q.l||rect.l-8>q.r||rect.b+8<q.t||rect.t-8>q.b));if(!hit){best={x,y,hidden:false};placed.push(rect);found=true;break}}
       if(!found)best.hidden=true;return {...g,...best,width:w}
     }).filter(g=>!g.hidden)}
@@ -1434,6 +1451,7 @@
     }
   function v071ActivateOverviewGroup(group){
     if(!group)return;
+    if(group.atlasRegion){state.indexMode="objects";state.selectedRegionId=null;state.selectedHierarchyNode="";state.selectedWaterPathId=null;state.selectedId=null;state.selectedCell=null;state.flippedCell=null;renderSidebar();renderDetails();v052FitBounds({minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY},.56,1.45);toast(`已进入${group.name}`,`${group.count}处地点`);persist();return}
     if(group.regionId){v052SelectRegion(group.regionId,true);return}
     if(group.domainObjectId){selectObject(group.domainObjectId);const o=indexedObject(group.domainObjectId);if(o?.area){state.spatialFocusArmed=true;state.spatialFocusAreaIds=[group.domainObjectId];state.perf.spatialKey="";state.perf.spatialContext=null;renderDetails();renderSidebar();scheduleRender();persist();v052FitBounds(v052ObjectBounds(o),.54,1.8)}return}
     if(group.chapter){state.filters.chapter=group.chapter;els.chapterFilter.value=group.chapter;renderSidebar();scheduleRender();persist();v052FitBounds({minX:group.minX,maxX:group.maxX,minY:group.minY,maxY:group.maxY},.42,1.5);toast(`经书总览：${group.chapter}`,`${group.count}个对象`);return}
@@ -1454,11 +1472,13 @@
       button.addEventListener("mousemove", event => moveTooltip(event.clientX, event.clientY));button.addEventListener("mouseleave", hideTooltip);
       state.perf.regionOverviewNodes.set(groupKey, button);return button;
     }
+  function v122WorldLayerKey(region){const raw=`${region?.id||''} ${region?.name||''}`;if(/(?:l1|中央|海内陆核)/i.test(raw))return 'L1';if(/(?:l2|四海|海体|海中)/i.test(raw))return 'L2';if(/(?:l3|海外近海)/i.test(raw))return 'L3';if(/(?:l4|大荒外围)/i.test(raw))return 'L4';return 'L4'}
+  function v122UseWorldRegionAtlas(){return state.overviewMode==='region'&&!state.selectedRegionId&&!state.filters.q&&!state.filters.chapter&&!state.filters.type&&(state.camera.zoom||1)<.50}
   function renderRegionOverviewLayer() {
       const v=visibleWorld(),groups=regionOverviewGroups().filter(group=>group.maxX>=v.left-150&&group.minX<=v.right+150&&group.maxY>=v.bottom-150&&group.minY<=v.top+150),placed=regionOverviewLabelPlacement(groups);
       if(!state.perf.regionOverviewLayerActive){els.tileLayer.replaceChildren();state.perf.regionOverviewNodes=new Map();state.perf.regionOverviewLayerActive=true}
       const visible=new Map(placed.map(group=>[group.key,group]));state.perf.regionOverviewVisibleGroups=visible;
-      for(const group of placed){const button=ensureRegionOverviewNode(group.key),detailDomain=state.overviewMode==="domain"&&!group.macroRegion,height=detailDomain?44:(group.priority>=7?62:52);button.classList.toggle("domain-detail",detailDomain);button.classList.toggle("major",group.priority>=7);button.classList.toggle("selected",!!group.selected);button.dataset.overviewMode=state.overviewMode||"region";const tx=Math.round(group.x-group.width/2),ty=Math.round(group.y-height/2),transform=`translate3d(${tx}px,${ty}px,0)`,width=`${Math.round(group.width)}px`;if(button.style.left!=="0px")button.style.left="0px";if(button.style.top!=="0px")button.style.top="0px";if(button.style.transform!==transform)button.style.transform=transform;if(button.style.width!==width)button.style.width=width;if(button._v053NameNode.textContent!==group.name)button._v053NameNode.textContent=group.name;const categories=regionOverviewCategoryText(group.items||[]),metaText=group.meta||`${group.count}项${categories?` · ${categories}`:""}`;if(button._v053MetaNode.textContent!==metaText)button._v053MetaNode.textContent=metaText;if(button.parentNode!==els.tileLayer)els.tileLayer.appendChild(button)}
+      for(const group of placed){const button=ensureRegionOverviewNode(group.key),detailDomain=state.overviewMode==="domain"&&!group.macroRegion,worldGroup=v122UseWorldRegionAtlas()&&!group.macroRegion,height=worldGroup?28:detailDomain?44:(group.priority>=7?62:52);button.classList.toggle("domain-detail",detailDomain);button.classList.toggle("world-region-group",worldGroup);button.classList.toggle("major",!worldGroup&&group.priority>=7);button.classList.toggle("selected",!!group.selected);button.dataset.overviewMode=state.overviewMode||"region";if(worldGroup){const parent=v052RegionById(group.parentMacroId),layer=V122_MINIMAP_LAYERS[v122WorldLayerKey(parent)]||V122_MINIMAP_LAYERS.L1;button.style.setProperty('--region-group-color',layer.color)}else button.style.removeProperty('--region-group-color');const tx=Math.round(group.x-group.width/2),ty=Math.round(group.y-height/2),transform=`translate3d(${tx}px,${ty}px,0)`,width=`${Math.round(group.width)}px`;if(button.style.left!=="0px")button.style.left="0px";if(button.style.top!=="0px")button.style.top="0px";if(button.style.transform!==transform)button.style.transform=transform;if(button.style.width!==width)button.style.width=width;if(button._v053NameNode.textContent!==group.name)button._v053NameNode.textContent=group.name;const categories=regionOverviewCategoryText(group.items||[]),metaText=worldGroup?"":group.meta||`${group.count}项${categories?` · ${categories}`:""}`;if(button._v053MetaNode.textContent!==metaText)button._v053MetaNode.textContent=metaText;if(button.parentNode!==els.tileLayer)els.tileLayer.appendChild(button)}
       for(const [key,node] of state.perf.regionOverviewNodes){if(visible.has(key))continue;node.remove();state.perf.regionOverviewNodes.delete(key)}
     }
   const V053_REGION_RANGE_PALETTE = [
@@ -1606,9 +1626,10 @@
     // 水系总览直接使用真实河道，不再把分散节点强制圈成闭合区域。
     if(group.waterPaths)return[];
     const geometries=[];
+    const minCells=v122UseWorldRegionAtlas()?1:3;
     for(const cluster of v071ConnectedCellClusters(group.items||[])){
       // 单点、双点及不连续稀疏组只显示标签与位置，不制造闭合范围。
-      if(cluster.length<3)continue;
+      if(cluster.length<minCells)continue;
       for(const points of v071CellBoundaryLoops(cluster))if(points.length>=4)geometries.push({points,bounds:v071GeometryBounds(points),hard:false,source:"connected-cells",cellCount:cluster.length})
     }
     return geometries
@@ -1624,8 +1645,8 @@
     const region=group.regionId?v052RegionById(group.regionId):null;return v053RegionRangeColor(region||{id:group.key,level:2})
   }
   function drawRegionOverviewBackdrops(ctx,v,s){
-    const groups=regionOverviewGroups();ctx.save();
-    groups.forEach((group,index)=>{const geometries=v071GroupGeometry(group),color=v071OverviewColor(group,index),selected=!!group.selected,domain=state.overviewMode==="domain";for(const geometry of geometries){if(!geometry||geometry.bounds.maxX<v.left||geometry.bounds.minX>v.right||geometry.bounds.maxY<v.bottom||geometry.bounds.minY>v.top)continue;if(!v053TraceRegionRange(ctx,geometry))continue;ctx.fillStyle=v053RegionRangeRgba(color,selected?.16:domain?.085:.055);ctx.strokeStyle=v053RegionRangeRgba(color,selected?.92:domain?.72:.52);ctx.lineWidth=selected?2.8:domain?1.8:1.3;ctx.setLineDash(geometry.hard?[]:domain?[8,5]:[7,7]);ctx.fill();ctx.stroke();ctx.setLineDash([])}});
+    const groups=regionOverviewGroups(),worldAtlas=v122UseWorldRegionAtlas();ctx.save();
+    groups.forEach((group,index)=>{const geometries=v071GroupGeometry(group),color=v071OverviewColor(group,index),selected=!!group.selected,domain=state.overviewMode==="domain";for(const geometry of geometries){if(!geometry||geometry.bounds.maxX<v.left||geometry.bounds.minX>v.right||geometry.bounds.maxY<v.bottom||geometry.bounds.minY>v.top)continue;if(!v053TraceRegionRange(ctx,geometry))continue;ctx.fillStyle=v053RegionRangeRgba(color,worldAtlas?.075:selected?.16:domain?.085:.055);ctx.strokeStyle=v053RegionRangeRgba(color,worldAtlas?.54:selected?.92:domain?.72:.52);ctx.lineWidth=worldAtlas?1.5:selected?2.8:domain?1.8:1.3;ctx.setLineDash(geometry.hard?[]:worldAtlas?[6,5]:domain?[8,5]:[7,7]);ctx.fill();ctx.stroke();ctx.setLineDash([])}});
     ctx.restore()
   }
   const V070_OVERVIEW_ART={
@@ -1988,6 +2009,7 @@
   function visibleWaterPaths(v){
     const hydrology=state.viewPreset==="hydrology",zoom=state.camera.zoom;
     return (state.waterPaths||[]).filter(path=>waterPathInView(path,v)).filter(path=>{
+      if(path.legacyOverlayHidden===true&&!hydrology&&path.id!==state.selectedWaterPathId&&path.id!==state.hoverWaterPathId)return false;
       const objects=(path.objectIds||[]).map(indexedObject).filter(Boolean),touchesNonMetric=objects.some(object=>hasOfficialBoardPlacement(object)&&object.boardPlacement.metric===false);
       if(touchesNonMetric&&path.boardAuthoritative!==true)return false;
       return hydrology||zoom>=.38||path.isMain||path.points?.length>=4
@@ -5455,7 +5477,7 @@
   }
   function v110MinimapModeDigest(){
     const zoom=state.camera.zoom||1,zoomBand=zoom<.14?"macro":zoom<.52?"detail":"evidence";
-    return [state.overviewMode||"region",state.mapSpacingMode||"compact",zoomBand,state.regionOverviewMode?1:0,state.filters?.q||"",state.filters?.chapter||"",state.filters?.type||"",state.selectedRegionId||"",state.selectedId||"",state.selectedWaterPathId||"",state.layers?.environment?1:0,state.viewPreset||"all"].join("|")
+    return [state.overviewMode||"region",state.mapSpacingMode||"compact",zoomBand,state.regionOverviewMode?1:0,state.filters?.q||"",state.filters?.chapter||"",state.filters?.type||"",state.selectedRegionId||"",state.selectedId||"",state.selectedWaterPathId||"",state.layers?.environment?1:0,state.viewPreset||"all",document.getElementById("researchMinimap")?.classList.contains("is-expanded")?1:0].join("|")
   }
   function v110MinimapBounds(){
     if(v272BoardLayoutAvailable())return v110V272WorldBounds();
@@ -5477,11 +5499,7 @@
     bg.addColorStop(.58,'#efe8d8');
     bg.addColorStop(1,'#e8e0cf');
     ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
-    ctx.save();ctx.globalAlpha=.16;ctx.strokeStyle='rgba(116,102,80,.18)';ctx.lineWidth=1;
-    const grid=Math.max(26,Math.min(44,Math.round(w/6)));
-    for(let x=grid+.5;x<w;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
-    for(let y=grid+.5;y<h;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
-    ctx.restore();
+    if(p.expanded){ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='rgba(116,102,80,.18)';ctx.lineWidth=1;const grid=Math.max(28,Math.min(48,Math.round(w/6)));for(let x=grid+.5;x<w;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=grid+.5;y<h;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}ctx.restore()}
     if(v272BoardLayoutAvailable()&&(BOARD_LAYOUT.backgroundRuns||[]).length){
       for(const run of BOARD_LAYOUT.backgroundRuns||[]){
         const west=Number(run.startGx)*CELL_LI-CELL_LI/2,east=Number(run.endGx)*CELL_LI+CELL_LI/2,south=Number(run.gy)*CELL_LI-CELL_LI/2,north=Number(run.gy)*CELL_LI+CELL_LI/2;
@@ -5512,10 +5530,10 @@
   function v122MinimapObjects(){return tileRenderObjects(tileVisibleObjects()).filter(o=>{const a=objectAnchor(o);return Number.isFinite(a.x)&&Number.isFinite(a.y)})}
   function v122DrawMinimapLayerClouds(ctx,p,objects){
     const groups=new Map();objects.forEach(o=>{const key=v122MinimapWorldLayer(o),a=objectAnchor(o);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(a)});ctx.save();
-    for(const [key,points] of groups){if(!points.length)continue;const style=V122_MINIMAP_LAYERS[key]||V122_MINIMAP_LAYERS.L1,projected=points.map(a=>p.pt(a.x,a.y)),xs=projected.map(q=>q.x).sort((a,b)=>a-b),ys=projected.map(q=>q.y).sort((a,b)=>a-b),lo=Math.floor((points.length-1)*.04),hi=Math.ceil((points.length-1)*.96),minX=xs[lo],maxX=xs[hi],minY=ys[lo],maxY=ys[hi],cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=Math.max(15,(maxX-minX)/2+8),ry=Math.max(11,(maxY-minY)/2+7);ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.fillStyle=v053RegionRangeRgba(style.color,.055);ctx.fill();ctx.strokeStyle=v053RegionRangeRgba(style.color,.24);ctx.lineWidth=.8;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([])}ctx.restore()
+    for(const [key,points] of groups){if(!points.length)continue;const style=V122_MINIMAP_LAYERS[key]||V122_MINIMAP_LAYERS.L1,projected=points.map(a=>p.pt(a.x,a.y)),xs=projected.map(q=>q.x).sort((a,b)=>a-b),ys=projected.map(q=>q.y).sort((a,b)=>a-b),lo=Math.floor((points.length-1)*.04),hi=Math.ceil((points.length-1)*.96),minX=xs[lo],maxX=xs[hi],minY=ys[lo],maxY=ys[hi],cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=Math.max(15,(maxX-minX)/2+8),ry=Math.max(11,(maxY-minY)/2+7);ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.fillStyle=v053RegionRangeRgba(style.color,p.expanded?.065:.035);ctx.fill();if(p.expanded){ctx.strokeStyle=v053RegionRangeRgba(style.color,.20);ctx.lineWidth=.7;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([])}}ctx.restore()
   }
-  function v122DrawMinimapWaterways(ctx,p){const paths=(state.waterPaths||[]).filter(path=>Array.isArray(path.points)&&path.points.length>1);ctx.save();ctx.lineCap='round';ctx.lineJoin='round';for(const path of paths){ctx.beginPath();path.points.forEach((point,index)=>{const q=p.pt(Number(point[0])||0,Number(point[1])||0);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=path.id===state.selectedWaterPathId?'rgba(26,109,144,.96)':path.isMain?'rgba(49,133,164,.70)':'rgba(70,150,178,.42)';ctx.lineWidth=path.id===state.selectedWaterPathId?2.8:path.isMain?1.7:1;ctx.stroke()}ctx.restore()}
-  function v122DrawMinimapObjects(ctx,p,objects){const points=[];ctx.save();for(const o of objects){const a=objectAnchor(o),q=p.pt(a.x,a.y),selected=o.id===state.selectedId,r=selected?4.2:isHydrologyObject(o)?1.8:1.45;ctx.beginPath();ctx.arc(q.x,q.y,r,0,Math.PI*2);ctx.fillStyle=v122MinimapObjectColor(o);ctx.globalAlpha=selected?1:.78;ctx.fill();if(selected){ctx.globalAlpha=1;ctx.strokeStyle='#fffdf5';ctx.lineWidth=2.2;ctx.stroke();ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.strokeStyle='#ad4d3d';ctx.lineWidth=1.5;ctx.stroke()}points.push({o,x:q.x,y:q.y})}ctx.globalAlpha=1;ctx.restore();return points}
+  function v122DrawMinimapWaterways(ctx,p){const paths=(state.waterPaths||[]).filter(path=>Array.isArray(path.points)&&path.points.length>1&&(p.expanded||path.isMain||path.id===state.selectedWaterPathId));ctx.save();ctx.lineCap='round';ctx.lineJoin='round';for(const path of paths){ctx.beginPath();path.points.forEach((point,index)=>{const q=p.pt(Number(point[0])||0,Number(point[1])||0);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=path.id===state.selectedWaterPathId?'rgba(31,117,151,.96)':path.isMain?'rgba(49,133,164,.72)':'rgba(70,150,178,.34)';ctx.lineWidth=path.id===state.selectedWaterPathId?2.5:path.isMain?1.35:.8;ctx.stroke()}ctx.restore()}
+  function v122DrawMinimapObjects(ctx,p,objects){const points=[],clusters=new Map(),bin=p.expanded?4.5:5.5;for(const o of objects){const a=objectAnchor(o),q=p.pt(a.x,a.y),key=`${Math.round(q.x/bin)},${Math.round(q.y/bin)}`;if(!clusters.has(key))clusters.set(key,{x:0,y:0,n:0,water:0,terrain:0,objects:[]});const cluster=clusters.get(key);cluster.x+=q.x;cluster.y+=q.y;cluster.n++;cluster.water+=isHydrologyObject(o)?1:0;cluster.terrain+=objectCategory(o)==='terrain'?1:0;cluster.objects.push(o);points.push({o,x:q.x,y:q.y})}ctx.save();for(const cluster of clusters.values()){const x=cluster.x/cluster.n,y=cluster.y/cluster.n,r=Math.min(p.expanded?2.25:1.8,(p.expanded?1.15:.95)+Math.log2(cluster.n+1)*.32),water=cluster.water>cluster.n*.45;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=water?'#4d96ae':cluster.terrain>cluster.n*.45?'#667b62':'#5f746c';ctx.globalAlpha=p.expanded?.72:.62;ctx.fill()}const selected=objects.find(o=>o.id===state.selectedId);if(selected){const a=objectAnchor(selected),q=p.pt(a.x,a.y);ctx.globalAlpha=1;ctx.beginPath();ctx.arc(q.x,q.y,3.5,0,Math.PI*2);ctx.fillStyle=v122MinimapObjectColor(selected);ctx.fill();ctx.strokeStyle='#fffdf5';ctx.lineWidth=2;ctx.stroke();ctx.beginPath();ctx.arc(q.x,q.y,6.2,0,Math.PI*2);ctx.strokeStyle='#b7792f';ctx.lineWidth=1.4;ctx.stroke()}ctx.globalAlpha=1;ctx.restore();return points}
   function v110DrawMinimapWorldLabels(ctx,p){
     const objects=v122MinimapObjects(),counts={L1:0,L2:0,L3:0,L4:0};objects.forEach(o=>counts[v122MinimapWorldLayer(o)]++);ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 8px sans-serif';const keys=['L1','L2','L3','L4'],gap=4,margin=7,width=(p.w-margin*2-gap*3)/4,height=16,y=p.h-47;
     keys.forEach((key,index)=>{const style=V122_MINIMAP_LAYERS[key],x=margin+index*(width+gap),text=`${key} ${counts[key]}`;waterRoundRect(ctx,x,y,width,height,7);ctx.fillStyle='rgba(253,250,241,.90)';ctx.fill();ctx.strokeStyle=v053RegionRangeRgba(style.color,.48);ctx.lineWidth=.8;ctx.stroke();ctx.fillStyle=style.color;ctx.fillText(text,x+width/2,y+height/2+.5)});ctx.restore()
@@ -5555,28 +5573,28 @@
     ctx.fillStyle='#2f6058';ctx.fillText(title,x+7,17);ctx.restore();
   }
   function renderV029Minimap(force=false){
-    const wrap=document.getElementById("researchMinimap"),canvas=document.getElementById("researchMinimapCanvas");if(!wrap||!canvas||!state.objects.length)return;const dpr=Math.min(devicePixelRatio||1,2),w=wrap.clientWidth,h=wrap.clientHeight,sizeKey=`${w}x${h}@${dpr}`;if(!w||!h)return;
+    const wrap=document.getElementById("researchMinimap"),canvas=document.getElementById("researchMinimapCanvas");if(!wrap||!canvas||!state.objects.length)return;const expanded=wrap.classList.contains("is-expanded"),dpr=Math.min(devicePixelRatio||1,2),w=wrap.clientWidth,h=wrap.clientHeight,sizeKey=`${w}x${h}@${dpr}`;if(!w||!h)return;
     const modeDigest=v110MinimapModeDigest();
     const redraw=force||state.perf.minimapRevision!==state.objectRevision||state.perf.minimapSize!==sizeKey||state.perf.minimapModeDigest!==modeDigest;
     if(redraw){
-      const projector=v110CreateMinimapProjector(w,h,12),{pt,minX,maxX,minY,maxY,sc,ox,oy}=projector;
+      const projector=v110CreateMinimapProjector(w,h,expanded?12:10),{pt,minX,maxX,minY,maxY,sc,ox,oy}=projector;projector.expanded=expanded;
       canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
       v110DrawMinimapBackground(ctx,projector);
       const minimapObjects=v122MinimapObjects();
       v122DrawMinimapLayerClouds(ctx,projector,minimapObjects);
       v122DrawMinimapWaterways(ctx,projector);
-      const groups=v110DrawMinimapOverviewGroups(ctx,projector);
-      if(state.overviewMode!=='hydrology'){
+      const groups=expanded&&state.overviewMode!=='region'?v110DrawMinimapOverviewGroups(ctx,projector):[];
+      if(expanded&&state.overviewMode!=='hydrology'){
         const idx=ensureObjectIndexes();
         for(const line of (idx.lines||[]).slice(0,120)){
           const points=Array.isArray(line.path)?line.path:[];if(points.length<2)continue;ctx.beginPath();points.forEach((point,index)=>{const q=pt(point[0],point[1]);index?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=isHydrologyObject(line)?'rgba(59,139,163,.20)':'rgba(112,96,78,.14)';ctx.lineWidth=.9;ctx.stroke();
         }
       }
       const minimapPoints=v122DrawMinimapObjects(ctx,projector,minimapObjects);wrap._minimapPoints=minimapPoints;
-      if(state.overviewMode!=='chapter')v110DrawMinimapWorldLabels(ctx,projector);
-      v122DrawMinimapCategoryLegend(ctx,projector);
-      const z=pt(0,0);ctx.fillStyle="#ad4d3d";ctx.fillRect(z.x-2.5,z.y-2.5,5,5);
-      v110DrawMinimapBanner(ctx,w,h,groups);
+      if(expanded&&state.overviewMode!=='chapter')v110DrawMinimapWorldLabels(ctx,projector);
+      if(expanded)v122DrawMinimapCategoryLegend(ctx,projector);
+      const z=pt(0,0);ctx.save();ctx.fillStyle="#b7792f";ctx.beginPath();ctx.arc(z.x,z.y,expanded?3:2.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(255,253,245,.9)';ctx.lineWidth=1.3;ctx.stroke();ctx.restore();
+      if(expanded)v110DrawMinimapBanner(ctx,w,h,groups);
       wrap.dataset.bounds=JSON.stringify({minX,maxX,minY,maxY,displayMinX:projector.displayMinX,displayMaxX:projector.displayMaxX,displayMinY:projector.displayMinY,displayMaxY:projector.displayMaxY,compact:projector.compact,sc,ox,oy,w,h});state.perf.minimapRevision=state.objectRevision;state.perf.minimapSize=sizeKey;state.perf.minimapModeDigest=modeDigest
     }
     updateV029MinimapViewport()
@@ -5647,11 +5665,12 @@
   function toggleMapSpacingMode(){state.mapSpacingMode=state.mapSpacingMode==="source"?"compact":"source";state.perf.minimapRevision=-1;state.perf.minimapModeDigest="";els.tileLayer.replaceChildren();updateMapSpacingModeUi();fitAll();toast(state.mapSpacingMode==="compact"?"已切换紧凑浏览":"已恢复原典比例",state.mapSpacingMode==="compact"?"只压缩无对象的超长空档；坐标、距离与母表数据保持不变。":"地块间距按V282正式坐标显示。")}
   function navigateFromMinimap(clientX,clientY){const p=minimapWorldPoint(clientX,clientY),minimap=document.getElementById("researchMinimap");if(!p)return;if(minimap)minimap.dataset.lastJump=`${p.x.toFixed(1)},${p.y.toFixed(1)}`;hideTooltip();state.flippedCell=null;animateCameraTo(p.x,p.y,state.camera.zoom,420,()=>persist())}
   function setupMinimapNavigation(){
-    const minimap=document.getElementById("researchMinimap"),overview=document.getElementById("minimapOverviewBtn"),info=document.getElementById("researchMinimapInfo");if(!minimap)return;let dragging=false,pointerId=null;
-    const hover=e=>{if(!info)return;const r=minimap.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,points=minimap._minimapPoints||[];let nearest=null,best=Infinity;for(const point of points){const d=Math.hypot(point.x-px,point.y-py);if(d<best){best=d;nearest=point}}const world=minimapWorldPoint(e.clientX,e.clientY);if(nearest&&best<=9){const o=nearest.o,layer=v122MinimapWorldLayer(o),type=o.type||objectCategory(o)||'\u5730\u56fe\u5bf9\u8c61';info.innerHTML=`<strong>${esc(o.name)}</strong><em>${layer} \u00b7 ${esc(type)} \u00b7 ${coordText(Math.round(objectAnchor(o).x),Math.round(objectAnchor(o).y))}</em>`;minimap.dataset.hoverObjectId=o.id}else{info.textContent=world?`${coordText(Math.round(world.x),Math.round(world.y))} \u00b7 \u70b9\u51fb\u8df3\u8f6c`:'\u60ac\u505c\u67e5\u770b\u5bf9\u8c61 \u00b7 \u70b9\u51fb\u8df3\u8f6c';delete minimap.dataset.hoverObjectId}};
-    const stop=e=>{e.stopPropagation()};minimap.addEventListener("pointerdown",e=>{if(e.target.closest("#minimapOverviewBtn"))return;stop(e);e.preventDefault();dragging=true;pointerId=e.pointerId;minimap.classList.add("is-navigating");try{minimap.setPointerCapture(e.pointerId)}catch{}navigateFromMinimap(e.clientX,e.clientY)},true);
+    const minimap=document.getElementById("researchMinimap"),overview=document.getElementById("minimapOverviewBtn"),expand=document.getElementById("minimapExpandBtn"),info=document.getElementById("researchMinimapInfo");if(!minimap)return;let dragging=false,pointerId=null;
+    const hover=e=>{if(!info)return;const r=minimap.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,points=minimap._minimapPoints||[];let nearest=null,best=Infinity;for(const point of points){const d=Math.hypot(point.x-px,point.y-py);if(d<best){best=d;nearest=point}}const world=minimapWorldPoint(e.clientX,e.clientY);if(nearest&&best<=(minimap.classList.contains('is-expanded')?9:7)){const o=nearest.o,layer=v122MinimapWorldLayer(o),type=o.type||objectCategory(o)||'\u5730\u56fe\u5bf9\u8c61';info.innerHTML=`<strong>${esc(o.name)}</strong><em>${layer} \u00b7 ${esc(type)}</em>`;minimap.dataset.hoverObjectId=o.id;minimap.classList.add('has-hover')}else{info.textContent=world?`${coordText(Math.round(world.x),Math.round(world.y))} \u00b7 \u70b9\u51fb\u8df3\u8f6c`:'\u60ac\u505c\u67e5\u770b\u5bf9\u8c61';delete minimap.dataset.hoverObjectId;minimap.classList.toggle('has-hover',minimap.classList.contains('is-expanded'))}};
+    const stop=e=>{e.stopPropagation()};minimap.addEventListener("pointerdown",e=>{if(e.target.closest("#minimapOverviewBtn,#minimapExpandBtn"))return;stop(e);e.preventDefault();dragging=true;pointerId=e.pointerId;minimap.classList.add("is-navigating");try{minimap.setPointerCapture(e.pointerId)}catch{}navigateFromMinimap(e.clientX,e.clientY)},true);
     minimap.addEventListener("pointermove",e=>{hover(e);if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();navigateFromMinimap(e.clientX,e.clientY)},true);
-    const end=e=>{if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();dragging=false;pointerId=null;minimap.classList.remove("is-navigating");try{minimap.releasePointerCapture(e.pointerId)}catch{}};minimap.addEventListener("pointerup",end,true);minimap.addEventListener("pointercancel",end,true);minimap.addEventListener("click",e=>{if(e.target.closest("#minimapOverviewBtn"))return;e.stopPropagation();e.preventDefault()},true);minimap.addEventListener("dblclick",e=>{e.stopPropagation();e.preventDefault();fitAll()},true);
+    expand?.addEventListener("pointerdown",e=>e.stopPropagation(),true);expand?.addEventListener("click",e=>{e.stopPropagation();e.preventDefault();const expanded=!minimap.classList.contains("is-expanded");minimap.classList.toggle("is-expanded",expanded);minimap.classList.toggle("has-hover",expanded);expand.textContent=expanded?"收起":"展开";expand.title=expanded?"收起地图总览":"展开地图总览";expand.setAttribute("aria-expanded",String(expanded));state.perf.minimapSize="";state.perf.minimapModeDigest="";requestAnimationFrame(()=>renderV029Minimap(true))});minimap.addEventListener("pointerleave",()=>minimap.classList.toggle("has-hover",minimap.classList.contains("is-expanded")));
+    const end=e=>{if(!dragging||e.pointerId!==pointerId)return;stop(e);e.preventDefault();dragging=false;pointerId=null;minimap.classList.remove("is-navigating");try{minimap.releasePointerCapture(e.pointerId)}catch{}};minimap.addEventListener("pointerup",end,true);minimap.addEventListener("pointercancel",end,true);minimap.addEventListener("click",e=>{if(e.target.closest("#minimapOverviewBtn,#minimapExpandBtn"))return;e.stopPropagation();e.preventDefault()},true);minimap.addEventListener("dblclick",e=>{e.stopPropagation();e.preventDefault();fitAll()},true);
     minimap.addEventListener("pointerleave",()=>{if(info)info.textContent='\u60ac\u505c\u67e5\u770b\u5bf9\u8c61 \u00b7 \u70b9\u51fb\u8df3\u8f6c';delete minimap.dataset.hoverObjectId});overview?.addEventListener("pointerdown",e=>e.stopPropagation(),true);overview?.addEventListener("click",e=>{e.stopPropagation();e.preventDefault();fitAll();toast("已打开地图总览","已缩放到全部已录入对象范围")})
   }
   function setupV029Features(){const presetBtn=document.getElementById("viewPresetBtn"),presetMenu=document.getElementById("viewPresetMenu"),relationBtn=document.getElementById("relationModeBtn"),compareBtn=document.getElementById("compareModeBtn"),measureBtn=document.getElementById("measureModeBtn");presetBtn?.addEventListener("click",e=>{e.stopPropagation();presetMenu.classList.toggle("hidden")});presetMenu?.querySelectorAll("[data-view-preset]").forEach(b=>b.addEventListener("click",()=>{state.viewPreset=b.dataset.viewPreset;presetMenu.classList.add("hidden");if(state.viewPreset==="geography"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}else if(state.viewPreset==="hydrology"){state.layers.rivers=true;state.layers.terrain=true;state.layers.areas=true}else if(state.viewPreset==="all"){state.layers.terrain=true;state.layers.rivers=true;state.layers.areas=true}els.layerTerrain.checked=state.layers.terrain;els.layerRivers.checked=state.layers.rivers;els.layerAreas.checked=state.layers.areas;state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`关系线已切换为${V029_PRESETS[state.viewPreset]||"全部"}`,v044RelationPresetDescription())}));presetMenu?.querySelectorAll("[data-relation-evidence]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();state.relationEvidenceFilter=b.dataset.relationEvidence||"all";state.relationHoverId=null;scheduleRender();persist();if(state.relationMode)toast(`证据筛选：${V045_EVIDENCE_LABELS[state.relationEvidenceFilter]}`,v044RelationPresetDescription())}));document.addEventListener("click",e=>{if(!e.target.closest(".research-tool-wrap")&&!e.target.closest("#viewPresetMenu"))presetMenu?.classList.add("hidden")});relationBtn?.addEventListener("click",()=>{state.relationMode=!state.relationMode;if(state.relationMode&&!state.selectedId)toast("请先选择对象","关系高亮以当前选中对象为中心。","error");scheduleRender();scheduleBrushTraceDraw()});compareBtn?.addEventListener("click",()=>{if(state.compareMode&&state.compareKeys.size>=2)openV029Compare();else{state.compareMode=!state.compareMode;state.measureMode=false;setBrushMode(false);updateV029ToolUI();scheduleRender();toast(state.compareMode?"对比选择已开启":"对比选择已退出",state.compareMode?"点击2—4个地块；右键可移除。":"")}});measureBtn?.addEventListener("click",()=>{state.measureMode=!state.measureMode;state.compareMode=false;setBrushMode(false);state.measure={active:false,start:null,current:null,final:null};updateV029ToolUI();scheduleRender()});document.getElementById("isolatedObjectsBtn")?.addEventListener("click",openV029Isolated);document.getElementById("closeIsolatedWorkspace")?.addEventListener("click",()=>document.getElementById("isolatedWorkspace").classList.add("hidden"));document.getElementById("closeCompareWorkspace")?.addEventListener("click",()=>document.getElementById("compareWorkspace").classList.add("hidden"));document.getElementById("openCompareBtn")?.addEventListener("click",openV029Compare);document.getElementById("clearCompareBtn")?.addEventListener("click",()=>{state.compareKeys.clear();updateV029ToolUI();scheduleRender();persist()});document.getElementById("exitCompareBtn")?.addEventListener("click",()=>{state.compareMode=false;updateV029ToolUI();scheduleRender()});document.getElementById("clearMeasureBtn")?.addEventListener("click",()=>{state.measure={active:false,start:null,current:null,final:null};scheduleRender();updateV029ToolUI()});document.getElementById("compareWorkspace")?.addEventListener("click",e=>{if(e.target.id==="compareWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("isolatedWorkspace")?.addEventListener("click",e=>{if(e.target.id==="isolatedWorkspace")e.currentTarget.classList.add("hidden")});document.getElementById("mapBreadcrumb")?.addEventListener("click",e=>{const b=e.target.closest("[data-breadcrumb]");if(!b)return;if(b.dataset.breadcrumb==="world")v052SelectWorld(true);else if(b.dataset.breadcrumb==="region"&&b.dataset.regionId)v052SelectRegion(b.dataset.regionId,true);else if(b.dataset.breadcrumb==="tile"&&state.selectedCell)jumpToCell(state.selectedCell);else if(b.dataset.breadcrumb==="object"&&state.selectedId)jumpToObject(state.selectedId,true,true)});setupMinimapNavigation();setupV044RelationNavigation();setupV044LocationGuide();

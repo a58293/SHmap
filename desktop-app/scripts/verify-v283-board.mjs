@@ -1,0 +1,30 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+
+const baseline=JSON.parse(fs.readFileSync("config/v283-baseline.json","utf8"));
+const version=JSON.parse(fs.readFileSync("VERSION.json","utf8"));
+const app=fs.readFileSync("public/app/app.js","utf8");
+const rust=fs.readFileSync("src-tauri/src/lib.rs","utf8");
+const builder=fs.readFileSync("scripts/build-v283-private-data.py","utf8");
+
+assert.equal(baseline.sourceWorkbookVersion,"V283");
+assert.equal(baseline.dataVersion,"v283-r0001");
+assert.equal(baseline.formalObjectCount,1378);
+assert.equal(baseline.boardPlacementCount,1378);
+assert.equal(baseline.boardOccupiedCellCount,875);
+assert.equal(baseline.waterArrowCellCount,48);
+assert.deepEqual(baseline.worldLayers,{L1:1034,L2:35,L3:53,L4:256});
+assert.deepEqual(baseline.coordinateStatus,{"关系锁定":115,"红色推定":1263});
+assert.equal(version.data_version,"v283-r0001");
+assert.equal(version.object_count,1378);
+assert.equal(version.board_placement_count,1378);
+assert.equal(version.board_occupied_cells,875);
+assert.equal(version.water_arrow_cells,48);
+assert.equal(version.board_layout_schema,"v283-board-layout-1");
+assert.ok(app.includes('^v(?:272|282|283)-board-layout'),"前端没有接入V283棋盘布局");
+assert.ok(app.includes("path.legacyOverlayHidden===true"),"旧82段水系仍可能覆盖V283清洁显示层");
+assert.ok(rust.includes("authoritative_workbook"),"SQLite迁移未声明V28x权威母表策略");
+assert.ok(builder.includes("len(water_flow_annotations) != 48"),"V283构建器没有锁定48个水系箭头格");
+assert.ok(builder.includes('"worldLabels": []'),"V283仍在生成旧工程世界标签");
+assert.ok(builder.includes('"legacyOverlayHidden"] = True'),"旧水系没有转为非默认历史拓扑");
+console.log("PASS V283 baseline: 1378 objects / 875 cells / 48 named water-arrow cells / no engineering residue");

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "shmap-v283-baseline-1",
+  "sourceWorkbook": "山海经原典地图_都广之野核心区_v283_显示层清仓与坐标全量复核校正版(1).xlsx",
+  "sourceWorkbookVersion": "V283",
+  "dataVersion": "v283-r0001",
+  "formalObjectCount": 1378,
+  "rowRefStart": "R9",
+  "rowRefEnd": "R1386",
+  "boardSheet": "坐标棋盘图",
+  "boardOrigin": "都广之野 (0,0)",
+  "boardCoordinateBounds": {"minX": -160, "maxX": 140, "minY": -136, "maxY": 140},
+  "boardDimensions": {"columns": 301, "rows": 277},
+  "boardOccupiedCellCount": 875,
+  "boardPlacementCount": 1378,
+  "mainGridLi": 100,
+  "legacyWaterPathCount": 82,
+  "waterArrowCellCount": 48,
+  "worldLayers": {"L1": 1034, "L2": 35, "L3": 53, "L4": 256},
+  "coordinateStatus": {"关系锁定": 115, "红色推定": 1263},
+  "boardLayoutSchema": "v283-board-layout-1",
+  "rules": [
+    "V283电子表格是正式名称、经篇、世界层级、坐标状态、表2格位和显示文本的权威来源",
+    "V283不得移动V282坐标，1378项全部保持唯一表2地址",
+    "875个对象格只显示原典正式名与必要方向／水流关系",
+    "只保留48个非对象河名＋箭头连续水系格",
+    "四个错误内陆海标签以及◎、◇、✦、•、接口、走廊、纯箭头全部清零",
+    "长沙零陵界属于《海内经》原文对象，必须保留"
+  ]
+}

@@ -20,7 +20,8 @@ const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
 const DESKTOP_EDITION = "v012";
-const DESKTOP_VERSION = "1.2.2";
+const DESKTOP_VERSION = "1.2.5";
+const CLOSE_SAVE_TIMEOUT_MS = 3000;
 
 function seedSnapshot(){
   const initial=window.SHJ_INITIAL_DATA||{metadata:{},objects:[]};
@@ -52,30 +53,48 @@ async function pumpSave(){
   saveBusy=true;const payload=savePending;savePending=null;
   try{await invoke("save_workspace",{payload})}catch(err){console.error(err);toast(`桌面数据库保存失败：${err}`,true)}finally{saveBusy=false;if(savePending)pumpSave()}
 }
-async function flushWorkspace(){
+async function flushWorkspace({timeoutMs=0}={}){
   clearTimeout(saveTimer);saveTimer=null;
-  if(savePending&&!saveBusy)await pumpSave();
-  while(saveBusy||savePending){await new Promise(resolve=>setTimeout(resolve,35));if(savePending&&!saveBusy)await pumpSave()}
+  if(!isTauri)return true;
+  if(!nativeStorageReady)return false;
+  const deadline=timeoutMs>0?Date.now()+timeoutMs:Infinity;
+  if(savePending&&!saveBusy){
+    if(timeoutMs>0)void pumpSave();
+    else await pumpSave();
+  }
+  while(saveBusy||savePending){
+    if(Date.now()>=deadline)return false;
+    await new Promise(resolve=>setTimeout(resolve,35));
+    if(savePending&&!saveBusy){
+      if(timeoutMs>0)void pumpSave();
+      else await pumpSave();
+    }
+  }
+  return true;
 }
 function queueSave(payload){
   savePending=payload;clearTimeout(saveTimer);saveTimer=setTimeout(pumpSave,80)
 }
 
 let nativeCloseApproved=false;
+let nativeCloseInProgress=false;
 async function setupNativeCloseSaveGuard(){
   if(!isTauri)return;
   const appWindow=getCurrentWindow();
   await appWindow.onCloseRequested(async event=>{
     if(nativeCloseApproved)return;
     event.preventDefault();
+    if(nativeCloseInProgress)return;
+    nativeCloseInProgress=true;
     try{
       window.__SHJ_FLUSH_PERSIST__?.();
-      await flushWorkspace();
+      const saved=await flushWorkspace({timeoutMs:CLOSE_SAVE_TIMEOUT_MS});
+      if(!saved)console.warn("Close save timed out or native storage was unavailable; closing with local cache preserved.");
     }catch(error){
       console.error("Final workspace save failed",error);
     }finally{
       nativeCloseApproved=true;
-      await appWindow.destroy();
+      try{await invoke("exit_application")}catch(error){nativeCloseApproved=false;nativeCloseInProgress=false;console.error("Native application exit failed",error)}
     }
   });
 }
@@ -130,7 +149,7 @@ function authGateTemplate(){
   return `<div class="desktop-auth-backdrop"></div>
     <main class="desktop-auth-card" role="dialog" aria-modal="true" aria-labelledby="desktopAuthTitle">
       <div class="desktop-auth-brand"><span>山海</span><div><small>SHMAP SECURE ACCESS</small><strong>山海经原典地图</strong></div></div>
-      <section class="desktop-auth-copy"><span class="eyebrow">PRIVATE MAP ACCESS</span><h1 id="desktopAuthTitle">登录后查看正式地图</h1><p>使用你自己的 GitHub 账号登录。只有获得 <b>${AUTH_REPOSITORY}</b> 私有仓库权限的成员才能进入。</p></section>
+      <section class="desktop-auth-copy"><span class="eyebrow">PRIVATE MAP ACCESS</span><h1 id="desktopAuthTitle">登录后查看正式地图</h1><p>使用你自己的 GitHub 账号登录，只有被凯淞大王允许才可以进入！</p></section>
       <div class="desktop-auth-status" id="desktopAuthStatus">正在检查本机登录状态……</div>
       <section class="desktop-auth-code hidden" id="desktopAuthCodePanel">
         <p>浏览器打开后，输入以下一次性验证码：</p>

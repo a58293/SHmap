@@ -1,0 +1,32 @@
+{
+  "manifest": {
+    "schemaVersion": "shmap-private-data-manifest-v1",
+    "dataVersion": "v283-r0001",
+    "dataPath": "production/map-data.json",
+    "sha256": "950aa9909d835d87533692c279f4f6dccabb33b68bf228251c547b0b23ba47a1",
+    "objectCount": 1378,
+    "paragraphEntryCount": 17838,
+    "waterPathCount": 82,
+    "generatedAt": "2026-08-12T10:43:03.966914Z",
+    "sourceFile": "山海经原典地图_都广之野核心区_v283_显示层清仓与坐标全量复核校正版(1).xlsx",
+    "minimumDesktopVersion": "1.2.3",
+    "boardLayoutSchema": "v283-board-layout-1",
+    "boardPlacementCount": 1378,
+    "boardOccupiedCellCount": 875,
+    "waterArrowCellCount": 48,
+    "worldLayerCounts": {
+      "region-layer-l1-central": 1034,
+      "region-layer-l2-seas": 35,
+      "region-layer-l3-overseas": 53,
+      "region-layer-l4-wilderness": 256
+    },
+    "coordinateStatusCounts": {
+      "关系锁定": 115,
+      "红色推定": 1263
+    },
+    "migrationNote": "V283电子表格为正式地图权威来源；保持V282坐标不动，迁移仅保留本地博物志与图片，显示层只采用48个权威水系箭头格。"
+  },
+  "stableOldIdsReused": 1378,
+  "newIds": 0,
+  "maxStack": 12
+}
