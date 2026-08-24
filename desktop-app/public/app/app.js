@@ -316,7 +316,7 @@
     githubPendingView: "new",
     githubPendingCache: {},
     githubCurrent: null,
-    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v283-r0001",
+    dataVersion: INITIAL.metadata?.dataVersion || saved?.dataVersion || "v284-r0001",
     camera: saved?.camera || {x:0,y:0,zoom:.92},
     mapSpacingMode:saved?.mapSpacingMode==="source"?"source":"compact",
     selectedId: saved?.selectedId || (INITIAL.objects?.[0]?.id || null),
@@ -929,7 +929,7 @@
   }
   function hexToRgba(hex,alpha){const h=String(hex||"#777").replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${alpha})`}
 
-  function v272BoardLayoutAvailable(){return /^v(?:272|282|283)-board-layout/.test(String(BOARD_LAYOUT?.schemaVersion||""))&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
+  function v272BoardLayoutAvailable(){return /^v(?:272|282|283|284)-board-layout/.test(String(BOARD_LAYOUT?.schemaVersion||""))&&Array.isArray(BOARD_LAYOUT?.backgroundRuns)}
   function v272BoardCellAnnotations(key){return V272_BOARD_ANNOTATIONS_BY_CELL.get(String(key))||[]}
   function v272BoardPalette(kind){return kind==="sea"?{fill:"rgba(210,232,243,.82)",line:"rgba(80,135,157,.16)",text:"#3d7184"}:kind==="outer"?{fill:"rgba(241,232,210,.72)",line:"rgba(139,112,72,.10)",text:"#775f3d"}:{fill:"rgba(255,255,255,.78)",line:"rgba(102,98,84,.07)",text:"#4f554f"}}
   function v272BoardMassPalette(kind){

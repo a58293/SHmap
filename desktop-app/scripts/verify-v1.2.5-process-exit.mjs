@@ -7,8 +7,8 @@ const version=JSON.parse(read("VERSION.json"));
 const boot=read("src/desktop-bootstrap.js");
 const rust=read("src-tauri/src/lib.rs");
 
-assert.equal(pkg.version,"1.2.5");
-assert.equal(version.semver,"1.2.5");
+assert.equal(pkg.version,"1.2.6");
+assert.equal(version.semver,"1.2.6");
 assert.ok(boot.includes('invoke("exit_application")'),"close handler still only destroys the webview window");
 assert.ok(!boot.includes("appWindow.destroy()"),"window-only destroy call remains in close handler");
 assert.ok(rust.includes("fn exit_application(app: tauri::AppHandle)"),"native full-process exit command is missing");

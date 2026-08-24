@@ -34,7 +34,7 @@ const verifyChain=String(pkg.scripts.verify||"").split("&&").map(item=>item.trim
 const requiredVerifyChain=[
   "npm run build",
   "npm run verify:architecture",
-  "npm run verify:v283-data",
+  "npm run verify:v284-data",
   "npm run verify:critical",
   "npm run verify:overview-policy",
   "npm run verify:import-audit",

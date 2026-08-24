@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "shmap-v284-baseline-1",
+  "sourceWorkbook": "山海经原典地图_都广之野核心区_v284_地名缺失与重名复核更新版.xlsx",
+  "sourceWorkbookVersion": "V284",
+  "dataVersion": "v284-r0001",
+  "formalObjectCount": 1411,
+  "rowRefStart": "R9",
+  "rowRefEnd": "R1419",
+  "boardSheet": "坐标棋盘图",
+  "boardOrigin": "都广之野 (0,0)",
+  "boardCoordinateBounds": {
+    "minX": -160,
+    "maxX": 140,
+    "minY": -136,
+    "maxY": 140
+  },
+  "boardDimensions": {
+    "columns": 301,
+    "rows": 277
+  },
+  "boardOccupiedCellCount": 905,
+  "boardPlacementCount": 1411,
+  "mainGridLi": 100,
+  "legacyWaterPathCount": 82,
+  "waterArrowCellCount": 48,
+  "worldLayers": {
+    "L1": 1064,
+    "L2": 35,
+    "L3": 56,
+    "L4": 256
+  },
+  "coordinateStatus": {
+    "关系锁定": 115,
+    "红色推定": 1296
+  },
+  "boardLayoutSchema": "v284-board-layout-1",
+  "rules": [
+    "V284电子表格是正式名称、经篇、世界层级、坐标状态、表2格位和显示文本的权威来源",
+    "V284共1411项；新增33项位于R75—R107，旧R75—R107整段迁往R1387—R1419且必须保持原对象ID、图片与博物志",
+    "905个对象格按原典正式名和必要方向／水流关系显示",
+    "48个权威水流格中，47个是纯水流标注格，FI136同时承载正式对象",
+    "流黄辛氏国为正式名，旧名仅作异名",
+    "同名对象按经篇、路线、格位分层保留，不因名称相同而合并"
+  ]
+}

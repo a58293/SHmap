@@ -430,7 +430,7 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
         if let Some(id) = source.get("id").and_then(Value::as_str) {
             if let Some(local) = current_objects.iter().find(|item| item.get("id").and_then(Value::as_str)==Some(id)) {
                 preserve_local_object_fields(&mut next, local);
-                // V282/V283 are complete re-audits of official names, coordinates,
+                // V282/V283/V284 are complete re-audits of official names, coordinates,
                 // layers and source fields. Only user dossiers and image assets
                 // survive that migration; official spreadsheet fields win.
                 if !authoritative_workbook {
@@ -449,7 +449,7 @@ fn merge_official_seed_with_current(seed: &Value, current: &Value) -> Result<Val
         if is_local_new { official.push(local.clone()); }
     }
     target.insert("objects".to_string(), Value::Array(official));
-    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v283-r0001".to_string())));
+    target.insert("dataVersion".to_string(), seed.get("dataVersion").cloned().unwrap_or(Value::String("v284-r0001".to_string())));
     let valid_ids = target.get("objects").and_then(Value::as_array).cloned().unwrap_or_default();
     let selected_valid = target.get("selectedId").and_then(Value::as_str).map(|id| valid_ids.iter().any(|item| item.get("id").and_then(Value::as_str)==Some(id))).unwrap_or(false);
     if !selected_valid {
@@ -482,7 +482,7 @@ fn bootstrap_workspace(
             let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
             insert_backup(&tx, &state.backup_dir, &label, "pre_data_upgrade", &payload, &parsed)?;
             write_current(&tx, &merged_payload, &merged, &now_text())?;
-            insert_backup(&tx, &state.backup_dir, "V283正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
+            insert_backup(&tx, &state.backup_dir, "V284正式母表升级完成", "data_upgrade", &merged_payload, &merged)?;
             tx.commit().map_err(|e| e.to_string())?;
             return Ok(BootstrapResponse{snapshot:merged_payload,source:"database-upgraded-official".into(),database_path:state.database_path.to_string_lossy().into_owned(),object_count:object_count(&merged)});
         }

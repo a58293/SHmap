@@ -8,8 +8,8 @@ const app = read("public/app/app.js");
 const index = read("index.html");
 const css = read("public/app/styles.css");
 
-assert.equal(pkg.version, "1.2.5");
-assert.equal(version.semver, "1.2.5");
+assert.equal(pkg.version, "1.2.6");
+assert.equal(version.semver, "1.2.6");
 assert.ok(index.includes('id="researchMinimapInfo"'), "missing minimap hover information panel");
 assert.ok(app.includes("v122DrawMinimapObjects"), "minimap does not draw object distribution");
 assert.ok(app.includes("v122DrawMinimapWaterways"), "minimap does not draw waterways");

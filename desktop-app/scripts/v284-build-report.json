@@ -1,0 +1,319 @@
+{
+  "manifest": {
+    "schemaVersion": "shmap-private-data-manifest-v1",
+    "dataVersion": "v284-r0001",
+    "dataPath": "production/map-data.json",
+    "sha256": "95220c8afce9b87fc590b3f077ec754142b54353cdcc3ab38a08ef5bb1b2ef62",
+    "objectCount": 1411,
+    "paragraphEntryCount": 17838,
+    "waterPathCount": 82,
+    "generatedAt": "2026-08-15T13:24:29.956869Z",
+    "sourceFile": "山海经原典地图_都广之野核心区_v284_地名缺失与重名复核更新版.xlsx",
+    "minimumDesktopVersion": "1.2.6",
+    "boardLayoutSchema": "v284-board-layout-1",
+    "boardPlacementCount": 1411,
+    "boardOccupiedCellCount": 905,
+    "waterArrowCellCount": 48,
+    "worldLayerCounts": {
+      "region-layer-l1-central": 1064,
+      "region-layer-l2-seas": 35,
+      "region-layer-l3-overseas": 56,
+      "region-layer-l4-wilderness": 256
+    },
+    "coordinateStatusCounts": {
+      "关系锁定": 115,
+      "红色推定": 1296
+    },
+    "migrationNote": "V284电子表格为正式地图权威来源；现有对象按V284格位迁移，仅保留本地博物志与图片，显示层只采用48个权威水系箭头格。"
+  },
+  "stableOldIdsReused": 1378,
+  "newIds": 33,
+  "maxStack": 12,
+  "identityMigrations": [
+    {
+      "oldId": "SHJ-OBJ-000016",
+      "oldRowRef": "R24",
+      "newRowRef": "R24",
+      "name": "流黄辛氏国",
+      "chapter": "《海内西经》《海内经》《南山经》",
+      "reason": "same-row-formal-name-update"
+    },
+    {
+      "oldId": "SHJ-OBJ-000548",
+      "oldRowRef": "R556",
+      "newRowRef": "R556",
+      "name": "封渊",
+      "chapter": "《大荒北经》",
+      "reason": "same-row-formal-name-update"
+    },
+    {
+      "oldId": "SHJ-OBJ-000067",
+      "oldRowRef": "R75",
+      "newRowRef": "R1387",
+      "name": "陆䣀之山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000068",
+      "oldRowRef": "R76",
+      "newRowRef": "R1388",
+      "name": "铜山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000069",
+      "oldRowRef": "R77",
+      "newRowRef": "R1389",
+      "name": "衡山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000070",
+      "oldRowRef": "R78",
+      "newRowRef": "R1390",
+      "name": "石山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000071",
+      "oldRowRef": "R79",
+      "newRowRef": "R1391",
+      "name": "勾檷之山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000072",
+      "oldRowRef": "R80",
+      "newRowRef": "R1392",
+      "name": "风雨之山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000073",
+      "oldRowRef": "R81",
+      "newRowRef": "R1393",
+      "name": "玉山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000074",
+      "oldRowRef": "R82",
+      "newRowRef": "R1394",
+      "name": "熊山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000075",
+      "oldRowRef": "R83",
+      "newRowRef": "R1395",
+      "name": "騩山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000076",
+      "oldRowRef": "R84",
+      "newRowRef": "R1396",
+      "name": "葛山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000077",
+      "oldRowRef": "R85",
+      "newRowRef": "R1397",
+      "name": "丽𪊨之水",
+      "chapter": "卷一 《南山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000078",
+      "oldRowRef": "R86",
+      "newRowRef": "R1398",
+      "name": "宪翼之水",
+      "chapter": "卷一 《南山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000079",
+      "oldRowRef": "R87",
+      "newRowRef": "R1399",
+      "name": "诸毗",
+      "chapter": "卷一 《南山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000080",
+      "oldRowRef": "R88",
+      "newRowRef": "R1400",
+      "name": "具区",
+      "chapter": "卷一 《南山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000081",
+      "oldRowRef": "R89",
+      "newRowRef": "R1401",
+      "name": "列涂",
+      "chapter": "卷一 《南山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000082",
+      "oldRowRef": "R90",
+      "newRowRef": "R1402",
+      "name": "阏之泽",
+      "chapter": "卷一 《南山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000083",
+      "oldRowRef": "R91",
+      "newRowRef": "R1403",
+      "name": "䍃之泽",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000084",
+      "oldRowRef": "R92",
+      "newRowRef": "R1404",
+      "name": "冢遂",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000085",
+      "oldRowRef": "R93",
+      "newRowRef": "R1405",
+      "name": "帝之搏兽之丘",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000086",
+      "oldRowRef": "R94",
+      "newRowRef": "R1406",
+      "name": "䗡渊",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000087",
+      "oldRowRef": "R95",
+      "newRowRef": "R1407",
+      "name": "泑水",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000088",
+      "oldRowRef": "R96",
+      "newRowRef": "R1408",
+      "name": "泑泽",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000089",
+      "oldRowRef": "R97",
+      "newRowRef": "R1409",
+      "name": "诸毗之山",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000090",
+      "oldRowRef": "R98",
+      "newRowRef": "R1410",
+      "name": "稷泽",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000091",
+      "oldRowRef": "R99",
+      "newRowRef": "R1411",
+      "name": "恒山四成",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000092",
+      "oldRowRef": "R100",
+      "newRowRef": "R1412",
+      "name": "陵羊之泽",
+      "chapter": "卷二 《西山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000093",
+      "oldRowRef": "R101",
+      "newRowRef": "R1413",
+      "name": "虖池",
+      "chapter": "卷三 《北山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000094",
+      "oldRowRef": "R102",
+      "newRowRef": "R1414",
+      "name": "愍泽",
+      "chapter": "卷四 《東山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000095",
+      "oldRowRef": "R103",
+      "newRowRef": "R1415",
+      "name": "沙陵",
+      "chapter": "卷四 《東山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000096",
+      "oldRowRef": "R104",
+      "newRowRef": "R1416",
+      "name": "谷城之山",
+      "chapter": "卷五 《中山經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000097",
+      "oldRowRef": "R105",
+      "newRowRef": "R1417",
+      "name": "大乐之野",
+      "chapter": "卷七 《海外西經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000098",
+      "oldRowRef": "R106",
+      "newRowRef": "R1418",
+      "name": "穷山",
+      "chapter": "卷七 《海外西經》",
+      "reason": "v284-moved-former-r75-r107"
+    },
+    {
+      "oldId": "SHJ-OBJ-000099",
+      "oldRowRef": "R107",
+      "newRowRef": "R1419",
+      "name": "轩辕之丘",
+      "chapter": "卷七 《海外西經》",
+      "reason": "v284-moved-former-r75-r107"
+    }
+  ],
+  "identityMigrationReasonCounts": {
+    "same-row-exact-identity": 1343,
+    "same-row-formal-name-update": 2,
+    "v284-moved-former-r75-r107": 33
+  }
+}
