@@ -591,11 +591,11 @@
     </section>
   </div>
 
-  <div id="waterWorkspace" class="water-workspace hidden" aria-label="水体流向地图与路径编辑器">
+  <div id="waterWorkspace" class="water-workspace hidden" aria-label="河流、湖泊与海域水体工作台">
     <header class="water-workspace-topbar">
       <div class="water-workspace-title">
         <button class="water-workspace-back" id="closeWaterWorkspaceBtn">← 返回主地图</button>
-        <div><span class="eyebrow">HYDROLOGY FLOW WORKSPACE</span><h1>水体流向地图</h1><p>山脉与地貌作为参照，水系作为主角。拖动节点即可修改路线。</p></div>
+        <div><span class="eyebrow">HYDROLOGY WORKSPACE</span><h1>水体地图</h1><p>河流按线编辑；海、泽、湖、渊、池、沼按面积核验与绘制。</p></div>
       </div>
       <div class="water-workspace-actions">
         <span id="waterWorkspaceBadge" class="water-workspace-badge">尚未选择水系</span>
@@ -607,10 +607,12 @@
     </header>
     <main class="water-workspace-layout">
       <aside class="water-workspace-left">
-        <div class="water-pane-head"><div><span class="eyebrow">WATERWAYS</span><h2>水系列表</h2></div><span id="waterPathCount">0</span></div>
+        <div class="water-pane-head"><div><span class="eyebrow">WATER BODIES</span><h2>水体列表</h2></div><span id="waterPathCount">0</span></div>
         <label class="water-search"><span>搜索</span><input id="waterPathSearch" type="search" placeholder="河名、经篇、区域或对象" /></label>
         <div class="water-filter-tabs" id="waterFilterTabs">
           <button class="active" data-water-filter="all">全部</button>
+          <button data-water-filter="linear">河流</button>
+          <button data-water-filter="area">海域湖泽</button>
           <button data-water-filter="main">主干</button>
           <button data-water-filter="branch">支流</button>
           <button data-water-filter="official">正式显示</button>
@@ -621,6 +623,7 @@
           <h3>快捷操作</h3>
           <p><b>拖动圆点：</b>调整河道节点。</p>
           <p><b>双击河线：</b>在最近线段加入节点。</p>
+          <p><b>海域湖泽：</b>选择后进入面积轮廓编辑。</p>
           <p><b>Delete：</b>删除当前节点。</p>
           <p><b>Ctrl+Z / Ctrl+Y：</b>撤销或重做。</p>
         </section>
@@ -637,14 +640,22 @@
         </nav>
         <div id="waterEditorViewport" class="water-editor-viewport">
           <canvas id="waterEditorCanvas"></canvas>
-          <div id="waterEditorEmpty" class="water-editor-empty"><strong>选择左侧水系开始编辑</strong><span>地图不会自动猜测新河道；所有修改都会形成可回退的更改记录。</span></div>
+          <div id="waterEditorEmpty" class="water-editor-empty"><strong>选择左侧水体开始核验</strong><span>地图不会自动猜测河道或水域边界；所有修改都会形成可回退的更改记录。</span></div>
           <div id="waterEditorHint" class="water-editor-hint">拖动地图查看河网；选择河线后可直接拖动节点。</div>
           <div id="waterEditorCursor" class="water-editor-cursor">X 0里 · Y 0里</div>
         </div>
       </section>
       <aside class="water-workspace-right">
-        <div class="water-pane-head"><div><span class="eyebrow">FLOW INSPECTOR</span><h2>流向与证据</h2></div></div>
-        <div id="waterInspectorEmpty" class="water-inspector-empty">选择一条水系后显示路径资料。</div>
+        <div class="water-pane-head"><div><span class="eyebrow">WATER INSPECTOR</span><h2>水体与证据</h2></div></div>
+        <div id="waterInspectorEmpty" class="water-inspector-empty">选择河流或面积水体后显示资料。</div>
+        <section id="waterAreaInspector" class="water-area-inspector hidden">
+          <span class="eyebrow">AREA WATER BODY</span>
+          <h3 id="waterAreaName">未选择面积水体</h3>
+          <p id="waterAreaMeta"></p>
+          <div id="waterAreaStatus" class="water-area-status"></div>
+          <button type="button" class="btn primary" id="waterEditAreaBtn">编辑面积轮廓</button>
+          <button type="button" class="btn secondary" id="waterOpenAreaDossierBtn">打开地块博物志</button>
+        </section>
         <form id="waterInspector" class="water-inspector hidden" onsubmit="return false;">
           <label class="field"><span>水系名称</span><input id="waterPathName" /></label>
           <div class="form-grid two"><label class="field"><span>流向说明</span><input id="waterFlowDirection" placeholder="如：东北流／东南注海" /></label><label class="field"><span>证据等级</span><select id="waterEvidenceLevel"><option value="G1">G1 原文明示</option><option value="G2">G2 相对拓扑</option><option value="G3">G3 项目示意</option></select></label></div>

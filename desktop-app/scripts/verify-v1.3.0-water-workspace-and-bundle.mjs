@@ -23,7 +23,7 @@ assert.equal(tauri.version,"1.3.0","tauri version");
 assert.match(cargo,/version\s*=\s*"1\.3\.0"/);
 assert.match(pkg.scripts["verify:v130"],/verify-v1\.3\.0-water-workspace-and-bundle/);
 
-for(const id of ["openWaterWorkspaceBtn","waterWorkspace","waterEditorCanvas","waterPathList","waterSaveBtn","waterUndoBtn","waterRedoBtn","waterPointsText","waterValidation"])assert.ok(html.includes(`id="${id}"`),`missing #${id}`);
+for(const id of ["openWaterWorkspaceBtn","waterWorkspace","waterEditorCanvas","waterPathList","waterSaveBtn","waterUndoBtn","waterRedoBtn","waterPointsText","waterValidation","waterAreaInspector","waterEditAreaBtn","waterOpenAreaDossierBtn"])assert.ok(html.includes(`id="${id}"`),`missing #${id}`);
 assert.match(css,/\.water-workspace\s*\{/);
 assert.match(css,/\.water-workspace-layout\s*\{/);
 assert.match(app,/function setupWaterFlowWorkspace\(/);
@@ -34,6 +34,13 @@ assert.match(app,/entityType:"water_path"/);
 assert.match(app,/action\.entityType==="water_path"/);
 assert.match(app,/state\.waterPaths=simulation\.draft\.waterPaths/);
 assert.match(app,/editedIn="SHmap v1\.3\.0 water workspace"/);
+assert.match(html,/data-water-filter="area"/);
+assert.match(app,/function waterEditorAreaObjects\(/);
+assert.match(app,/function drawWaterEditorAreas\(/);
+assert.match(app,/function selectWaterEditorArea\(/);
+assert.match(app,/function isRangeEditableObject\(/);
+assert.match(app,/面积边界只由人工绘制和保存/);
+assert.match(css,/\.water-area-inspector\s*\{/);
 
 assert.match(app,/fetchGithubConsolidatedBundle/);
 assert.match(app,/submissions\/bundles\/latest\.shjbundle/);

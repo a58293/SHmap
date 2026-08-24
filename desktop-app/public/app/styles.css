@@ -3877,3 +3877,20 @@ html.v062-yujian-theme .left-panel .type-filter-group button>b{
 .water-inspector-empty{padding:26px 14px;border:1px dashed #b8c9c0;border-radius:11px;text-align:center;color:#708179}.water-inspector{display:grid;gap:11px}.water-inspector .field{display:grid;gap:5px}.water-inspector input,.water-inspector select,.water-inspector textarea{width:100%;border:1px solid #bdcbc2;border-radius:8px;background:#fffdf7;color:#173f38;padding:9px}.water-node-card,.water-validation-card{padding:12px;border:1px solid #c8d3cb;border-radius:11px;background:#fffdf7}.water-node-card h3,.water-validation-card h3{margin:0 0 7px}.water-node-card textarea{margin:8px 0;font-family:ui-monospace,Consolas,monospace;font-size:11px}.water-node-card button{width:100%;border:1px solid #8caa9d;border-radius:8px;background:#e3eee8;color:#24584d;padding:8px;font-weight:800}.water-validation-card div{display:grid;gap:5px;font-size:11px}.water-validation-card .ok{color:#1c6759}.water-validation-card .warn{color:#a26818}.water-validation-card .error{color:#aa3d33}.water-workspace-entry{white-space:nowrap}
 @media(max-width:1180px){.water-workspace-layout{grid-template-columns:240px minmax(380px,1fr) 280px}.water-workspace-topbar{align-items:flex-start}.water-workspace-actions{flex-wrap:wrap;justify-content:flex-end}}
 @media(max-width:900px){.water-workspace-layout{grid-template-columns:210px minmax(360px,1fr)}.water-workspace-right{position:absolute;right:0;top:86px;bottom:0;width:300px;z-index:2;box-shadow:-8px 0 24px rgba(20,50,42,.14)}.water-workspace-topbar p,.water-workspace-badge{display:none}}
+/* v1.3.0 · 海、泽、湖、渊、池、沼接入统一水体工作台 */
+.water-path-list button.area-water i{border-radius:9px;background:#dceef0;color:#176e7d}
+.water-path-list button.area-water em{color:#24717c}
+.water-path-list button.area-water:not(.selected) i{border:1px dashed #75a9ae}
+.water-editor-toolbar button:disabled{opacity:.42;cursor:not-allowed}
+.water-area-inspector{display:grid;gap:11px;padding:14px;border:1px solid #b9d2cc;border-radius:12px;background:linear-gradient(155deg,#f7fbf8,#eef5f2)}
+.water-area-inspector.hidden{display:none}
+.water-area-inspector h3{margin:0;color:#174f45;font:850 23px var(--serif)}
+.water-area-inspector>p{margin:0;color:#60756d;font-size:11px;line-height:1.6}
+.water-area-inspector>.btn{width:100%;min-height:39px}
+.water-area-status{display:grid;gap:7px;padding:11px;border:1px solid #cbd9d3;border-radius:10px;background:#fffdf7}
+.water-area-status span{justify-self:start;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:850}
+.water-area-status span.confirmed{background:#dcefe8;color:#1f6859}
+.water-area-status span.pending{background:#fff0cf;color:#8c641c}
+.water-area-status p,.water-area-status small{margin:0;line-height:1.55}
+.water-area-status p{color:#385e55;font-size:11px}
+.water-area-status small{color:#76847e;font-size:9px}
