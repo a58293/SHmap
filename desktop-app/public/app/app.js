@@ -296,6 +296,16 @@
     savedState.objects.filter(object=>object?.rowRef==="NEW"||(!masterIds.has(object.id)&&(!object?.rowRef||!masterRows.has(object.rowRef)))).forEach(object=>merged.push(object));
     return merged
   }
+  function migrateWorkspaceWaterPaths(savedState){
+    const official=structuredClone(WATER_PATHS||[]),savedPaths=Array.isArray(savedState?.waterPaths)?savedState.waterPaths:[];
+    if(!savedPaths.length)return official;
+    const sameDataVersion=!savedState?.dataVersion||savedState.dataVersion===(INITIAL.metadata?.dataVersion||savedState.dataVersion);
+    if(sameDataVersion)return structuredClone(savedPaths);
+    const edited=new Map(savedPaths.filter(path=>path?.editedIn||path?.localCreated).map(path=>[path.id,path]));
+    const merged=official.map(path=>edited.has(path.id)?structuredClone(edited.get(path.id)):path),officialIds=new Set(official.map(path=>path.id));
+    savedPaths.filter(path=>path?.localCreated&&!officialIds.has(path.id)).forEach(path=>merged.push(structuredClone(path)));
+    return merged
+  }
   const applyObjectRoles=objects=>window.SHJ_OBJECT_ROLE_MANIFEST?.apply?.(objects)||(objects||[]);
   let migratedWorkspaceObjects;
   try{migratedWorkspaceObjects=applyObjectRoles(migrateWorkspaceObjects(saved))}
@@ -321,7 +331,7 @@
     mapSpacingMode:saved?.mapSpacingMode==="source"?"source":"compact",
     selectedId: saved?.selectedId || (INITIAL.objects?.[0]?.id || null),
     selectedCell: saved?.selectedCell || null,
-    waterPaths: structuredClone(WATER_PATHS),
+    waterPaths: migrateWorkspaceWaterPaths(saved),
     waterConversionAudit:Number(saved?.uiSchemaVersion)>=53?!!saved?.waterConversionAudit:false,
     tileImageMapMode:saved?.tileImageMapMode!==false,
     selectedWaterPathId:null,
@@ -386,7 +396,8 @@
     objectRevision:1,
     profileRevision:1,
     perf:{indexRevision:-1,objectById:new Map(),cellMap:new Map(),anchorGroups:[],anchorGroupByKey:new Map(),areas:[],lines:[],bounds:null,searchKey:"",searchContext:null,spatialKey:"",spatialContext:null,regionCache:new Map(),regionRangeCache:new Map(),hierarchyRevision:-1,hierarchy:null,regionById:new Map(),regionFocusKey:"",regionFocus:null,isolatedRevision:-1,isolated:[],minimapRevision:-1,minimapSize:"",labelTimer:null,saveTimer:null,saveStatusTimer:null,lightRenderQueued:false,brushDrawQueued:false,wheelBase:null,wheelSettleTimer:null,panLastRebase:0,panRebaseCount:0,relationHitAreas:[],relationContextKey:"",relationContext:null,relationCatalogKey:"",relationCatalog:null,waterHitAreas:[],locationKey:"",locationContext:null},
-    rangeEditor:{objectId:null,draft:null,original:null,tool:"select",snap:10,zoom:1,camera:{x:0,y:0},history:[],pointer:null,polygonDrawing:false}
+    rangeEditor:{objectId:null,draft:null,original:null,tool:"select",snap:10,zoom:1,camera:{x:0,y:0},history:[],pointer:null,polygonDrawing:false},
+    waterEditor:{pathId:null,draft:null,original:null,tool:"select",snap:10,zoom:1,camera:{x:0,y:0},history:[],future:[],pointer:null,selectedNode:-1,query:"",filter:"all",terrainLabels:true}
   };
   function objectMapRole(object){return object?.mapRole||"entity"}
   function hasOfficialBoardPlacement(object){return !!object?.boardPlacement?.officialFormalObject&&Number.isFinite(Number(object?.boardPlacement?.gx))&&Number.isFinite(Number(object?.boardPlacement?.gy))}
@@ -2687,13 +2698,16 @@
     return {data_version:info.dataVersion||state.dataVersion,object_count:Number(info.objectCount)||0,sha256:info.sha256||"",repository:`${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`,private:true};
   }
   async function fetchGithubPendingFiles(){
+    try{
+      const bundle=await fetchGithubConsolidatedBundle();
+      return (bundle.packages||[]).map(item=>({kind:"file",name:item.name,path:item.path,sha:item.sha256||"",size:Number(item.size)||JSON.stringify(item.package||{}).length,bundled:true})).sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"zh-CN"))
+    }catch(error){console.warn("SHmap consolidated bundle unavailable; falling back to pending directory.",error)}
     const reader=window.SHJ_DESKTOP?.listPrivatePatches;
     if(typeof reader!=="function")throw new Error("当前客户端未启用私有更改包读取功能");
     const payload=await reader();
     if(!Array.isArray(payload))return [];
     return payload.filter(x=>x?.kind==="file"&&/\.shjpatch$/i.test(x.name||"")).sort((a,b)=>String(b.name||"").localeCompare(String(a.name||""),"zh-CN"));
-  }
-  async function fetchGithubPatch(entry){
+  }  async function fetchGithubPatch(entry){
     const cacheKey=entry?.sha||entry?.path||entry?.name;if(cacheKey&&state.githubPendingCache[cacheKey])return state.githubPendingCache[cacheKey];
     const reader=window.SHJ_DESKTOP?.readPrivatePatch;
     if(typeof reader!=="function")throw new Error("当前客户端未启用私有更改包下载功能");
@@ -2702,6 +2716,29 @@
     let pkg;try{pkg=JSON.parse(text)}catch{throw new Error("更改包不是有效的 JSON 文件")}
     if(cacheKey)state.githubPendingCache[cacheKey]=pkg;
     return pkg;
+  }
+  async function fetchGithubConsolidatedBundle(){
+    if(state.githubPendingCache.__consolidatedBundle)return state.githubPendingCache.__consolidatedBundle;
+    const reader=window.SHJ_DESKTOP?.readPrivatePatch;
+    if(typeof reader!=="function")throw new Error("当前客户端未启用私有更改包下载功能");
+    const text=await reader("submissions/bundles/latest.shjbundle");
+    if(!text)throw new Error("汇总更改包内容为空");
+    let bundle;try{bundle=JSON.parse(text)}catch{throw new Error("汇总更改包不是有效的 JSON 文件")}
+    if(bundle?.format!=="shjpatch-bundle-v1"||!Array.isArray(bundle?.packages))throw new Error("汇总更改包格式不受支持");
+    state.githubPendingCache.__consolidatedBundle=bundle;return bundle
+  }
+  async function loadGithubBatchItems(entries){
+    let bundle=null,bundleError="";try{bundle=await fetchGithubConsolidatedBundle()}catch(error){bundleError=String(error?.message||error||"汇总包读取失败")}
+    const bundled=new Map((bundle?.packages||[]).flatMap(item=>[[String(item.path||""),item],[String(item.name||""),item]])),items=[];
+    for(const entry of entries){
+      let pkg=null,loadError="",contentHash="";try{
+        const item=bundled.get(String(entry.path||""))||bundled.get(String(entry.name||""));
+        if(item?.package){pkg=hydratePortablePatchAssets(item.package);contentHash=String(item.sha256||"")||await sha256Hex(new TextEncoder().encode(JSON.stringify(pkg)))}
+        else{pkg=await fetchGithubPatch(entry);contentHash=await sha256Hex(new TextEncoder().encode(JSON.stringify(pkg)))}
+      }catch(error){loadError=String(error?.message||error||"下载失败")}
+      items.push({entry:{...entry,contentHash,source:"github"},pkg,contentHash,loadError})
+    }
+    return {items,bundleUsed:!!bundle,bundleError,packageCount:Number(bundle?.package_count)||bundle?.packages?.length||0}
   }
   function remotePatchKey(entry){return String(entry?.sha||entry?.path||entry?.name||"")}
   function appliedRemoteRecord(entry){
@@ -2871,7 +2908,26 @@
       }
       return patchResult(change,"conflict",`暂不支持地块档案操作：${op||"未标注"}`)
     }
-    if(!entityId)return patchResult(change,"conflict","缺少对象ID");
+    if(entityType==="water_path"){
+      if(!entityId)return patchResult(change,"conflict","缺少水系路径ID");
+      const paths=draft.waterPaths||(draft.waterPaths=[]),index=paths.findIndex(path=>path.id===entityId),current=index>=0?paths[index]:null,before=change.before,after=change.after;
+      if(op==="create"||op==="restore"){
+        if(!after||typeof after!=="object"||!Array.isArray(after.points)||after.points.length<2)return patchResult(change,"conflict","缺少有效的水系路径内容");
+        if(current)return sameValue(current,after)?patchResult(change,"skip","本地已经包含相同水系路径"):patchResult(change,"conflict",`水系路径ID ${entityId} 已存在不同内容`,{conflictDetails:[v101ConflictDetail("整体内容",current,after)]});
+        paths.push(cloneJSON(after));return patchResult(change,"apply",`写入水系路径“${after.name||entityId}”`)
+      }
+      if(op==="update"){
+        if(!current)return patchResult(change,"conflict","本地不存在要更新的水系路径",{conflictDetails:[v101ConflictDetail("整体内容",V100_PATCH_MISSING,after)]});
+        if(!after||typeof after!=="object"||!Array.isArray(after.points)||after.points.length<2)return patchResult(change,"conflict","更新后的水系路径无效");
+        const keys=changedTopKeys(before,after);if(!keys.length)return patchResult(change,"skip","更改包没有实际水系变化");if(keys.every(key=>sameValue(current[key],after[key])))return patchResult(change,"skip","本地已经包含该水系修改");
+        const merged=v100MergeChangedKeys(current,before,after,keys,resolution);if(!merged.ok)return patchResult(change,"conflict",`水系字段已被本地修改：${merged.conflicts.join("、")}`,{conflictDetails:merged.details||[]});
+        if(!Array.isArray(merged.next.points)||merged.next.points.length<2)return patchResult(change,"conflict","合并后的水系路径少于2个节点");paths[index]=merged.next;const changed=!sameValue(current,merged.next),note=merged.manual?"（已按手动选择处理冲突）":merged.autoMerged?"（已自动合并）":"";return patchResult(change,changed?"apply":"skip",changed?`更新水系路径“${merged.next.name||entityId}”${note}`:"已保留本机水系，没有需要写入的变化",{autoMerged:merged.autoMerged,manualResolution:merged.manual})
+      }
+      if(op==="delete"){
+        if(!current)return patchResult(change,"skip","水系路径已不存在");if(before&&!sameValue(current,before))return patchResult(change,"conflict","本地水系路径已被修改，不能直接删除",{conflictDetails:[v101ConflictDetail("整体内容",current,V100_PATCH_MISSING)]});paths.splice(index,1);return patchResult(change,"apply",`删除水系路径“${current.name||entityId}”`)
+      }
+      return patchResult(change,"conflict",`暂不支持水系路径操作：${op||"未标注"}`)
+    }    if(!entityId)return patchResult(change,"conflict","缺少对象ID");
     const index=draft.objects.findIndex(o=>o.id===entityId),current=index>=0?draft.objects[index]:null,before=change.before,after=change.after;
     if(op==="create"||op==="restore"){
       if(!after||typeof after!=="object")return patchResult(change,"conflict","缺少要写入的对象内容");
@@ -2906,7 +2962,11 @@
       if(op==="delete")delete draft.tileProfiles[cellKeyValue];else if(change.after&&typeof change.after==="object")draft.tileProfiles[cellKeyValue]=cleanTileProfile(change.after);else return patchResult(change,"conflict","更改包缺少可写入的地块档案");
       return patchResult(change,"apply",`已手动选择使用更改包：地块 ${cellKeyValue} 档案`,{manualResolution:true})
     }
-    if(!entityId)return patchResult(change,"conflict","更改包缺少对象ID，不能强制应用");
+    if(entityType==="water_path"){
+      if(!entityId)return patchResult(change,"conflict","更改包缺少水系路径ID，不能强制应用");const paths=draft.waterPaths||(draft.waterPaths=[]),index=paths.findIndex(path=>path.id===entityId);
+      if(op==="delete"){if(index>=0)paths.splice(index,1);return patchResult(change,index>=0?"apply":"skip","已手动选择使用更改包：删除水系路径",{manualResolution:true})}
+      if(!change.after||!Array.isArray(change.after.points)||change.after.points.length<2)return patchResult(change,"conflict","更改包缺少有效水系路径");const incoming=cloneJSON(change.after);if(index>=0)paths[index]=incoming;else paths.push(incoming);return patchResult(change,"apply",`已手动选择使用更改包：水系路径“${incoming.name||entityId}”`,{manualResolution:true})
+    }    if(!entityId)return patchResult(change,"conflict","更改包缺少对象ID，不能强制应用");
     const index=draft.objects.findIndex(row=>row.id===entityId);
     if(op==="delete"){if(index>=0)draft.objects.splice(index,1);return patchResult(change,index>=0?"apply":"skip","已手动选择使用更改包：删除对象",{manualResolution:true})}
     if(!change.after||typeof change.after!=="object")return patchResult(change,"conflict","更改包缺少更新后的对象内容");
@@ -2932,13 +2992,13 @@
   function simulatePatchPackage(pkg,baseSnapshot=null){
     const options=arguments[2]||{},resolutions=options.resolutions||{},batchKey=options.batchKey||"patch",resolveConflicts=!!options.resolveConflicts;
     const packageErrors=[];if(!pkg||typeof pkg!=="object")packageErrors.push("文件内容不是对象");if(pkg?.package_type!=="shjpatch")packageErrors.push("package_type 必须为 shjpatch");if(!Array.isArray(pkg?.changes))packageErrors.push("changes 必须是数组");
-    const base=baseSnapshot||{objects:state.objects,tileProfiles:state.tileProfiles},initial={objects:cloneJSON(base.objects),tileProfiles:cloneJSON(base.tileProfiles)},draft={objects:cloneJSON(base.objects),tileProfiles:cloneJSON(base.tileProfiles)},results=[];
+    const base=baseSnapshot||{objects:state.objects,tileProfiles:state.tileProfiles,waterPaths:state.waterPaths},initial={objects:cloneJSON(base.objects),tileProfiles:cloneJSON(base.tileProfiles),waterPaths:cloneJSON(base.waterPaths||[])},draft={objects:cloneJSON(base.objects),tileProfiles:cloneJSON(base.tileProfiles),waterPaths:cloneJSON(base.waterPaths||[])},results=[];
     if(!packageErrors.length)(pkg.changes||[]).forEach((change,index)=>{const conflictKey=`${batchKey}::${index}`,resolutionForPath=path=>resolutions[v101ConflictResolutionKey(conflictKey,path)]||"local";let result=simulatePatchChange(change,draft,resolveConflicts?resolutionForPath:null);if(result.status==="conflict"&&resolveConflicts){const overall=resolutions[v101ConflictResolutionKey(conflictKey,"整体内容")]||"local";result=overall==="remote"?v100ForceApplyPatchChange(change,draft):patchResult(change,"skip",`已手动选择保留本机；${result.reason}`,{manualResolution:true})}results.push({...result,conflictKey})});
     const applyCount=results.filter(x=>x.status==="apply").length,skipCount=results.filter(x=>x.status==="skip").length,conflictCount=results.filter(x=>x.status==="conflict").length;
     const autoMergedCount=results.filter(x=>x.autoMerged).length,manualCount=results.filter(x=>x.manualResolution).length,netNoop=sameValue(initial,draft);return {pkg,draft,results,packageErrors,applyCount,skipCount,conflictCount,autoMergedCount,manualCount,netNoop,baseMismatch:!!pkg?.base_data_version&&pkg.base_data_version!==state.dataVersion}
   }
   function rememberRemoteObjectFields(pkg){
-    (pkg?.changes||[]).forEach(change=>{const id=String(change?.entityId||change?.after?.id||change?.before?.id||"");if(!id||id.startsWith("CELL-"))return;const before=change?.before&&typeof change.before==="object"&&!Array.isArray(change.before)?change.before:{},after=change?.after&&typeof change.after==="object"&&!Array.isArray(change.after)?change.after:{};const fields=new Set(state.protectedObjectFields[id]||[]);new Set([...Object.keys(before),...Object.keys(after)]).forEach(key=>{if(key!=="id"&&key!=="rowRef"&&!sameValue(before[key],after[key]))fields.add(key)});if(fields.size)state.protectedObjectFields[id]=[...fields]})
+    (pkg?.changes||[]).forEach(change=>{const id=String(change?.entityId||change?.after?.id||change?.before?.id||"");if(!id||id.startsWith("CELL-")||change?.entityType==="water_path")return;const before=change?.before&&typeof change.before==="object"&&!Array.isArray(change.before)?change.before:{},after=change?.after&&typeof change.after==="object"&&!Array.isArray(change.after)?change.after:{};const fields=new Set(state.protectedObjectFields[id]||[]);new Set([...Object.keys(before),...Object.keys(after)]).forEach(key=>{if(key!=="id"&&key!=="rowRef"&&!sameValue(before[key],after[key]))fields.add(key)});if(fields.size)state.protectedObjectFields[id]=[...fields]})
   }
   function rememberRemotePatch(entry,pkg,simulation){
     rememberRemoteObjectFields(pkg);
@@ -2957,7 +3017,7 @@
   let batchPatchSession=null;
   function simulatePatchBatch(items,source="local"){
     const options=arguments[2]||{},resolutions=options.resolutions||{},resolveConflicts=!!options.resolveConflicts;
-    const ordered=[...(items||[])].sort((a,b)=>patchBatchTime(a)-patchBatchTime(b)||String(a.entry?.name||"").localeCompare(String(b.entry?.name||""),"zh-CN")),seen=new Set(),initial={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles)};let working=initial;const packages=[];
+    const ordered=[...(items||[])].sort((a,b)=>patchBatchTime(a)-patchBatchTime(b)||String(a.entry?.name||"").localeCompare(String(b.entry?.name||""),"zh-CN")),seen=new Set(),initial={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles),waterPaths:cloneJSON(state.waterPaths||[])};let working=initial;const packages=[];
     ordered.forEach(item=>{const hash=item.contentHash||item.entry?.contentHash||"",entry={...(item.entry||{}),contentHash:hash,source:item.entry?.source||source};if(item.loadError){packages.push({...item,entry,status:"error",reason:item.loadError});return}if(hash&&appliedPatchByContentHash(hash)||isRemotePatchApplied(entry)){packages.push({...item,entry,status:"applied",reason:"本机历史记录已包含相同更改包"});return}if(hash&&seen.has(hash)){packages.push({...item,entry,status:"duplicate",reason:"与本批前面的文件内容完全相同"});return}if(hash)seen.add(hash);const simulation=simulatePatchPackage(item.pkg,working,{resolutions,batchKey:item.batchKey||hash||entry.name,resolveConflicts});if(simulation.packageErrors.length){packages.push({...item,entry,simulation,status:"error",reason:simulation.packageErrors.join("；")});return}working=simulation.draft;const status=simulation.conflictCount?(simulation.applyCount?"partial":"conflict"):(simulation.netNoop?"noop":"apply"),reason=simulation.conflictCount?`${simulation.applyCount}项可直接合并，${simulation.conflictCount}项需要选择`:simulation.netNoop?"当前地图已经包含最终结果":`应用${simulation.applyCount}项，跳过${simulation.skipCount}项${simulation.autoMergedCount?`，自动合并${simulation.autoMergedCount}项`:""}`;packages.push({...item,entry,simulation,status,reason})});
     const blocked=packages.some(item=>item.status==="error"&&item.selected!==false),actionable=packages.filter(item=>item.status==="apply"||item.status==="noop"),applyCount=actionable.reduce((sum,item)=>sum+(item.simulation?.applyCount||0),0),skipCount=actionable.reduce((sum,item)=>sum+(item.simulation?.skipCount||0),0),autoMergedCount=actionable.reduce((sum,item)=>sum+(item.simulation?.autoMergedCount||0),0),manualCount=actionable.reduce((sum,item)=>sum+(item.simulation?.manualCount||0),0);return {source,packages,draft:working,blocked,actionable,applyCount,skipCount,autoMergedCount,manualCount}
   }
@@ -2979,10 +3039,9 @@
     const files=[...(fileList||[])];if(!files.length)return;if(files.length>100){toast("更改包数量过多","一次最多选择100份 .shjpatch。","error");return}const total=files.reduce((sum,file)=>sum+(file.size||0),0);if(total>100*1024*1024){toast("更改包总体积过大","一次选择的文件合计不能超过100MB。","error");return}els.infoEyebrow.textContent="LOCAL PATCH BATCH";els.infoTitle.textContent="正在读取本地更改包";els.infoBody.innerHTML=`<div class="info-section"><h3>正在校验 ${files.length} 份文件</h3><p>检查格式、内容指纹、时间顺序和字段冲突……</p></div>`;openModal("infoModal");const items=[];for(const file of files){let pkg=null,loadError="",contentHash="";try{if(!/\.shjpatch$/i.test(file.name))throw new Error("扩展名不是 .shjpatch");if(file.size>25*1024*1024)throw new Error("单个更改包超过25MB");const text=await file.text();contentHash=await sha256Hex(new TextEncoder().encode(text));pkg=hydratePortablePatchAssets(JSON.parse(text))}catch(error){loadError=String(error?.message||error||"读取失败")}items.push({entry:{name:file.name,path:`local/${file.name}`,sha:contentHash,contentHash,source:"local",size:file.size},pkg,contentHash,loadError})}renderPatchBatch(prepareSelectablePatchBatch(items,"local"))
   }
   async function githubPatchBatch(){
-    const entries=state.githubPendingFiles.filter(entry=>!isRemotePatchApplied(entry));if(!entries.length){toast("没有待应用更改包","GitHub pending 中没有本机尚未处理的包。");return}els.infoEyebrow.textContent="GITHUB PATCH BATCH";els.infoTitle.textContent="正在批量下载并检查";els.infoBody.innerHTML=`<div class="info-section"><h3>正在检查 ${entries.length} 份 GitHub 更改包</h3><p>将按生成时间从旧到新进行连续模拟，不会边下载边写入。</p></div>`;const items=[];for(const entry of entries){let pkg=null,loadError="",contentHash="";try{pkg=await fetchGithubPatch(entry);contentHash=await sha256Hex(new TextEncoder().encode(JSON.stringify(pkg)))}catch(error){loadError=String(error?.message||error||"下载失败")}items.push({entry:{...entry,contentHash,source:"github"},pkg,contentHash,loadError})}renderPatchBatch(prepareSelectablePatchBatch(items,"github"))
-  }
-  async function applyPatchBatch(){
-    const session=batchPatchSession;if(!session||session.blocked||!session.actionable.length)return;const before={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles),appliedRemotePatches:cloneJSON(state.appliedRemotePatches),remotePatchHistory:cloneJSON(state.remotePatchHistory)};const button=$("#batchPatchApplyBtn");if(button){button.disabled=true;button.textContent="正在备份并应用……"}try{if(window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.createBackup)await window.SHJ_DESKTOP.createBackup(`批量应用${session.actionable.length}份更改包前备份`);state.objects=session.draft.objects;state.tileProfiles=session.draft.tileProfiles;session.actionable.forEach(item=>rememberRemotePatch(item.entry,item.pkg,item.simulation));invalidateObjectCaches();invalidateProfileCaches();state.nextIdCounter=Math.max(state.nextIdCounter,maxKnownObjectNumber());populateFilters();renderSidebar();renderDetails();scheduleRender();persist(true);if(window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.flush)await window.SHJ_DESKTOP.flush();updateHeader();toast("批量更改包已安全应用",`${session.actionable.length}份包 · 写入${session.applyCount}项 · 跳过${session.skipCount}项`);batchPatchSession=null;if(session.source==="github"){state.githubPendingView="new";renderGithubUpdateModal()}else showChanges()}catch(error){state.objects=before.objects;state.tileProfiles=before.tileProfiles;state.appliedRemotePatches=before.appliedRemotePatches;state.remotePatchHistory=before.remotePatchHistory;invalidateObjectCaches();invalidateProfileCaches();persist(true);toast("批量应用失败，已恢复应用前状态",String(error?.message||error||"保存失败"),"error");if(button){button.disabled=false;button.textContent=`安全应用 ${session.actionable.length} 份更改包`}}
+    const entries=state.githubPendingFiles.filter(entry=>!isRemotePatchApplied(entry));if(!entries.length){toast("没有待应用更改包","GitHub pending 中没有本机尚未处理的包。");return}els.infoEyebrow.textContent="GITHUB PATCH BATCH";els.infoTitle.textContent="正在读取单一汇总包";els.infoBody.innerHTML=`<div class="info-section"><h3>正在检查 ${entries.length} 份 GitHub 更改包</h3><p>优先只读取 latest.shjbundle；若汇总包尚未生成，才兼容读取缺失的旧包。</p></div>`;const loaded=await loadGithubBatchItems(entries);if(loaded.bundleUsed)toast("已读取单一汇总更改包",`${loaded.packageCount}份历史包 · 本机待处理${entries.length}份`);else console.warn("SHmap consolidated bundle fallback:",loaded.bundleError);renderPatchBatch(prepareSelectablePatchBatch(loaded.items,"github"))
+  }  async function applyPatchBatch(){
+    const session=batchPatchSession;if(!session||session.blocked||!session.actionable.length)return;const before={objects:cloneJSON(state.objects),tileProfiles:cloneJSON(state.tileProfiles),waterPaths:cloneJSON(state.waterPaths||[]),appliedRemotePatches:cloneJSON(state.appliedRemotePatches),remotePatchHistory:cloneJSON(state.remotePatchHistory)};const button=$("#batchPatchApplyBtn");if(button){button.disabled=true;button.textContent="正在备份并应用……"}try{if(window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.createBackup)await window.SHJ_DESKTOP.createBackup(`批量应用${session.actionable.length}份更改包前备份`);state.objects=session.draft.objects;state.tileProfiles=session.draft.tileProfiles;state.waterPaths=session.draft.waterPaths||state.waterPaths;session.actionable.forEach(item=>rememberRemotePatch(item.entry,item.pkg,item.simulation));invalidateObjectCaches();invalidateProfileCaches();state.nextIdCounter=Math.max(state.nextIdCounter,maxKnownObjectNumber());populateFilters();renderSidebar();renderDetails();scheduleRender();persist(true);if(window.SHJ_DESKTOP?.active&&window.SHJ_DESKTOP?.flush)await window.SHJ_DESKTOP.flush();updateHeader();toast("批量更改包已安全应用",`${session.actionable.length}份包 · 写入${session.applyCount}项 · 跳过${session.skipCount}项`);batchPatchSession=null;if(session.source==="github"){state.githubPendingView="new";renderGithubUpdateModal()}else showChanges()}catch(error){state.objects=before.objects;state.tileProfiles=before.tileProfiles;state.waterPaths=before.waterPaths;state.appliedRemotePatches=before.appliedRemotePatches;state.remotePatchHistory=before.remotePatchHistory;invalidateObjectCaches();invalidateProfileCaches();persist(true);toast("批量应用失败，已恢复应用前状态",String(error?.message||error||"保存失败"),"error");if(button){button.disabled=false;button.textContent=`安全应用 ${session.actionable.length} 份更改包`}}
   }
   function patchStatusText(status){return status==="apply"?"将应用":status==="skip"?"已包含":"有冲突"}
   function patchPreviewHtml(entry,pkg,simulation){
@@ -3017,7 +3076,7 @@
   }
   function applyGithubPatch(index,pkg,simulation){
     const entry=state.githubPendingFiles[index];if(!entry||isRemotePatchApplied(entry))return;if(simulation.packageErrors.length||simulation.conflictCount){toast("更改包未应用","请先处理格式错误或冲突。","error");return}
-    if(!simulation.netNoop){state.objects=simulation.draft.objects;state.tileProfiles=simulation.draft.tileProfiles;invalidateObjectCaches();invalidateProfileCaches();state.nextIdCounter=Math.max(state.nextIdCounter,maxKnownObjectNumber())}
+    if(!simulation.netNoop){state.objects=simulation.draft.objects;state.tileProfiles=simulation.draft.tileProfiles;state.waterPaths=simulation.draft.waterPaths||state.waterPaths;invalidateObjectCaches();invalidateProfileCaches();state.nextIdCounter=Math.max(state.nextIdCounter,maxKnownObjectNumber())}
     rememberRemotePatch(entry,pkg,simulation);state.githubPendingView="new";populateFilters();renderSidebar();renderDetails();scheduleRender();persist();updateHeader();toast(simulation.netNoop?"已标记为本机同步":"GitHub更改包已应用",simulation.netNoop?"本地地图原本已经包含这些变化。":`写入${simulation.applyCount}项，跳过${simulation.skipCount}项`);renderGithubUpdateModal()
   }
   async function checkUpdate(silent=false){
@@ -4019,7 +4078,7 @@
   function workspaceSnapshot(){return {
     uiSchemaVersion:53,
     objects:state.objects,changes:state.changes,changeArchives:state.changeArchives,appliedRemotePatches:state.appliedRemotePatches,remotePatchHistory:state.remotePatchHistory,protectedObjectFields:state.protectedObjectFields,viewedRemotePatches:state.viewedRemotePatches,dataVersion:state.dataVersion,camera:state.camera,selectedId:state.selectedId,selectedCell:state.selectedCell,tileProfiles:state.tileProfiles,trash:state.trash,trashRetentionDays:state.trashRetentionDays,nextIdCounter:state.nextIdCounter,dossierMode:state.dossierMode,layers:state.layers,brushKeys:[...(state.brushKeys||[])],brushStrokes:state.brushStrokes||[],brushHistory:state.brushHistory||[],viewPreset:state.viewPreset,relationEvidenceFilter:state.relationEvidenceFilter,objectSort:state.objectSort,compareKeys:[...(state.compareKeys||[])],indexMode:state.indexMode,selectedRegionId:state.selectedRegionId,selectedHierarchyNode:state.selectedHierarchyNode,expandedRegionIds:[...(state.expandedRegionIds||[])],
-    workspaceUi:state.workspaceUi,overviewMode:state.overviewMode,mapSpacingMode:state.mapSpacingMode,waterConversionAudit:state.waterConversionAudit,tileImageMapMode:state.tileImageMapMode,spatialFocusArmed:state.spatialFocusArmed,spatialFocusAreaIds:[...(state.spatialFocusAreaIds||[])],relationDepth:state.relationDepth,relationDisplayMode:state.relationDisplayMode,relationBundleMode:state.relationBundleMode,objectFocusMode:state.objectFocusMode,presentationMode:state.presentationMode,relationPinnedTargetId:state.relationPinnedTargetId,relationLegendCollapsed:state.relationLegendCollapsed,navigationHistory:state.navigationHistory,navigationIndex:state.navigationIndex,researchBookmarks:state.researchBookmarks,undoStack:(state.undoStack||[]).slice(-40),redoStack:(state.redoStack||[]).slice(-40)
+    workspaceUi:state.workspaceUi,overviewMode:state.overviewMode,mapSpacingMode:state.mapSpacingMode,waterConversionAudit:state.waterConversionAudit,tileImageMapMode:state.tileImageMapMode,waterPaths:state.waterPaths,spatialFocusArmed:state.spatialFocusArmed,spatialFocusAreaIds:[...(state.spatialFocusAreaIds||[])],relationDepth:state.relationDepth,relationDisplayMode:state.relationDisplayMode,relationBundleMode:state.relationBundleMode,objectFocusMode:state.objectFocusMode,presentationMode:state.presentationMode,relationPinnedTargetId:state.relationPinnedTargetId,relationLegendCollapsed:state.relationLegendCollapsed,navigationHistory:state.navigationHistory,navigationIndex:state.navigationIndex,researchBookmarks:state.researchBookmarks,undoStack:(state.undoStack||[]).slice(-40),redoStack:(state.redoStack||[]).slice(-40)
 
   }}
   function flushPersist(){
@@ -5706,6 +5765,7 @@
     if(snapshot?.profile)state.tileProfiles[key]=v050ProfileSnapshot(snapshot.profile);else delete state.tileProfiles[key]
   }
   function v050ApplyEntitySnapshot(action,snapshot){
+    if(action.entityType==="water_path"){const id=String(action.entityId||""),idx=state.waterPaths.findIndex(path=>path.id===id);if(snapshot==null){if(idx>=0)state.waterPaths.splice(idx,1)}else if(idx>=0)state.waterPaths[idx]=v050Clone(snapshot);else state.waterPaths.push(v050Clone(snapshot));state.perf.waterHitAreas=[];return}
     const isCell=String(action.entityId||"").startsWith("CELL-")||action.entityType==="tile_profile";
     if(isCell){
       if(action.before?.objects||action.after?.objects){v050ApplyCompositeTile(action,snapshot);return}
@@ -5727,7 +5787,7 @@
       const cellKey=entityId.replace(/^CELL-/,"");
       if(after?.objects)pushTrash({kind:"tile",cellKey,objects:v050Clone(after.objects||[]),profile:v050Clone(after.profile||null)});
       else pushTrash({kind:"profile",cellKey,data:v050ProfileSnapshot(after)})
-    }else if(after){
+    }else if(after&&change.entityType!=="water_path"){
       const cell=objectCell(after);pushTrash({kind:"object",cellKey:cellKey(cell.gx,cell.gy),data:after})
     }
   }
@@ -6280,7 +6340,84 @@
     updateTileImageMapUi()
   }
 
-  window.__SHJ_APP_RUNTIME_INFO__={version:"1.1.6",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"v272-world-art-bottom-structural-calibration-overlay",visualTheme:"v272-final-ink-world-art",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge-autosave",tileImageMap:"switchable-image-or-terrain-card",mapDetailImages:"object-primary-then-tile-primary-in-precision-preview-cards",batchPatch:"content-only-preview-with-multi-select-resolution",bootGuard:true};
+  // v1.3.0 · 独立水体流向地图与直接路径编辑
+  const waterEditorEls={};
+  function waterEditorDom(){
+    const ids=["waterWorkspace","openWaterWorkspaceBtn","closeWaterWorkspaceBtn","waterWorkspaceBadge","waterUndoBtn","waterRedoBtn","waterResetBtn","waterSaveBtn","waterPathCount","waterPathSearch","waterFilterTabs","waterPathList","waterReverseBtn","waterSnapSelect","waterTerrainToggle","waterFitBtn","waterEditorViewport","waterEditorCanvas","waterEditorEmpty","waterEditorHint","waterEditorCursor","waterInspectorEmpty","waterInspector","waterPathName","waterFlowDirection","waterEvidenceLevel","waterChapter","waterRegion","waterPathStatus","waterPathMain","waterNodeSummary","waterPointsText","waterApplyPointsBtn"];
+    ids.forEach(id=>waterEditorEls[id]=document.getElementById(id));return waterEditorEls
+  }
+  function waterEditorPath(){return (state.waterPaths||[]).find(path=>path.id===state.waterEditor.pathId)||null}
+  function waterEditorDisplayPath(path){return path?.id===state.waterEditor.pathId&&state.waterEditor.draft?state.waterEditor.draft:path}
+  function waterEditorPathText(path){return normalizeText([path?.name,path?.chapter,path?.region,path?.flowDirection,path?.pathStatus,(path?.objectIds||[]).map(id=>indexedObject(id)?.name||id).join(" ")].filter(Boolean).join(" "))}
+  function waterEditorFilteredPaths(){
+    const q=normalizeText(state.waterEditor.query||""),filter=state.waterEditor.filter||"all";
+    return (state.waterPaths||[]).filter(path=>{if(q&&!waterEditorPathText(path).includes(q))return false;if(filter==="main")return !!path.isMain;if(filter==="branch")return !path.isMain;if(filter==="official")return path.legacyOverlayHidden!==true;if(filter==="reference")return path.legacyOverlayHidden===true;return true}).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"zh-CN")||Number(a.segmentIndex||0)-Number(b.segmentIndex||0))
+  }
+  function renderWaterPathList(){
+    const list=waterEditorEls.waterPathList;if(!list)return;const paths=waterEditorFilteredPaths();waterEditorEls.waterPathCount.textContent=paths.length;
+    list.innerHTML=paths.map(path=>`<button type="button" class="${path.id===state.waterEditor.pathId?'selected':''}" data-water-path-id="${esc(path.id)}"><i>${path.isMain?'主':'水'}</i><span><strong>${esc(path.name||"未命名水系")}</strong><small>${esc(path.chapter||"未标经篇")} · ${Array.isArray(path.points)?path.points.length:0}节点</small></span><em>${esc(path.evidenceLevel||"G?")}</em></button>`).join("")||`<div class="water-inspector-empty">没有符合当前筛选的水系。</div>`;
+    list.querySelectorAll("[data-water-path-id]").forEach(button=>button.addEventListener("click",()=>selectWaterEditorPath(button.dataset.waterPathId,true)))
+  }
+  function waterEditorCanvasSize(){
+    const canvas=waterEditorEls.waterEditorCanvas,viewport=waterEditorEls.waterEditorViewport;if(!canvas||!viewport)return {width:1,height:1,dpr:1};const r=viewport.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1),width=Math.max(1,Math.round(r.width)),height=Math.max(1,Math.round(r.height));if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);canvas.style.width=`${width}px`;canvas.style.height=`${height}px`}return {width,height,dpr}
+  }
+  function waterEditorScale(){return .14*Math.max(.08,Math.min(24,state.waterEditor.zoom||1))}
+  function waterEditorWorldToScreen(x,y,size=waterEditorCanvasSize()){const scale=waterEditorScale(),camera=state.waterEditor.camera;return {x:size.width/2+(Number(x)-camera.x)*scale,y:size.height/2-(Number(y)-camera.y)*scale}}
+  function waterEditorScreenToWorld(clientX,clientY){const r=waterEditorEls.waterEditorViewport.getBoundingClientRect(),size=waterEditorCanvasSize(),scale=waterEditorScale(),camera=state.waterEditor.camera;return {x:camera.x+(clientX-r.left-size.width/2)/scale,y:camera.y-(clientY-r.top-size.height/2)/scale}}
+  function waterEditorVisibleWorld(size=waterEditorCanvasSize()){const scale=waterEditorScale(),camera=state.waterEditor.camera;return {minX:camera.x-size.width/2/scale,maxX:camera.x+size.width/2/scale,minY:camera.y-size.height/2/scale,maxY:camera.y+size.height/2/scale}}
+  function waterEditorPathBounds(path){const pts=Array.isArray(path?.points)?path.points:[];if(!pts.length)return {minX:0,maxX:0,minY:0,maxY:0};const xs=pts.map(p=>Number(p[0])||0),ys=pts.map(p=>Number(p[1])||0);return {minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)}}
+  function waterEditorPathVisible(path,view){const b=waterEditorPathBounds(path);return b.maxX>=view.minX&&b.minX<=view.maxX&&b.maxY>=view.minY&&b.minY<=view.maxY}
+  function waterEditorEvidenceColor(path){return path?.evidenceLevel==="G1"?"#1d7181":path?.evidenceLevel==="G2"?"#438d91":"#8aa8a6"}
+  function drawWaterEditorTerrain(ctx,size,view){
+    if(!state.waterEditor.terrainLabels)return;const scale=waterEditorScale(),label=scale>0.12;ctx.save();
+    for(const object of state.objects){const x=Number(object.x),y=Number(object.y);if(!Number.isFinite(x)||!Number.isFinite(y)||x<view.minX-100||x>view.maxX+100||y<view.minY-100||y>view.maxY+100)continue;const type=`${object.name||""} ${object.type||""} ${object.terrain||""}`;if(!/山|丘|岭|峰|岳|原|野|泽|海|湖|渊/.test(type))continue;const p=waterEditorWorldToScreen(x,y,size),mountain=/山|丘|岭|峰|岳/.test(type);ctx.beginPath();ctx.fillStyle=mountain?"rgba(80,103,77,.20)":"rgba(87,124,118,.13)";ctx.arc(p.x,p.y,mountain?3.2:2.4,0,Math.PI*2);ctx.fill();if(label&&object.name){ctx.fillStyle="rgba(57,77,62,.50)";ctx.font="10px sans-serif";ctx.fillText(String(object.name).slice(0,10),p.x+5,p.y-5)}}ctx.restore()
+  }
+  function drawWaterEditor(){
+    const canvas=waterEditorEls.waterEditorCanvas;if(!canvas)return;const size=waterEditorCanvasSize(),ctx=canvas.getContext("2d");ctx.setTransform(size.dpr,0,0,size.dpr,0,0);ctx.clearRect(0,0,size.width,size.height);const view=waterEditorVisibleWorld(size);drawWaterEditorTerrain(ctx,size,view);
+    const paths=(state.waterPaths||[]).filter(path=>Array.isArray(path.points)&&path.points.length>=2&&waterEditorPathVisible(path,view));paths.sort((a,b)=>(a.id===state.waterEditor.pathId?1:0)-(b.id===state.waterEditor.pathId?1:0));
+    for(const sourcePath of paths){const path=waterEditorDisplayPath(sourcePath),pts=path.points.map(point=>waterEditorWorldToScreen(point[0],point[1],size)),selected=path.id===state.waterEditor.pathId,muted=sourcePath.legacyOverlayHidden===true&&!selected;ctx.save();ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.lineJoin="round";ctx.lineCap="round";ctx.strokeStyle=selected?"rgba(255,252,238,.98)":"rgba(240,246,242,.75)";ctx.lineWidth=selected?8:(path.isMain?6:4);ctx.stroke();ctx.strokeStyle=waterEditorEvidenceColor(path);ctx.globalAlpha=muted?.42:selected?1:.76;ctx.lineWidth=selected?4:(path.isMain?3:2);if(muted)ctx.setLineDash([7,6]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+      if(selected){pts.forEach((point,index)=>{ctx.beginPath();ctx.fillStyle=index===state.waterEditor.selectedNode?"#f1ad3d":index===0?"#2b8f6e":index===pts.length-1?"#b75d4f":"#fffdf6";ctx.strokeStyle="#155c54";ctx.lineWidth=2;ctx.arc(point.x,point.y,index===state.waterEditor.selectedNode?7:5,0,Math.PI*2);ctx.fill();ctx.stroke()})}
+      if(path.name&&pts.length){const at=pts[Math.floor((pts.length-1)/2)];ctx.font=`800 ${selected?13:11}px sans-serif`;const text=`${path.name}${path.flowDirection?` ${path.flowDirection}`:""}`;const w=ctx.measureText(text).width+12;ctx.fillStyle=selected?"rgba(20,73,65,.94)":"rgba(251,249,239,.88)";ctx.strokeStyle="rgba(31,91,82,.32)";ctx.beginPath();ctx.roundRect(at.x-w/2,at.y-28,w,20,7);ctx.fill();ctx.stroke();ctx.fillStyle=selected?"#fffdf3":"#285a51";ctx.fillText(text,at.x-w/2+6,at.y-14)}ctx.restore()}
+    waterEditorEls.waterEditorEmpty?.classList.toggle("hidden",!!state.waterEditor.pathId)
+  }
+  function fitWaterEditor(path=null){
+    const paths=path?[path]:(state.waterPaths||[]).filter(item=>Array.isArray(item.points)&&item.points.length>=2&&item.legacyOverlayHidden!==true);const pts=paths.flatMap(item=>item.points||[]);if(!pts.length)return;const xs=pts.map(p=>Number(p[0])||0),ys=pts.map(p=>Number(p[1])||0),b={minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)},size=waterEditorCanvasSize(),w=Math.max(200,b.maxX-b.minX),h=Math.max(200,b.maxY-b.minY);state.waterEditor.camera={x:(b.minX+b.maxX)/2,y:(b.minY+b.maxY)/2};state.waterEditor.zoom=Math.max(.08,Math.min(24,Math.min((size.width-140)/(w*.14),(size.height-140)/(h*.14))));drawWaterEditor()
+  }
+  function waterEditorSnapshot(){return state.waterEditor.draft?cloneJSON(state.waterEditor.draft):null}
+  function pushWaterEditorHistory(){const snap=waterEditorSnapshot();if(!snap)return;state.waterEditor.history.push(snap);if(state.waterEditor.history.length>60)state.waterEditor.history.shift();state.waterEditor.future=[];syncWaterEditorControls()}
+  function undoWaterEditor(){const prev=state.waterEditor.history.pop();if(!prev)return;state.waterEditor.future.push(waterEditorSnapshot());state.waterEditor.draft=prev;state.waterEditor.selectedNode=-1;syncWaterInspector();drawWaterEditor()}
+  function redoWaterEditor(){const next=state.waterEditor.future.pop();if(!next)return;state.waterEditor.history.push(waterEditorSnapshot());state.waterEditor.draft=next;state.waterEditor.selectedNode=-1;syncWaterInspector();drawWaterEditor()}
+  function waterEditorDirty(){return !!state.waterEditor.draft&&!sameValue(state.waterEditor.draft,state.waterEditor.original)}
+  function syncWaterEditorControls(){if(!waterEditorEls.waterUndoBtn)return;waterEditorEls.waterUndoBtn.disabled=!state.waterEditor.history.length;waterEditorEls.waterRedoBtn.disabled=!state.waterEditor.future.length;waterEditorEls.waterResetBtn.disabled=!state.waterEditor.pathId||!waterEditorDirty();waterEditorEls.waterSaveBtn.disabled=!state.waterEditor.pathId||!waterEditorDirty();waterEditorEls.waterWorkspaceBadge.textContent=state.waterEditor.draft?`${state.waterEditor.draft.name||"未命名"} · ${state.waterEditor.draft.points?.length||0}节点${waterEditorDirty()?" · 未保存":""}`:"尚未选择水系"}
+  function syncWaterInspector(){
+    const d=state.waterEditor.draft,has=!!d;waterEditorEls.waterInspectorEmpty?.classList.toggle("hidden",has);waterEditorEls.waterInspector?.classList.toggle("hidden",!has);if(!has){syncWaterEditorControls();return}
+    waterEditorEls.waterPathName.value=d.name||"";waterEditorEls.waterFlowDirection.value=d.flowDirection||"";waterEditorEls.waterEvidenceLevel.value=d.evidenceLevel||"G3";waterEditorEls.waterChapter.value=d.chapter||"";waterEditorEls.waterRegion.value=d.region||"";waterEditorEls.waterPathStatus.value=d.pathStatus||"";waterEditorEls.waterPathMain.value=String(!!d.isMain);waterEditorEls.waterNodeSummary.textContent=`${d.points?.length||0}个节点 · 首节点为源点，末节点为汇入口`;waterEditorEls.waterPointsText.value=(d.points||[]).map(point=>`${Number(point[0])||0}, ${Number(point[1])||0}`).join("\n");renderWaterValidation();syncWaterEditorControls()
+  }
+  function updateWaterDraftFromInputs(){const d=state.waterEditor.draft;if(!d)return;d.name=waterEditorEls.waterPathName.value.trim();d.flowDirection=waterEditorEls.waterFlowDirection.value.trim();d.evidenceLevel=waterEditorEls.waterEvidenceLevel.value;d.evidenceLabel=d.evidenceLevel==="G1"?"原文明示":d.evidenceLevel==="G2"?"相对拓扑":"项目路径示意";d.chapter=waterEditorEls.waterChapter.value.trim();d.region=waterEditorEls.waterRegion.value.trim();d.pathStatus=waterEditorEls.waterPathStatus.value.trim();d.isMain=waterEditorEls.waterPathMain.value==="true";d.hasDirection=!!d.flowDirection;renderWaterValidation();syncWaterEditorControls();drawWaterEditor();renderWaterPathList()}
+  function applyWaterPointsText(){const lines=waterEditorEls.waterPointsText.value.split(/\n+/).map(line=>line.trim()).filter(Boolean),points=[];for(const line of lines){const match=line.match(/^([+-]?\d+(?:\.\d+)?)\s*[,，]\s*([+-]?\d+(?:\.\d+)?)$/);if(match)points.push([Number(match[1]),Number(match[2])])}if(points.length<2){toast("路径节点不足","至少需要两个有效的 X,Y 节点。","error");return}pushWaterEditorHistory();state.waterEditor.draft.points=points;state.waterEditor.selectedNode=-1;syncWaterInspector();drawWaterEditor()}
+  function renderWaterValidation(){const d=state.waterEditor.draft,host=waterEditorEls.waterValidation;if(!d||!host)return;const issues=[];if(!String(d.name||"").trim())issues.push(["error","缺少水系名称"]);if(!Array.isArray(d.points)||d.points.length<2)issues.push(["error","路径至少需要2个节点"]);if(!d.flowDirection)issues.push(["warn","未填写流向说明；地图将不显示确定方向"]);if(!d.chapter)issues.push(["warn","未标注所属经篇"]);const duplicates=[];(d.points||[]).forEach((p,i)=>{if(i&&Number(p[0])===Number(d.points[i-1][0])&&Number(p[1])===Number(d.points[i-1][1]))duplicates.push(i+1)});if(duplicates.length)issues.push(["error",`第${duplicates.join("、")}节点与前一节点重合`]);if(!issues.length)issues.push(["ok","路径结构完整，可以保存"]);host.innerHTML=issues.map(([kind,text])=>`<span class="${kind}">${kind==="ok"?"✓":kind==="warn"?"△":"!"} ${esc(text)}</span>`).join("")}
+  function selectWaterEditorPath(id,fit=false){const path=(state.waterPaths||[]).find(item=>item.id===id);if(!path)return;if(waterEditorDirty()&&!confirm("当前水系尚未保存。切换后会放弃这些修改，继续吗？"))return;state.waterEditor.pathId=id;state.waterEditor.original=cloneJSON(path);state.waterEditor.draft=cloneJSON(path);state.waterEditor.history=[];state.waterEditor.future=[];state.waterEditor.selectedNode=-1;renderWaterPathList();syncWaterInspector();if(fit)fitWaterEditor(path);else drawWaterEditor()}
+  function reverseWaterEditorPath(){const d=state.waterEditor.draft;if(!d)return;pushWaterEditorHistory();d.points=[...(d.points||[])].reverse();[d.source,d.mouth]=[cloneJSON(d.mouth||d.points[d.points.length-1]),cloneJSON(d.source||d.points[0])];d.flowDirection=d.flowDirection?`${d.flowDirection}（已反转，请核对文字）`:"";state.waterEditor.selectedNode=-1;syncWaterInspector();drawWaterEditor()}
+  function resetWaterEditorPath(){if(!state.waterEditor.original)return;if(waterEditorDirty())pushWaterEditorHistory();state.waterEditor.draft=cloneJSON(state.waterEditor.original);state.waterEditor.selectedNode=-1;syncWaterInspector();drawWaterEditor()}
+  function saveWaterEditorPath(){
+    const d=state.waterEditor.draft,original=state.waterEditor.original;if(!d||!original)return;updateWaterDraftFromInputs();const validation=waterEditorEls.waterValidation?.querySelector(".error");if(validation){toast("水系路径尚不能保存",validation.textContent,"error");return}const next=cloneJSON(d),bounds=waterEditorPathBounds(next);next.source=cloneJSON(next.points[0]);next.mouth=cloneJSON(next.points[next.points.length-1]);next.bounds=bounds;next.hasDirection=!!next.flowDirection;next.hasTopologyDirection=next.points.length>=2;next.editedAt=new Date().toISOString();next.editedIn="SHmap v1.3.0 water workspace";const index=state.waterPaths.findIndex(path=>path.id===next.id);if(index<0)return;state.waterPaths[index]=next;state.waterEditor.original=cloneJSON(next);state.waterEditor.draft=cloneJSON(next);state.waterEditor.history=[];state.waterEditor.future=[];recordChange({entityType:"water_path",entityId:next.id,operation:"update",operationLabel:"修改水系流向路径",before:original,after:next,summary:`${next.name||next.id} · ${next.points.length}节点 · ${next.flowDirection||"流向待考"}`});state.perf.waterHitAreas=[];persist(true);scheduleRender();renderWaterPathList();syncWaterInspector();toast("水系路径已保存",`${next.name||next.id} · 已进入本轮更改，可随更改包同步`)
+  }
+  function waterEditorNearestNode(clientX,clientY){const d=state.waterEditor.draft;if(!d)return -1;let found=-1,distance=14;(d.points||[]).forEach((point,index)=>{const p=waterEditorWorldToScreen(point[0],point[1]),r=waterEditorEls.waterEditorViewport.getBoundingClientRect(),dist=Math.hypot(clientX-r.left-p.x,clientY-r.top-p.y);if(dist<distance){distance=dist;found=index}});return found}
+  function waterEditorNearestSegment(clientX,clientY){const d=state.waterEditor.draft;if(!d||d.points.length<2)return -1;const r=waterEditorEls.waterEditorViewport.getBoundingClientRect(),px=clientX-r.left,py=clientY-r.top;let found=-1,best=14;for(let i=0;i<d.points.length-1;i++){const a=waterEditorWorldToScreen(d.points[i][0],d.points[i][1]),b=waterEditorWorldToScreen(d.points[i+1][0],d.points[i+1][1]),dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((px-a.x)*dx+(py-a.y)*dy)/(dx*dx+dy*dy||1))),dist=Math.hypot(px-(a.x+t*dx),py-(a.y+t*dy));if(dist<best){best=dist;found=i}}return found}
+  function snapWaterEditor(value){const snap=Number(state.waterEditor.snap)||0;return snap?Math.round(value/snap)*snap:Math.round(value*10)/10}
+  function waterEditorPointerDown(event){if(event.button!==0)return;const viewport=waterEditorEls.waterEditorViewport;if(!viewport)return;const tool=state.waterEditor.tool;if(tool==="select"&&state.waterEditor.draft){const node=waterEditorNearestNode(event.clientX,event.clientY);if(node>=0){pushWaterEditorHistory();state.waterEditor.selectedNode=node;state.waterEditor.pointer={mode:"node",node,pointerId:event.pointerId};viewport.setPointerCapture(event.pointerId);viewport.classList.add("dragging");drawWaterEditor();return}}const world=waterEditorScreenToWorld(event.clientX,event.clientY);state.waterEditor.pointer={mode:"pan",pointerId:event.pointerId,clientX:event.clientX,clientY:event.clientY,camera:cloneJSON(state.waterEditor.camera),world};viewport.setPointerCapture(event.pointerId);viewport.classList.add("dragging")}
+  function waterEditorPointerMove(event){const world=waterEditorScreenToWorld(event.clientX,event.clientY);if(waterEditorEls.waterEditorCursor)waterEditorEls.waterEditorCursor.textContent=`X ${Math.round(world.x*10)/10}里 · Y ${Math.round(world.y*10)/10}里`;const p=state.waterEditor.pointer;if(!p)return;if(p.mode==="node"&&state.waterEditor.draft){state.waterEditor.draft.points[p.node]=[snapWaterEditor(world.x),snapWaterEditor(world.y)];syncWaterInspector();drawWaterEditor();return}if(p.mode==="pan"){const scale=waterEditorScale();state.waterEditor.camera={x:p.camera.x-(event.clientX-p.clientX)/scale,y:p.camera.y+(event.clientY-p.clientY)/scale};drawWaterEditor()}}
+  function waterEditorPointerUp(event){const p=state.waterEditor.pointer;if(!p||p.pointerId!==event.pointerId)return;state.waterEditor.pointer=null;waterEditorEls.waterEditorViewport.classList.remove("dragging");try{waterEditorEls.waterEditorViewport.releasePointerCapture(event.pointerId)}catch{}syncWaterInspector()}
+  function waterEditorDblClick(event){if(!state.waterEditor.draft||state.waterEditor.tool!=="select")return;const segment=waterEditorNearestSegment(event.clientX,event.clientY);if(segment<0)return;event.preventDefault();pushWaterEditorHistory();const world=waterEditorScreenToWorld(event.clientX,event.clientY),point=[snapWaterEditor(world.x),snapWaterEditor(world.y)];state.waterEditor.draft.points.splice(segment+1,0,point);state.waterEditor.selectedNode=segment+1;syncWaterInspector();drawWaterEditor()}
+  function waterEditorWheel(event){event.preventDefault();const before=waterEditorScreenToWorld(event.clientX,event.clientY),factor=event.deltaY>0?.86:1.16;state.waterEditor.zoom=Math.max(.08,Math.min(24,state.waterEditor.zoom*factor));const after=waterEditorScreenToWorld(event.clientX,event.clientY);state.waterEditor.camera.x+=before.x-after.x;state.waterEditor.camera.y+=before.y-after.y;drawWaterEditor()}
+  function deleteWaterEditorNode(){const d=state.waterEditor.draft,index=state.waterEditor.selectedNode;if(!d||index<0)return;if(d.points.length<=2){toast("不能删除节点","一条水系至少保留2个节点。","error");return}pushWaterEditorHistory();d.points.splice(index,1);state.waterEditor.selectedNode=Math.min(index,d.points.length-1);syncWaterInspector();drawWaterEditor()}
+  function setWaterEditorTool(tool){state.waterEditor.tool=tool;waterEditorEls.waterEditorViewport.dataset.tool=tool;document.querySelectorAll("[data-water-tool]").forEach(button=>button.classList.toggle("active",button.dataset.waterTool===tool));waterEditorEls.waterEditorHint.textContent=tool==="pan"?"拖动平移视图；滚轮缩放。":"拖动节点修改河道；双击河线添加节点；Delete删除节点。"}
+  function openWaterWorkspace(){waterEditorDom();waterEditorEls.waterWorkspace.classList.remove("hidden");renderWaterPathList();syncWaterInspector();setWaterEditorTool(state.waterEditor.tool||"select");requestAnimationFrame(()=>{if(state.waterEditor.pathId)drawWaterEditor();else fitWaterEditor()})}
+  function closeWaterWorkspace(){if(waterEditorDirty()&&!confirm("当前水系尚未保存，确认返回主地图吗？"))return;waterEditorEls.waterWorkspace.classList.add("hidden");state.waterEditor.pointer=null;scheduleRender()}
+  function setupWaterFlowWorkspace(){
+    waterEditorDom();if(!waterEditorEls.waterWorkspace)return;waterEditorEls.openWaterWorkspaceBtn?.addEventListener("click",openWaterWorkspace);waterEditorEls.closeWaterWorkspaceBtn?.addEventListener("click",closeWaterWorkspace);waterEditorEls.waterPathSearch?.addEventListener("input",event=>{state.waterEditor.query=event.target.value;renderWaterPathList()});waterEditorEls.waterFilterTabs?.querySelectorAll("[data-water-filter]").forEach(button=>button.addEventListener("click",()=>{state.waterEditor.filter=button.dataset.waterFilter;waterEditorEls.waterFilterTabs.querySelectorAll("button").forEach(item=>item.classList.toggle("active",item===button));renderWaterPathList()}));document.querySelectorAll("[data-water-tool]").forEach(button=>button.addEventListener("click",()=>setWaterEditorTool(button.dataset.waterTool)));waterEditorEls.waterSnapSelect?.addEventListener("change",event=>state.waterEditor.snap=Number(event.target.value));waterEditorEls.waterTerrainToggle?.addEventListener("change",event=>{state.waterEditor.terrainLabels=event.target.checked;drawWaterEditor()});waterEditorEls.waterFitBtn?.addEventListener("click",()=>fitWaterEditor(waterEditorPath()));waterEditorEls.waterUndoBtn?.addEventListener("click",undoWaterEditor);waterEditorEls.waterRedoBtn?.addEventListener("click",redoWaterEditor);waterEditorEls.waterResetBtn?.addEventListener("click",resetWaterEditorPath);waterEditorEls.waterReverseBtn?.addEventListener("click",reverseWaterEditorPath);waterEditorEls.waterSaveBtn?.addEventListener("click",saveWaterEditorPath);waterEditorEls.waterApplyPointsBtn?.addEventListener("click",applyWaterPointsText);["waterPathName","waterFlowDirection","waterEvidenceLevel","waterChapter","waterRegion","waterPathStatus","waterPathMain"].forEach(id=>waterEditorEls[id]?.addEventListener("change",()=>{pushWaterEditorHistory();updateWaterDraftFromInputs()}));const viewport=waterEditorEls.waterEditorViewport;viewport.addEventListener("pointerdown",waterEditorPointerDown);viewport.addEventListener("pointermove",waterEditorPointerMove);viewport.addEventListener("pointerup",waterEditorPointerUp);viewport.addEventListener("pointercancel",waterEditorPointerUp);viewport.addEventListener("dblclick",waterEditorDblClick);viewport.addEventListener("wheel",waterEditorWheel,{passive:false});window.addEventListener("resize",()=>{if(!waterEditorEls.waterWorkspace.classList.contains("hidden"))drawWaterEditor()});document.addEventListener("keydown",event=>{if(waterEditorEls.waterWorkspace.classList.contains("hidden"))return;if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="z"){event.preventDefault();undoWaterEditor()}else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="y"){event.preventDefault();redoWaterEditor()}else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s"){event.preventDefault();saveWaterEditorPath()}else if(event.key==="Delete"||event.key==="Backspace"&&document.activeElement===document.body){event.preventDefault();deleteWaterEditorNode()}else if(event.key==="Escape"){event.preventDefault();closeWaterWorkspace()}});window.SHJ_WATER_EDITOR={open:openWaterWorkspace,select:selectWaterEditorPath,save:saveWaterEditorPath,paths:()=>cloneJSON(state.waterPaths)}
+  }
+  window.__SHJ_APP_RUNTIME_INFO__={version:"1.3.0",renderArchitecture:"single-static-runtime",objectRoleSchema:"entity-collection-subregion-path-detail-context-1.0",relationRendering:"edge-routed-clickable-explained-bundled",environmentRendering:"v272-world-art-bottom-structural-calibration-overlay",visualTheme:"v272-final-ink-world-art",scriptureDirectory:"eighteen-full-content-pages",waterDisplay:"special-model-audited-dossier-and-render-tiers",imageSync:"adaptive-webp-sha256-github-assets-three-way-merge-autosave",tileImageMap:"switchable-image-or-terrain-card",mapDetailImages:"object-primary-then-tile-primary-in-precision-preview-cards",batchPatch:"content-only-preview-with-multi-select-resolution",bootGuard:true};
   setupV027State();
   init();
   bindTileImageManager();
@@ -6292,6 +6429,7 @@
   setupV061Features();
   setupV062Features();
   setupV071Features();
+  setupWaterFlowWorkspace();
   setupWaterConversionPhaseOne();
   setupTileImageMapToggle();
   setupScriptureWorkspace();

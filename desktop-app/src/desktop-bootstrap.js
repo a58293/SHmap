@@ -14,13 +14,13 @@ let nativeStorageReady = !isTauri;
 let startupFallback = false;
 let bootstrapRecoveryTask = null;
 const BOOTSTRAP_TIMEOUT_MS = 8000;
-const PRIVATE_DATA_TIMEOUT_MS = 20000;
+const PRIVATE_DATA_TIMEOUT_MS = 120000;
 const MAIN_SCRIPT_TIMEOUT_MS = 8000;
 const AUTO_UPDATE_KEY = "shj_desktop_auto_update_v1";
 const UPDATE_CHECK_KEY = "shj_desktop_last_update_check_v1";
 const AUTH_REPOSITORY = "a58293/SHmap-Data";
-const DESKTOP_EDITION = "v012";
-const DESKTOP_VERSION = "1.2.6";
+const DESKTOP_EDITION = "v013";
+const DESKTOP_VERSION = "1.3.0";
 const CLOSE_SAVE_TIMEOUT_MS = 3000;
 
 function seedSnapshot(){
@@ -468,7 +468,7 @@ async function start(){
     privateMapInfo=await promiseWithTimeout(
       invoke("load_private_map_bundle"),
       PRIVATE_DATA_TIMEOUT_MS,
-      "私有地图数据读取超过20秒"
+      "私有地图首次下载或缓存校验超过120秒"
     );
     hydratePrivateMapBundle(privateMapInfo?.payload);
     const legacy=localStorage.getItem(STORAGE_KEY),seed=JSON.stringify(seedSnapshot());

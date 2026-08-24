@@ -6,8 +6,7 @@ const pkg=JSON.parse(read("package.json"));
 const version=JSON.parse(read("VERSION.json"));
 const boot=read("src/desktop-bootstrap.js");
 
-assert.equal(pkg.version,"1.2.6");
-assert.equal(version.semver,"1.2.6");
+assert.equal(pkg.version,version.semver);assert.ok(pkg.version.localeCompare("1.2.6",undefined,{numeric:true})>=0,"发布版本不得低于1.2.6稳定基线");
 assert.ok(boot.includes("CLOSE_SAVE_TIMEOUT_MS = 3000"),"native close save timeout is missing");
 assert.ok(boot.includes("nativeCloseInProgress"),"repeated close requests are not guarded");
 assert.ok(boot.includes("if(!nativeStorageReady)return false"),"close can still wait forever before native storage is ready");

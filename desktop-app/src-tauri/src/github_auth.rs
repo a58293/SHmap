@@ -34,7 +34,7 @@ impl GitHubAuthState {
     pub fn new() -> Result<Self, String> {
         let client = Client::builder()
             .connect_timeout(Duration::from_secs(15))
-            .timeout(Duration::from_secs(45))
+            .timeout(Duration::from_secs(120))
             .build()
             .map_err(|error| format!("无法建立 GitHub 安全连接：{error}"))?;
         Ok(Self {
@@ -685,8 +685,9 @@ async fn fetch_private_repo_raw(
 }
 
 fn validate_private_submission_path(path: &str) -> Result<(), String> {
-    if !path.starts_with("submissions/pending/")
-        || !path.ends_with(".shjpatch")
+    let pending_patch = path.starts_with("submissions/pending/") && path.ends_with(".shjpatch");
+    let consolidated_bundle = path == "submissions/bundles/latest.shjbundle";
+    if (!pending_patch && !consolidated_bundle)
         || path.starts_with('/')
         || path.contains("..")
         || path.contains('\\')
@@ -1041,6 +1042,7 @@ pub async fn publish_private_submission(
 
 pub async fn load_private_map_bundle(
     state: &GitHubAuthState,
+    app: &AppHandle,
 ) -> Result<PrivateMapBundleResponse, String> {
     let token = active_authorized_token(state).await?;
     let manifest_text = fetch_private_repo_raw(state, &token, PRIVATE_DATA_MANIFEST_PATH).await?;
@@ -1059,7 +1061,37 @@ pub async fn load_private_map_bundle(
         }
     }
     validate_private_data_path(&manifest.data_path)?;
-    let payload = fetch_private_repo_raw(state, &token, &manifest.data_path).await?;
+    let cache_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("无法定位私有地图缓存目录：{error}"))?
+        .join("private-map-cache");
+    fs::create_dir_all(&cache_dir)
+        .map_err(|error| format!("无法建立私有地图缓存目录：{error}"))?;
+    let cache_path = cache_dir.join(format!("{}.json", manifest.sha256.to_ascii_lowercase()));
+    let cached_payload = fs::read_to_string(&cache_path).ok().filter(|value| {
+        let cached_sha = hex::encode(Sha256::digest(value.as_bytes()));
+        manifest.sha256.eq_ignore_ascii_case(&cached_sha)
+    });
+    if cached_payload.is_none() {
+        let _ = fs::remove_file(&cache_path);
+    }
+    let payload = match cached_payload {
+        Some(value) => value,
+        None => {
+            let value = fetch_private_repo_raw(state, &token, &manifest.data_path).await?;
+            let downloaded_sha = hex::encode(Sha256::digest(value.as_bytes()));
+            if !manifest.sha256.eq_ignore_ascii_case(&downloaded_sha) {
+                return Err("私有地图数据 SHA-256 校验失败，已拒绝加载".to_string());
+            }
+            let temporary_path = cache_dir.join(format!("{}.tmp", manifest.sha256.to_ascii_lowercase()));
+            fs::write(&temporary_path, value.as_bytes())
+                .map_err(|error| format!("无法写入私有地图缓存：{error}"))?;
+            fs::rename(&temporary_path, &cache_path)
+                .map_err(|error| format!("无法提交私有地图缓存：{error}"))?;
+            value
+        }
+    };
     let actual_sha = hex::encode(Sha256::digest(payload.as_bytes()));
     if !manifest.sha256.eq_ignore_ascii_case(&actual_sha) {
         return Err("私有地图数据 SHA-256 校验失败，已拒绝加载".to_string());

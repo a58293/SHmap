@@ -266,8 +266,9 @@ async fn publish_patch_to_github(
 #[tauri::command]
 async fn load_private_map_bundle(
     github_state: tauri::State<'_, github_auth::GitHubAuthState>,
+    app: AppHandle,
 ) -> Result<github_auth::PrivateMapBundleResponse, String> {
-    github_auth::load_private_map_bundle(&github_state).await
+    github_auth::load_private_map_bundle(&github_state, &app).await
 }
 
 fn initialize_database(path: &Path) -> Result<(), String> {

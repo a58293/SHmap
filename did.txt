@@ -1,4 +1,4 @@
+$env:Path = "C:\Users\Admin\.cargo\bin;$env:Path"
 Set-Location "F:\SHmap\SHmap\desktop-app"
-npm install
-npm run verify
+cargo --version
 npm run desktop:dev

@@ -1,0 +1,37 @@
+name: Build consolidated SHmap change bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "submissions/pending/*.shjpatch"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shmap-change-bundle
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build one consolidated bundle
+        run: node tools/build-shjpatch-bundle.mjs .
+      - name: Commit bundle when changed
+        run: |
+          if git diff --quiet -- submissions/bundles/latest.shjbundle; then
+            echo "Bundle already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add submissions/bundles/latest.shjbundle
+          git commit -m "data: rebuild consolidated change bundle"
+          git push

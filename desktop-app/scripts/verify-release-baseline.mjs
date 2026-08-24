@@ -2,7 +2,7 @@ import fs from "node:fs";import path from "node:path";import assert from "node:a
 const root=process.cwd(),read=p=>fs.readFileSync(path.join(root,p),"utf8"),json=p=>JSON.parse(read(p));
 const pkg=json("package.json"),version=json("VERSION.json"),tauri=json("src-tauri/tauri.conf.json"),release=json("src-tauri/tauri.release.conf.json"),cargo=read("src-tauri/Cargo.toml"),app=read("public/app/app.js"),bootstrap=read("src/desktop-bootstrap.js");
 const cv=cargo.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
-assert.equal(pkg.version,"1.2.6");assert.equal(version.semver,"1.2.6");assert.equal(tauri.version,"1.2.6");assert.equal(cv,"1.2.6");assert.equal(version.data_version,"v284-r0001");assert.equal(version.object_count,1411);assert.equal(version.board_occupied_cells,905);assert.equal(version.water_arrow_cells,48);assert.equal(release.bundle?.createUpdaterArtifacts,true);
+assert.equal(pkg.version,version.semver);assert.ok(pkg.version.localeCompare("1.2.6",undefined,{numeric:true})>=0,"发布版本不得低于1.2.6稳定基线");assert.equal(tauri.version,pkg.version);assert.equal(cv,pkg.version);assert.equal(version.data_version,"v284-r0001");assert.equal(version.object_count,1411);assert.equal(version.board_occupied_cells,905);assert.equal(version.water_arrow_cells,48);assert.equal(release.bundle?.createUpdaterArtifacts,true);
 assert.ok(app.includes('function v112PopulationNames(object)'),'缺少族群名称提取');
 assert.ok(app.includes('function v112IsCivilizationNode(object)'),'缺少文明节点分类');
 assert.ok(app.includes('domainRegionId:region.id'),'地域总览未接入V272 hierarchy');

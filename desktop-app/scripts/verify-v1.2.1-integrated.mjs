@@ -10,8 +10,7 @@ const boot = read("src/desktop-bootstrap.js");
 const rust = read("src-tauri/src/github_auth.rs");
 const lib = read("src-tauri/src/lib.rs");
 
-assert.equal(pkg.version, "1.2.6");
-assert.equal(version.semver, "1.2.6");
+assert.equal(pkg.version,version.semver);assert.ok(pkg.version.localeCompare("1.2.6",undefined,{numeric:true})>=0,"发布版本不得低于1.2.6稳定基线");
 assert.equal(version.data_version, "v284-r0001");
 assert.ok(index.includes('id="mapSpacingModeBtn"'), "缺少紧凑/原典比例切换按钮");
 assert.ok(app.includes('mapSpacingMode:saved?.mapSpacingMode'), "紧凑地图模式没有保存");

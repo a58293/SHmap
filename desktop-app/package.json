@@ -1,7 +1,7 @@
 {
   "name": "shanhaijing-map-desktop",
   "private": true,
-  "version": "1.2.6",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,7 @@
     "desktop:build": "tauri build",
     "import:master": "node scripts/import-master-v053.mjs",
     "data:private": "node scripts/build-private-map-bundle.mjs",
-    "verify": "npm run build && npm run verify:architecture && npm run verify:v284-data && npm run verify:critical && npm run verify:overview-policy && npm run verify:import-audit && npm run verify:v113 && npm run verify:v114 && npm run verify:v116 && npm run verify:v120 && npm run verify:v121 && npm run verify:v122 && npm run verify:v123 && npm run verify:v124 && npm run verify:v125 && npm run verify:v126 && npm run verify:release",
+    "verify": "npm run build && npm run verify:architecture && npm run verify:v284-data && npm run verify:critical && npm run verify:overview-policy && npm run verify:import-audit && npm run verify:v113 && npm run verify:v114 && npm run verify:v116 && npm run verify:v120 && npm run verify:v121 && npm run verify:v122 && npm run verify:v123 && npm run verify:v124 && npm run verify:v125 && npm run verify:v126 && npm run verify:v130 && npm run verify:release",
     "verify:architecture": "node scripts/verify-clean-architecture.mjs",
     "verify:critical": "node scripts/verify-critical-features.mjs",
     "verify:release": "node scripts/verify-release-baseline.mjs",
@@ -28,7 +28,8 @@
     "verify:v124": "node scripts/verify-v1.2.4-close-guard.mjs",
     "verify:v125": "node scripts/verify-v1.2.5-process-exit.mjs",
     "verify:v284-data": "node scripts/verify-v284-board.mjs",
-    "verify:v126": "node scripts/verify-v1.2.6-v284-migration.mjs"
+    "verify:v126": "node scripts/verify-v1.2.6-v284-migration.mjs",
+    "verify:v130": "node scripts/verify-v1.3.0-water-workspace-and-bundle.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1"
